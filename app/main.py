@@ -9,8 +9,8 @@ from app.routers import system_router
 app = FastAPI(
     title="System Info API",
     description="API for retrieving system information",
-    docs_url="/docs/" if settings.ENABLE_SWAGGER else None,
-    redoc_url="/redoc/" if settings.ENABLE_SWAGGER else None,
+    docs_url="/docs/" if settings.enable_swagger else None,
+    redoc_url="/redoc/" if settings.enable_swagger else None,
 )
 app.include_router(system_router)
 
