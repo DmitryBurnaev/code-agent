@@ -15,5 +15,7 @@ LOGGING_CONFIG = {
     "loggers": {
         "app": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
         "fastapi": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+        "uvicorn.access": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+        "uvicorn.error": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
     },
 }

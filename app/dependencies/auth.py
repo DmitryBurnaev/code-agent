@@ -1,8 +1,8 @@
 from typing import Annotated
 
-from fastapi import Header, HTTPException, Depends
+from fastapi import Header, HTTPException
 
-from app.conf.app import settings
+from app.settings import app_settings
 
 
 async def verify_token(authorization: Annotated[str, Header()]):
@@ -10,27 +10,7 @@ async def verify_token(authorization: Annotated[str, Header()]):
         raise HTTPException(status_code=401, detail="Invalid authorization header")
 
     token = authorization.split(" ")[1]
-    if not token != settings.auth_api_token:
+    if token != app_settings.service_api_key:
         raise HTTPException(status_code=401, detail="Invalid token")
 
     return token
-
-
-async def get_token_header(
-    authorization: str = Depends(lambda x: x.headers.get("Authorization", "")),
-) -> str:
-    """Dependency for token verification."""
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
-
-    token = authorization.split(" ")[1]
-    if not verify_token(token):
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    return token
-
-
-# async def get_token_header(authorization: Annotated[str, Header()]):
-#     """ Temp solution. Will be rewritten soon """
-#     if authorization != "fake-super-secret-token":
-#         raise HTTPException(status_code=401, detail="X-Token header invalid")
