@@ -11,25 +11,22 @@ dependencies = [
     "httpx==0.28.1",
 ]
 
-[project.optional-dependencies]
-test = ["pytest==8.3.5"]
+[tool.uv]
+dev-dependencies = [
+    "pytest<=8.4",
+    "black<=25.2",
+    # pycharm requires:
+    "setuptools <= 78.2",
+    "pip<26"
+]
 
-# [build-system]
-# requires = ["hatchling"]
-# build-backend = "hatchling.build"
-
-# [tool.ruff]
-# line-length = 100
-# target-version = "py313"
-# select = ["E", "F", "I", "N", "W", "B", "UP", "RUF"]
-
-# [tool.ruff.isort]
-# known-first-party = ["app"]
+[build-system]
+requires = ["setuptools <= 78.2"]
+build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 testpaths = ["app/tests"]
 python_files = ["test_*.py"]
-
 
 # === Ruff settings ====
 
