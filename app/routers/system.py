@@ -3,7 +3,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends
 
-from app.dependencies.auth import get_token_header
+from app.dependencies.auth import verify_token
 from app.models import SystemInfo, HealthCheck
 
 __all__ = ["router"]
@@ -17,8 +17,8 @@ router = APIRouter(
 )
 
 
-@router.get("system", response_model=SystemInfo)
-async def get_system_info(_: str = Depends(get_token_header)) -> SystemInfo:
+@router.get("/info/", response_model=SystemInfo)
+async def get_system_info(_: str = Depends(verify_token)) -> SystemInfo:
     """Get current system information."""
     return SystemInfo(
         current_time=datetime.now(),
@@ -26,7 +26,7 @@ async def get_system_info(_: str = Depends(get_token_header)) -> SystemInfo:
     )
 
 
-@router.get("health", response_model=HealthCheck)
+@router.get("/health/", response_model=HealthCheck)
 async def health_check() -> HealthCheck:
     """Health check endpoint."""
     return HealthCheck(

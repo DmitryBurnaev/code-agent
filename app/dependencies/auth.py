@@ -5,9 +5,15 @@ from fastapi import Header, HTTPException, Depends
 from app.conf.app import settings
 
 
-def verify_token(token: str) -> bool:
-    """Verify the API token."""
-    return token == settings.API_TOKEN
+async def verify_token(authorization: Annotated[str, Header()]):
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+
+    token = authorization.split(" ")[1]
+    if not token != settings.auth_api_token:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    return token
 
 
 async def get_token_header(
