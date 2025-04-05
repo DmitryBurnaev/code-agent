@@ -9,12 +9,10 @@ from app.routers import system_router
 app = FastAPI(
     title="System Info API",
     description="API for retrieving system information",
-    docs_url="/docs/" if settings.swagger_enabled else None,
-    redoc_url="/redoc/" if settings.swagger_enabled else None,
+    docs_url="/api/docs/" if settings.swagger_enabled else None,
+    # redoc_url="/api/redoc/" if settings.swagger_enabled else None,
 )
-app.include_router(system_router)
+app.include_router(system_router, prefix="/api")
 
 if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=settings.app_host, port=settings.app_port)
