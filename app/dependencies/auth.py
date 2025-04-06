@@ -1,16 +1,19 @@
-from typing import Annotated
-
-from fastapi import Header, HTTPException
+from fastapi import HTTPException, Security
+from fastapi.security import APIKeyHeader
 
 from app.settings import app_settings
 
+api_key_header = APIKeyHeader(name="Authorization", auto_error=True)
 
-async def verify_token(authorization: Annotated[str, Header()]):
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
 
-    token = authorization.split(" ")[1]
-    if token != app_settings.service_api_key:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    return token
+async def verify_token(auth_token: str = Security(api_key_header)) -> str:
+    """
+    Verify the authentication token from the header.
+    """
+    auth_token = auth_token.replace("Bearer ", "").strip()
+    if auth_token != app_settings.auth_api_token.get_secret_value():
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid authentication token",
+        )
+    return auth_token
