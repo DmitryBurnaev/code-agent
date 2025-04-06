@@ -21,15 +21,14 @@ class AppSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     docs_enabled: bool = True
-    service_api_key: SecretStr
-    service_providers: list[LLMProvider]
+    auth_api_token: SecretStr
+    providers: list[LLMProvider]
     app_host: str = "0.0.0.0"
     app_port: int = 8003
     log_level: UpperCasedString = "INFO"
 
     @property
     def log_config(self) -> dict:
-
         return {
             "version": 1,
             "disable_existing_loggers": False,
@@ -65,5 +64,3 @@ except ValidationError as exc:
         exc.errors(include_url=False, include_input=False),
     )
     sys.exit(1)
-else:
-    logging.warning("Settings preparation successful: \n %s", app_settings.model_dump_json())
