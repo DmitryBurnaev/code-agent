@@ -2,13 +2,14 @@ import logging
 import sys
 from typing import Annotated
 
-from pydantic import SecretStr, BaseModel, StringConstraints
+from pydantic import SecretStr, BaseModel, StringConstraints, Field
 from pydantic_core import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 __all__ = ["app_settings"]
 
-UpperCasedString = Annotated[str, StringConstraints(to_upper=True)]
+LOG_LEVELS = "DEBUG|INFO|WARNING|ERROR|CRITICAL"
+LogLevelString = Annotated[str, StringConstraints(to_upper=True, pattern=rf"^(?i:{LOG_LEVELS})$")]
 
 
 class LLMProvider(BaseModel):
@@ -21,11 +22,11 @@ class AppSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     docs_enabled: bool = True
-    auth_api_token: SecretStr
-    providers: list[LLMProvider]
+    auth_api_token: SecretStr = Field(default="", description="API token")
+    providers: list[LLMProvider] = Field(default_factory=list, description="List of LLM providers")
     app_host: str = "0.0.0.0"
     app_port: int = 8003
-    log_level: UpperCasedString = "INFO"
+    log_level: LogLevelString = "INFO"
 
     @property
     def log_config(self) -> dict:
