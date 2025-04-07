@@ -1,9 +1,10 @@
 import platform
 from datetime import datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.models import SystemInfo, HealthCheck
+from app.dependencies.auth import verify_token
 
 __all__ = ["router"]
 
