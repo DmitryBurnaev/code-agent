@@ -8,6 +8,7 @@ class SystemInfo(BaseModel):
 
     current_time: datetime
     os_version: str
+    providers: list[str]
 
 
 class HealthCheck(BaseModel):
