@@ -1,10 +1,10 @@
 import platform
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
+from app.dependencies import SettingsDep
 from app.models import SystemInfo, HealthCheck
-from app.dependencies.auth import verify_token
 
 __all__ = ["router"]
 
@@ -17,11 +17,12 @@ router = APIRouter(
 
 
 @router.get("/info/", response_model=SystemInfo)
-async def get_system_info() -> SystemInfo:
+async def get_system_info(settings: SettingsDep) -> SystemInfo:
     """Get current system information."""
     return SystemInfo(
         current_time=datetime.now(),
         os_version=platform.platform(),
+        providers=[provider.api_provider for provider in settings.providers],
     )
 
 

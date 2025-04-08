@@ -1,25 +1,27 @@
 from fastapi import HTTPException, Security
 from fastapi.security import APIKeyHeader
 
-from app.settings import app_settings
+from app.dependencies import SettingsDep
+
+__all__ = ["verify_api_token"]
+
 
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 
 
-async def verify_token(auth_token: str | None = Security(api_key_header)) -> str:
+async def verify_api_token(
+    # TODO: decide current problem: using dependency inside another dependency
+    settings: SettingsDep,
+    auth_token: str | None = Security(api_key_header),
+) -> str:
     """
     Verify the authentication token from the header.
     """
     if not auth_token:
-        raise HTTPException(
-            status_code=401,
-            detail="Not authenticated",
-        )
-    
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
     auth_token = auth_token.replace("Bearer ", "").strip()
-    if auth_token != app_settings.auth_api_token.get_secret_value():
-        raise HTTPException(
-            status_code=403,
-            detail="Invalid authentication token",
-        )
+    if auth_token != settings.auth_api_token.get_secret_value():
+        raise HTTPException(status_code=403, detail="Invalid authentication token")
+
     return auth_token

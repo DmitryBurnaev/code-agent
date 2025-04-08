@@ -19,7 +19,7 @@ def client() -> TestClient:
     mock_settings.app_port = 8000
     mock_settings.log_level = "INFO"
     mock_settings.providers = []
-    
+
     with patch("app.settings.app_settings", mock_settings):
         return TestClient(app)
 
@@ -61,7 +61,7 @@ def test_system_info_authorized(client: TestClient) -> None:
     mock_settings.app_port = 8000
     mock_settings.log_level = "INFO"
     mock_settings.providers = []
-    
+
     with patch("app.settings.app_settings", mock_settings):
         client = TestClient(app)
         response = client.get(
@@ -86,7 +86,7 @@ def client_with_docs() -> TestClient:
     mock_settings.app_port = 8000
     mock_settings.log_level = "INFO"
     mock_settings.providers = []
-    
+
     with patch("app.settings.app_settings", mock_settings):
         return TestClient(app)
 

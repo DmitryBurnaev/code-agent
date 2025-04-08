@@ -1,12 +1,13 @@
 import logging
 import sys
 from typing import Annotated
+from functools import lru_cache
 
 from pydantic import SecretStr, BaseModel, StringConstraints, Field
 from pydantic_core import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-__all__ = ["app_settings"]
+__all__ = ["get_settings", "AppSettings"]
 
 LOG_LEVELS = "DEBUG|INFO|WARNING|ERROR|CRITICAL"
 LogLevelString = Annotated[str, StringConstraints(to_upper=True, pattern=rf"^(?i:{LOG_LEVELS})$")]
@@ -57,11 +58,16 @@ class AppSettings(BaseSettings):
         }
 
 
-try:
-    app_settings: AppSettings = AppSettings()
-except ValidationError as exc:
-    logging.error(
-        "Unable to prepare settings (caught Validation Error): \n %s",
-        exc.errors(include_url=False, include_input=False),
-    )
-    sys.exit(1)
+@lru_cache
+def get_settings() -> AppSettings:
+    """Prepares settings from environment variables"""
+    try:
+        app_settings: AppSettings = AppSettings()
+    except ValidationError as exc:
+        logging.error(
+            "Unable to prepare settings (caught Validation Error): \n %s",
+            exc.errors(include_url=False, include_input=False),
+        )
+        sys.exit(1)
+
+    return app_settings

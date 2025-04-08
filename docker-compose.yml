@@ -7,7 +7,7 @@ services:
       - "8000:8000"
     environment:
       - API_TOKEN=your-secret-token
-      - SERVICE_TOKENS='{\"service1\": \"token1\", \"service2\": \"token2\"}'
+      - SERVICE_TOKENS={"service1":"token1","service2":"token2"}
       - ENABLE_SWAGGER=true
     volumes:
       - ./app:/app/app
