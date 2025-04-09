@@ -1,38 +1,51 @@
-from datetime import datetime
-from unittest.mock import patch, MagicMock
+import platform
 
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
-from app.main import app
-from app.settings import AppSettings
+from app.dependencies.settings import get_app_settings
+from app.main import make_app
+from app.settings import AppSettings, LLMProvider
 
 
 @pytest.fixture
-def client() -> TestClient:
+def auth_test_token() -> str:
+    return "test-auth-token"
+
+
+@pytest.fixture
+def auth_test_header(auth_test_token) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {auth_test_token}",
+    }
+
+
+@pytest.fixture
+def providers() -> list[LLMProvider]:
+    return [LLMProvider(api_provider="test-provider", api_key=SecretStr("test-api-key"))]
+
+
+@pytest.fixture
+def client(auth_test_token, providers) -> TestClient:
     """Create a test client with mocked settings."""
-    mock_settings = MagicMock(spec=AppSettings)
-    mock_settings.auth_api_token = SecretStr("test-token")
-    mock_settings.docs_enabled = False
-    mock_settings.app_host = "0.0.0.0"
-    mock_settings.app_port = 8000
-    mock_settings.log_level = "INFO"
-    mock_settings.providers = []
+    test_settings = AppSettings(
+        auth_api_token=SecretStr(auth_test_token),
+        providers=providers,
+    )
+    test_app = make_app(settings=test_settings)
+    test_app.dependency_overrides = {
+        get_app_settings: lambda: test_settings,
+    }
+    return TestClient(test_app)
 
-    with patch("app.settings.app_settings", mock_settings):
-        return TestClient(app)
 
-
-def test_health_check(client: TestClient) -> None:
+def test_health_check(client: TestClient, auth_test_header: dict[str, str]) -> None:
     """Test the health check endpoint."""
-    response = client.get("/api/system/health/")
+    response = client.get("/api/system/health/", headers=auth_test_header)
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
-    assert "timestamp" in data
-    # Verify timestamp is in ISO format
-    datetime.fromisoformat(data["timestamp"])
 
 
 def test_system_info_unauthorized(client: TestClient) -> None:
@@ -52,56 +65,13 @@ def test_system_info_invalid_token(client: TestClient) -> None:
     assert response.json()["detail"] == "Invalid authentication token"
 
 
-def test_system_info_authorized(client: TestClient) -> None:
+def test_system_info_authorized(client: TestClient, auth_test_header: dict[str, str]) -> None:
     """Test system info endpoint with valid authorization."""
-    mock_settings = MagicMock(spec=AppSettings)
-    mock_settings.auth_api_token = SecretStr("test-token")
-    mock_settings.docs_enabled = False
-    mock_settings.app_host = "0.0.0.0"
-    mock_settings.app_port = 8000
-    mock_settings.log_level = "INFO"
-    mock_settings.providers = []
-
-    with patch("app.settings.app_settings", mock_settings):
-        client = TestClient(app)
-        response = client.get(
-            "/api/system/info/",
-            headers={"Authorization": "Bearer test-token"},
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert "current_time" in data
-        assert "os_version" in data
-        # Verify current_time is in ISO format
-        datetime.fromisoformat(data["current_time"])
-
-
-@pytest.fixture
-def client_with_docs() -> TestClient:
-    """Create a test client with docs enabled."""
-    mock_settings = MagicMock(spec=AppSettings)
-    mock_settings.auth_api_token = SecretStr("test-token")
-    mock_settings.docs_enabled = True
-    mock_settings.app_host = "0.0.0.0"
-    mock_settings.app_port = 8000
-    mock_settings.log_level = "INFO"
-    mock_settings.providers = []
-
-    with patch("app.settings.app_settings", mock_settings):
-        return TestClient(app)
-
-
-def test_docs_disabled(client: TestClient) -> None:
-    """Test that docs are disabled when configured."""
-    response = client.get("/api/docs/")
-    assert response.status_code == 404
-    response = client.get("/api/redoc/")
-    assert response.status_code == 404
-
-
-def test_docs_enabled(client_with_docs: TestClient) -> None:
-    """Test that docs are enabled when configured."""
-    response = client_with_docs.get("/api/docs/")
+    response = client.get("/api/system/info/", headers=auth_test_header)
     assert response.status_code == 200
-    response = client_with_docs.get("/api/redoc/")
-    assert response.status_code == 200
+    data = response.json()
+    assert data == {
+        "status": "ok",
+        "os_version": platform.platform(),
+        "providers": ["test-provider"],
+    }

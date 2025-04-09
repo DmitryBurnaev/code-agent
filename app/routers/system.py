@@ -20,7 +20,7 @@ router = APIRouter(
 async def get_system_info(settings: SettingsDep) -> SystemInfo:
     """Get current system information."""
     return SystemInfo(
-        current_time=datetime.now(),
+        status="ok",
         os_version=platform.platform(),
         providers=[provider.api_provider for provider in settings.providers],
     )

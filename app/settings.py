@@ -23,7 +23,7 @@ class AppSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     docs_enabled: bool = True
-    auth_api_token: SecretStr = Field(default="", description="API token")
+    auth_api_token: SecretStr = Field(description="API token")
     providers: list[LLMProvider] = Field(default_factory=list, description="List of LLM providers")
     app_host: str = "0.0.0.0"
     app_port: int = 8003

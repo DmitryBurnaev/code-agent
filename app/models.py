@@ -1,14 +1,14 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SystemInfo(BaseModel):
     """Response model for system information endpoint."""
 
-    current_time: datetime
+    status: str = "ok"
     os_version: str
-    providers: list[str]
+    providers: list[str] = Field(..., default_factory=list)
 
 
 class HealthCheck(BaseModel):
