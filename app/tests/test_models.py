@@ -8,16 +8,16 @@ from app.models import SystemInfo, HealthCheck
 
 def test_system_info_model() -> None:
     """Test SystemInfo model validation."""
-    now = datetime.now()
-    info = SystemInfo(current_time=now, os_version="test-os")
-    assert info.current_time == now
+    info = SystemInfo(os_version="test-os")
+    assert info.status == "ok"
     assert info.os_version == "test-os"
+    assert info.providers == []
 
 
 def test_system_info_model_validation() -> None:
     """Test SystemInfo model validation errors."""
     with pytest.raises(ValidationError):
-        SystemInfo(current_time="invalid-date", os_version="test-os")
+        SystemInfo(status="fail", os_version="test-os", providers={})
 
 
 def test_health_check_model() -> None:

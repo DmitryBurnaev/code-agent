@@ -10,7 +10,20 @@ from app.dependencies.auth import verify_api_token
 logger = logging.getLogger("app.main")
 
 
-def make_app(settings: AppSettings | None = None) -> FastAPI:
+class CodeAgentAPI(FastAPI):
+    """Some extra fields above FastAPI Application"""
+
+    _settings: AppSettings
+
+    def set_settings(self, settings: AppSettings) -> None:
+        self._settings = settings
+
+    @property
+    def settings(self) -> AppSettings:
+        return self._settings
+
+
+def make_app(settings: AppSettings | None = None) -> CodeAgentAPI:
     """Forming Application instance with required settings and dependencies"""
 
     if settings is None:
@@ -19,28 +32,24 @@ def make_app(settings: AppSettings | None = None) -> FastAPI:
     logging.config.dictConfig(settings.log_config)
     logging.captureWarnings(capture=True)
 
-    app = FastAPI(
+    app = CodeAgentAPI(
         title="System Info API",
         description="API for retrieving system information",
         docs_url="/api/docs/" if settings.docs_enabled else None,
         redoc_url="/api/redoc/" if settings.docs_enabled else None,
         dependencies=[Depends(verify_api_token)],
     )
-    # Store settings in app state
-    app.state.settings = settings
+    app.set_settings(settings)
     app.include_router(system_router, prefix="/api")
     logger.debug("Application configured")
     return app
 
 
-app = make_app()
-
-
 if __name__ == "__main__":
-    app_settings: AppSettings = app.state.settings
+    app = make_app()
     uvicorn.run(
         app,
-        host=app_settings.app_host,
-        port=app_settings.app_port,
-        log_config=app_settings.log_config,
+        host=app.settings.app_host,
+        port=app.settings.app_port,
+        log_config=app.settings.log_config,
     )
