@@ -8,7 +8,7 @@ class SystemInfo(BaseModel):
 
     status: str = "ok"
     os_version: str
-    providers: list[str] = Field(..., default_factory=list)
+    providers: list[str] = Field(default_factory=list)
 
 
 class HealthCheck(BaseModel):
