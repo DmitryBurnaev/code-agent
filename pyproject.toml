@@ -13,18 +13,15 @@ dependencies = [
 
 [tool.uv]
 dev-dependencies = [
-    "pytest<=8.4",
-    "coverage<7.9",
-    "black<=25.2",
-    "ruff<0.12",
+    "pytest>=8.3,<9",
+    "coverage>=7.8,<7.9",
+    "black>=25.1,<25.2",
+    "ruff>=0.11,<0.12",
+    "mypy>=0.15,<1.16",
     # pycharm requires:
-    "setuptools <= 78.2",
+    "setuptools>=78.1,<78.2",
     "pip<26"
 ]
-
-[build-system]
-requires = ["setuptools <= 78.2"]
-build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 testpaths = ["app/tests"]
@@ -52,7 +49,7 @@ target-version = "py313"
 
 [tool.black]
 line-length = 100
-target-version = ['py313']
+target-version = ["py313"]
 
 [tool.ruff.lint]
 
@@ -100,4 +97,4 @@ docstring-code-line-length = "dynamic"
 
 [tool.mypy]
 strict = true
-exclude = ['src/tests', 'alembic', '.local']
+exclude = ['app/tests', 'alembic', '.local']

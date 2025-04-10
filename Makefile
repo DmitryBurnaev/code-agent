@@ -8,7 +8,7 @@ help: ## This help
 lint: ## Linting project
 	@echo Linting...
 	uv run ruff check
-	#uv run mypy .
+	uv run mypy .
 
 .PHONY: format
 format: ## Apply formatting using black
@@ -25,9 +25,16 @@ upgrade: ## Update dependencies
 .PHONY: run
 run: ## Run bot
 	@echo Run project...
-	PYTHONPATH=. uv run python app.main
+	uv run python -m app.main
 
 .PHONY: test
 test: ## Run tests
 	@echo Test project...
-	PYTHONPATH=. uv run pytest
+	uv run pytest
+
+.PHONY: test
+coverage: ## Run tests with coverage report
+	@echo Test project with coverage...
+	uv run coverage run -m pytest
+	coverage report
+	rm .coverage
