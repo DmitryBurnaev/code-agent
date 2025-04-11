@@ -1,0 +1,9 @@
+services:
+  bot:
+    image: ${DOCKER_IMAGE}
+    env_file:
+      - .env
+    environment:
+      - APP_SERVICE=web
+    volumes:
+      - ${PWD}/.data:/src/.data

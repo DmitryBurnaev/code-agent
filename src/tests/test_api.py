@@ -4,9 +4,9 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
-from app.dependencies.settings import get_app_settings
-from app.main import make_app
-from app.settings import AppSettings, LLMProvider
+from src.dependencies.settings import get_app_settings
+from src.main import make_app
+from src.settings import AppSettings, LLMProvider
 
 
 @pytest.fixture

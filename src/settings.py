@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 __all__ = ["get_settings", "AppSettings"]
 
-from app.exceptions import AppSettingsError
+from src.exceptions import AppSettingsError
 
 LOG_LEVELS = "DEBUG|INFO|WARNING|ERROR|CRITICAL"
 LogLevelString = Annotated[str, StringConstraints(to_upper=True, pattern=rf"^(?i:{LOG_LEVELS})$")]
@@ -44,7 +44,7 @@ class AppSettings(BaseSettings):
             },
             "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "standard"}},
             "loggers": {
-                "app": {"handlers": ["console"], "level": self.log_level, "propagate": False},
+                "src": {"handlers": ["console"], "level": self.log_level, "propagate": False},
                 "fastapi": {"handlers": ["console"], "level": self.log_level, "propagate": False},
                 "uvicorn.access": {
                     "handlers": ["console"],

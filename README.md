@@ -51,7 +51,7 @@ uv pip install ".[test]"
 
 4. Run the application:
 ```bash
-uvicorn app.main:app --reload
+uvicorn src.main:src --reload
 ```
 
 ## Testing

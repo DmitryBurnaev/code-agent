@@ -3,11 +3,11 @@ import logging.config
 import uvicorn
 from fastapi import FastAPI, Depends
 
-from app.settings import get_settings, AppSettings
-from app.routers import system_router
-from app.dependencies.auth import verify_api_token
+from src.settings import get_settings, AppSettings
+from src.routers import system_router
+from src.dependencies.auth import verify_api_token
 
-logger = logging.getLogger("app.main")
+logger = logging.getLogger("src.main")
 
 
 class CodeAgentAPI(FastAPI):

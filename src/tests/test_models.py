@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 from pydantic import ValidationError
 
-from app.models import SystemInfo, HealthCheck
+from src.models import SystemInfo, HealthCheck
 
 
 def test_system_info_model() -> None:

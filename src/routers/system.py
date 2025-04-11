@@ -3,8 +3,8 @@ from datetime import datetime
 
 from fastapi import APIRouter
 
-from app.dependencies import SettingsDep
-from app.models import SystemInfo, HealthCheck
+from src.dependencies import SettingsDep
+from src.models import SystemInfo, HealthCheck
 
 __all__ = ["router"]
 

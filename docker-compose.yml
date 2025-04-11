@@ -10,5 +10,19 @@ services:
       - SERVICE_TOKENS={"service1":"token1","service2":"token2"}
       - ENABLE_SWAGGER=true
     volumes:
-      - ./app:/app/app
+      - ./src:/src/src
     restart: unless-stopped 
+
+  test:
+    image:
+      code-agent:test
+    build:
+      context: .
+      args:
+        DEV_DEPS: "true"
+    env_file:
+      - .env
+    environment:
+      - APP_SERVICE=test
+    volumes:
+      - ${PWD}/.data:/app/.data

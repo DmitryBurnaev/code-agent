@@ -20,7 +20,7 @@ format: ## Apply formatting using black
 upgrade: ## Update dependencies
 	@echo Updating dependencies...
 	uv lock
-	uv sync
+	uv sync --reinstall
 
 .PHONY: run
 run: ## Run bot
