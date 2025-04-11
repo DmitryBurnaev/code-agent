@@ -1,0 +1,18 @@
+# copy this file to /etc/systemd/system/code-agent.service
+
+[Unit]
+Description=Code Agent Service
+Requires=docker.service
+After=docker.service
+
+[Service]
+User=code-agent-srv
+Group=code-agent-srv
+ExecStart=/opt/code-agent/bin/start
+ExecStop=/opt/code-agent/bin/stop
+Restart=on-failure
+RestartSec=20
+TimeoutStopSec=180
+
+[Install]
+WantedBy=multi-user.target

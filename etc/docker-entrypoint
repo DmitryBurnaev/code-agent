@@ -1,0 +1,26 @@
+#!/bin/sh
+
+set -e
+
+if [ "${APP_SERVICE}" = "web" ]
+  then
+#    echo "=========="
+#    echo "Start DB migrations"
+#    echo "=========="
+#    echo ""
+#    alembic upgrade head
+    python -m src.main
+
+elif [ "${APP_SERVICE}" = "test" ]
+  then
+    export COVERAGE_FILE=/tmp/.coverage
+    export RUFF_CACHE_DIR=/tmp/.ruff
+    ruff check && \
+    coverage run -m pytest -o cache_dir=/tmp && \
+    coverage report
+
+else
+  echo "APP_SERVICE environment variable is unexpected or was not provided (APP_SERVICE='${APP_SERVICE}')" >&2
+  kill -s SIGINT 1
+
+fi

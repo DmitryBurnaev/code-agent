@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from app.settings import AppSettings, get_settings
+from src.settings import AppSettings, get_settings
 
 
 __all__ = ["SettingsDep"]

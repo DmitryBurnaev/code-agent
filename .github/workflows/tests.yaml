@@ -1,0 +1,27 @@
+name: Test
+on:
+  pull_request:
+    branches:
+      - 'main'
+  push:
+    branches:
+      - 'feature/2-implement-ci-cd-process'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare .env file
+        env:
+          PWD: $(PWD)
+        run: |
+          cp .env.template .env
+          env >> .env
+
+      - name: Build image
+        run: docker compose build test
+
+      - name: Run tests
+        run: docker compose up --exit-code-from test test

@@ -1,0 +1,24 @@
+#!/bin/sh
+#set -e
+
+export WORKING_DIR=/opt/code-agent/
+
+echo "=== reading $(pwd)/.env file ==="
+export $(cat .env | grep -v ^# | xargs)
+
+echo "=== pulling image ${DOCKER_IMAGE} ==="
+docker pull ${DOCKER_IMAGE}
+
+echo "=== restarting service ==="
+sudo systemctl restart code-agent.service
+
+echo "=== clearing ==="
+echo y | docker image prune -a
+
+echo "=== check status ==="
+sudo systemctl show -p ActiveState --value code-agent
+
+echo "=== show containers ==="
+sleep 15
+docker ps --format "table {{.ID}}\t{{.Image}}\t{{.Names}}\t{{.Status}}\t|" | grep code-agent
+echo "==="

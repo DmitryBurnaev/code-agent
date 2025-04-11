@@ -1,8 +1,8 @@
 import pytest
 from pydantic import SecretStr
 
-from app.exceptions import AppSettingsError
-from app.settings import LLMProvider, get_settings
+from src.exceptions import AppSettingsError
+from src.settings import LLMProvider, get_settings
 
 
 def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
