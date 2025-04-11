@@ -7,7 +7,7 @@ COPY etc/docker-entrypoint .
 
 FROM python:3.13-slim-bookworm AS service
 ARG DEV_DEPS="false"
-ARG UV_VERSION=1.8.3
+ARG UV_VERSION=0.6.14
 WORKDIR /app
 
 COPY pyproject.toml .
