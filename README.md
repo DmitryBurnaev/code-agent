@@ -34,8 +34,9 @@ useradd --no-log-init --system --gid code-agent-srv --uid 1007 code-agent-srv
 
 chown code-agent-srv:code-agent-srv -R /opt/code-agent/
 usermod -a -G docker code-agent-srv
-chmod -R 660 /opt/code-agent # group should have access to rewrites files (support deploying)
+chmod -R 660 /opt/code-agent # all files can be rewritable by code-agent-srv group
 chmod -R ug+x /opt/code-agent/bin # code-agent-srv group can execute bin files (for service running)
+chmod ug+x /opt/code-agent # code-agent-srv group can execute bin files (for service running)
 
 # copy config to systemd
 ln -s ${TARGET_DIR}/code-agent.service /etc/systemd/system/code-agent.service
@@ -71,14 +72,14 @@ The service requires Nginx as a reverse proxy to handle:
 To configure Nginx:
 
 1. Copy the configuration file from `etc/nginx.conf` to your Nginx configuration directory:
-```bash
-sudo cp etc/nginx.conf /etc/nginx/sites-available/code-agent
-```
+   ```bash
+   sudo cp etc/nginx.conf /etc/nginx/sites-available/code-agent
+   ```
 
 2. Create a symbolic link to enable the site:
-```bash
-sudo ln -s /etc/nginx/sites-available/code-agent /etc/nginx/sites-enabled/
-```
+   ```bash
+   sudo ln -s /etc/nginx/sites-available/code-agent /etc/nginx/sites-enabled/
+   ```
 
 3. Update the configuration:
    - Replace `code.example.com` with your domain
@@ -86,23 +87,23 @@ sudo ln -s /etc/nginx/sites-available/code-agent /etc/nginx/sites-enabled/
    - Ensure the `Authorization` header is properly set in all API requests
 
 4. Test and reload Nginx:
-```bash
-sudo nginx -t
-sudo systemctl reload nginx
-```
+   ```bash
+   sudo nginx -t
+   sudo systemctl reload nginx
+   ```
 
 5. Set up HTTPS with Certbot (recommended):
-```bash
-# Install Certbot and Nginx plugin
-sudo apt update
-sudo apt install certbot python3-certbot-nginx
-
-# Obtain and install SSL certificate
-sudo certbot --nginx -d code.example.com
-
-# Verify auto-renewal is enabled
-sudo systemctl status certbot.timer
-```
+   ```bash
+   # Install Certbot and Nginx plugin
+   sudo apt update
+   sudo apt install certbot python3-certbot-nginx
+   
+   # Obtain and install SSL certificate
+   sudo certbot --nginx -d code.example.com
+   
+   # Verify auto-renewal is enabled
+   sudo systemctl status certbot.timer
+   ```
 
 After running Certbot, it will:
 - Automatically modify your Nginx configuration to handle HTTPS
