@@ -73,12 +73,12 @@ To configure Nginx:
 
 1. Copy the configuration file from `etc/nginx.conf` to your Nginx configuration directory:
    ```bash
-   sudo cp etc/nginx.conf /etc/nginx/sites-available/code-agent
+   sudo cp etc/nginx.conf /etc/nginx/sites-available/code-agent.conf
    ```
 
 2. Create a symbolic link to enable the site:
    ```bash
-   sudo ln -s /etc/nginx/sites-available/code-agent /etc/nginx/sites-enabled/
+   sudo ln -s /etc/nginx/sites-available/code-agent.conf /etc/nginx/sites-enabled/
    ```
 
 3. Update the configuration:
@@ -89,7 +89,7 @@ To configure Nginx:
 4. Test and reload Nginx:
    ```bash
    sudo nginx -t
-   sudo systemctl reload nginx
+   sudo nginx -s reload
    ```
 
 5. Set up HTTPS with Certbot (recommended):

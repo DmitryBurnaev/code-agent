@@ -1,5 +1,5 @@
 services:
-  bot:
+  api:
     image: ${DOCKER_IMAGE}
     container_name: 'code-agent'
     env_file:

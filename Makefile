@@ -29,7 +29,7 @@ upgrade: ## Update dependencies
 	uv sync --reinstall
 
 .PHONY: run
-run: ## Run bot
+run: ## Run app
 	@echo Run project...
 	uv run python -m app.main
 
