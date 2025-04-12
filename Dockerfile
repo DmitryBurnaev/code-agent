@@ -5,35 +5,36 @@ WORKDIR /usr/src
 COPY src ./src
 COPY etc/docker-entrypoint .
 
-FROM python:3.13-slim-bookworm AS service
+# copy source code
+FROM python:3.13-alpine AS requirements-layer
+WORKDIR /usr/src
 ARG DEV_DEPS="false"
 ARG UV_VERSION=0.6.14
-WORKDIR /app
 
 COPY pyproject.toml .
 COPY uv.lock .
 
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3-dev \
-  && pip install uv==${UV_VERSION} \
-  && uv sync \
-	&& if [ "${DEV_DEPS}" = "true" ]; then \
-	     echo "=== Install DEV dependencies ===" && \
-	     uv sync --no-progress; \
-     else \
-       echo "=== Install PROD dependencies ===" && \
-       uv sync --no-dev --no-progress; \
-     fi \
-  && apt-get remove python3-dev build-essential -y \
-  && apt-get clean \
-  && apt-get autoremove -y \
-  && rm -rf /var/lib/apt/lists/* \
-  && rm -rf /root/.cache/* && rm -rf /root/.config/* && rm -rf /root/.local/*
+RUN pip install uv==${UV_VERSION} && \
+	  if [ "${DEV_DEPS}" = "true" ]; then \
+      uv export --format requirements-txt --frozen --output-file requirements.txt; \
+    else \
+      uv export --format requirements-txt --frozen --no-dev --output-file requirements.txt; \
+    fi
 
-RUN groupadd --system code-agent --gid 1005 && \
-    useradd --no-log-init --system --gid code-agent --uid 1005 code-agent
 
-# Crontab: pre-setup
+FROM python:3.13-alpine AS service
+ARG PIP_DEFAULT_TIMEOUT=300
+WORKDIR /app
+
+COPY --from=requirements-layer /usr/src/requirements.txt .
+
+RUN pip install --timeout "${PIP_DEFAULT_TIMEOUT}" \
+      --no-cache-dir --require-hashes \
+      -r requirements.txt
+
+RUN addgroup -S code-agent && \
+    adduser -S -G code-agent -H code-agent
+
 USER code-agent
 
 COPY --from=code-layer --chown=code-agent:code-agent /usr/src .
