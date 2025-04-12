@@ -24,7 +24,7 @@ dev-dependencies = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["app/tests"]
+testpaths = ["src/tests"]
 python_files = ["test_*.py"]
 
 # === Ruff settings ====
