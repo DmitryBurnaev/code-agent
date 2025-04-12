@@ -32,8 +32,8 @@ RUN pip install --timeout "${PIP_DEFAULT_TIMEOUT}" \
       --no-cache-dir --require-hashes \
       -r requirements.txt
 
-RUN addgroup -S code-agent -g 1005 && \
-    adduser -S -G code-agent -u 1005 -H code-agent
+RUN addgroup -S code-agent -g 1007 && \
+    adduser -S -G code-agent -u 1007 -H code-agent
 
 USER code-agent
 

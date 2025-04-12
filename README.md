@@ -15,25 +15,26 @@ A simple FastAPI application that provides system information and health check e
 TARGET_SERVER="remote-server-ip"
 TARGET_DIR="/opt/code-agent"
 ssh ${TARGET_SERVER} -C  "mkdir -P ${TARGET_DIR}"
-scp etc/* ${TARGET_SERVER}:${TARGET_DIR}
+scp -r etc/* ${TARGET_SERVER}:${TARGET_DIR}
 ```
 
 ### Prepare service
 ```shell
-TARGET_SERVER="remote-server-ip"
-TARGET_DIR="/opt/code-agent"
-
 ssh ${TARGET_SERVER}
 
 # on the remote server
 sudo su
 
+export TARGET_SERVER="remote-server-ip"
+export TARGET_DIR="/opt/code-agent"
+
 # prepare user and group (NOTE: ID 1005 is imported ID for group)
-groupadd --system code-agent-srv --gid 1005
-useradd --no-log-init --system --gid code-agent-srv --uid 1005 code-agent-srv
+groupadd --system code-agent-srv --gid 1007
+useradd --no-log-init --system --gid code-agent-srv --uid 1007 code-agent-srv
 
 chown code-agent-srv:code-agent-srv -R /opt/code-agent/
-usermod -G docker code-agent-srv
+usermod -a -G docker code-agent-srv
+chmod -R ug+wx /opt/code-agent/bin # code-agent-srv group can write and execute bin files
 
 # copy config to systemd
 ln -s ${TARGET_DIR}/code-agent.service /etc/systemd/system/code-agent.service
@@ -41,9 +42,23 @@ systemctl daemon-reload
 systemctl enable code-agent.service
 systemctl start code-agent.service
 
-# see logs
+# see status and logs
+systemctl status code-agent.service
 journalctl -u code-agent
 ```
+### Prepare for deployment
+1. Prepare "deploy" user
+2. Allow access to service's group (to make changes in specific directories)
+   ```shell
+   usermod -a -G code-agent-srv deploy
+   ```
+3. Allow "deploy" user manipulate with code-agent's service
+   ```shell
+   visudo -f /etc/sudoers.d/deploy
+   # add these lines:
+   deploy ALL = NOPASSWD: /bin/systemctl restart code-agent.service
+   deploy ALL = NOPASSWD: /bin/systemctl show -p ActiveState --value code-agent
+   ```
 
 ## Development
 
