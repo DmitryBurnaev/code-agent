@@ -3,8 +3,8 @@ from unittest.mock import patch, MagicMock
 import pytest
 from pydantic import SecretStr
 
-from app.main import make_app, CodeAgentAPI, run_app
-from app.settings import AppSettings
+from src.main import make_app, CodeAgentAPI, run_app
+from src.settings import AppSettings
 
 
 @pytest.fixture
@@ -37,7 +37,7 @@ def test_make_app__default_settings(
 
 
 @patch("uvicorn.run")
-@patch("app.main.make_app")
+@patch("src.main.make_app")
 def test_main_run_app(
     mock_make_app: MagicMock,
     mock_run: MagicMock,
