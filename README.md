@@ -34,7 +34,8 @@ useradd --no-log-init --system --gid code-agent-srv --uid 1007 code-agent-srv
 
 chown code-agent-srv:code-agent-srv -R /opt/code-agent/
 usermod -a -G docker code-agent-srv
-chmod -R ug+wx /opt/code-agent/bin # code-agent-srv group can write and execute bin files
+chmod -R 660 /opt/code-agent # group should have access to rewrites files (support deploying)
+chmod -R ug+x /opt/code-agent/bin # code-agent-srv group can execute bin files (for service running)
 
 # copy config to systemd
 ln -s ${TARGET_DIR}/code-agent.service /etc/systemd/system/code-agent.service
