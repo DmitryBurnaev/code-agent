@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - 'main'
+      - 'feature/2-implement-ci-cd-process'
     tags:
       - 'v*'
 

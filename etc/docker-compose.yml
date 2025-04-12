@@ -1,9 +1,12 @@
 services:
   bot:
     image: ${DOCKER_IMAGE}
+    container_name: 'code-agent'
     env_file:
       - .env
     environment:
       - APP_SERVICE=web
     volumes:
       - ${PWD}/.data:/src/.data
+    ports:
+      - 127.0.0.1:${APP_PORT}:${APP_PORT}
