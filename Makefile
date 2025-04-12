@@ -16,6 +16,12 @@ format: ## Apply formatting using black
 	uv run black .
 	uv run ruff check --fix
 
+.PHONY: install
+install: ## Install dependencies
+	@echo Installing dependencies...
+	uv venv
+	uv sync
+
 .PHONY: upgrade
 upgrade: ## Update dependencies
 	@echo Updating dependencies...
@@ -28,13 +34,8 @@ run: ## Run bot
 	uv run python -m app.main
 
 .PHONY: test
-test: ## Run tests
-	@echo Test project...
-	uv run pytest
-
-.PHONY: test
-coverage: ## Run tests with coverage report
+test: ## Run tests with coverage report
 	@echo Test project with coverage...
 	uv run coverage run -m pytest
-	coverage report
+	uv run coverage report
 	rm .coverage

@@ -2,75 +2,79 @@
 
 A simple FastAPI application that provides system information and health check endpoints.
 
-## Features
-
-- System information endpoint (requires authentication)
-- Health check endpoint
-- Swagger documentation (optional)
-- Docker support
-- Environment-based configuration
-
 ## Prerequisites
 
 - Docker and Docker Compose
 - Python 3.13 (for local development)
 - uv package manager
 
-## Environment Variables
+## Service Installation
 
-- `API_TOKEN`: Token required for accessing protected endpoints
-- `SERVICE_TOKENS`: JSON object containing service tokens
-- `ENABLE_SWAGGER`: Enable/disable Swagger documentation (default: false)
-
-## Running with Docker
-
-1. Build and start the service:
-```bash
-docker-compose up --build
+### Upload config files
+```shell
+TARGET_SERVER="remote-server-ip"
+TARGET_DIR="/opt/code-agent"
+ssh ${TARGET_SERVER} -C  "mkdir -P ${TARGET_DIR}"
+scp etc/* ${TARGET_SERVER}:${TARGET_DIR}
 ```
 
-2. The API will be available at `http://localhost:8000`
+### Prepare service
+```shell
+TARGET_SERVER="remote-server-ip"
+TARGET_DIR="/opt/code-agent"
 
-## Local Development
+ssh ${TARGET_SERVER}
 
-1. Create and activate a virtual environment:
-```bash
-python3.13 -m venv venv
-source venv/bin/activate
+# on the remote server
+sudo su
+
+# prepare user and group (NOTE: ID 1005 is imported ID for group)
+groupadd --system code-agent-srv --gid 1005
+useradd --no-log-init --system --gid code-agent-srv --uid 1005 code-agent-srv
+
+chown code-agent-srv:code-agent-srv -R /opt/code-agent/
+usermod -G docker code-agent-srv
+
+# copy config to systemd
+ln -s ${TARGET_DIR}/code-agent.service /etc/systemd/system/code-agent.service
+systemctl daemon-reload
+systemctl enable code-agent.service
+systemctl start code-agent.service
+
+# see logs
+journalctl -u code-agent
 ```
 
-2. Install dependencies using uv:
-```bash
-uv pip install .
-```
+## Development
 
-3. Install test dependencies (optional):
-```bash
-uv pip install ".[test]"
-```
-
-4. Run the application:
-```bash
-uvicorn src.main:src --reload
-```
-
-## Testing
-
-Run tests using pytest:
-```bash
-pytest
-```
-
-## API Endpoints
-
-### GET /health
-Health check endpoint that returns the current status and timestamp.
-
-### GET /system-info
-Returns current system information (requires authentication).
-Headers:
-- `Authorization: Bearer <API_TOKEN>`
+1. Install venv
+    ```shell
+    make install
+    ```
+2. Format changes
+   ```shell
+   make format
+   ```
+3. Lint changes 
+   ```shell
+   make lint
+   ```
+4. Run tests 
+   ```shell
+   make test
+   ```
 
 ## Swagger Documentation
 
 When enabled, the Swagger documentation is available at `/docs` and ReDoc at `/redoc`.
+
+## Environment Variables
+
+| Variable Name   | Description                                | Default Value          |
+|-----------------|--------------------------------------------|------------------------|
+| LOG_LEVEL       | Sets the logging level for the application | INFO                   |
+| AUTH_API_TOKEN  | API token for authentication               | (required, no default) |
+| PROVIDERS       | List of providers in JSON format           | []                     |
+| SWAGGER_ENABLED | Enables/disables Swagger documentation     | true                   |
+| APP_HOST        | Host address for the application           | localhost              |
+| APP_PORT        | Port number for the application            | 8003                   |
