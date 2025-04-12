@@ -70,7 +70,7 @@ def get_settings() -> AppSettings:
         logging.debug("Unable to validate settings (caught Validation Error): \n %s", message)
         error_message = "Unable to validate settings: "
         for error in exc.errors():
-            error_message += f"\n\t[{"|".join(map(str, error['loc']))}] {error['msg']}"
+            error_message += f"\n\t[{'|'.join(map(str, error['loc']))}] {error['msg']}"
 
         raise AppSettingsError(error_message) from exc
 
