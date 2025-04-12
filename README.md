@@ -60,6 +60,57 @@ journalctl -u code-agent
    deploy ALL = NOPASSWD: /bin/systemctl show -p ActiveState --value code-agent
    ```
 
+### Nginx Configuration
+
+The service requires Nginx as a reverse proxy to handle:
+- Domain-based routing (code.example.com)
+- Security layer (authorization header check)
+- API endpoint protection (only /api/* endpoints are accessible)
+
+To configure Nginx:
+
+1. Copy the configuration file from `etc/nginx.conf` to your Nginx configuration directory:
+```bash
+sudo cp etc/nginx.conf /etc/nginx/sites-available/code-agent
+```
+
+2. Create a symbolic link to enable the site:
+```bash
+sudo ln -s /etc/nginx/sites-available/code-agent /etc/nginx/sites-enabled/
+```
+
+3. Update the configuration:
+   - Replace `code.example.com` with your domain
+   - Update the port in `proxy_pass` directive to match your application port
+   - Ensure the `Authorization` header is properly set in all API requests
+
+4. Test and reload Nginx:
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+5. Set up HTTPS with Certbot (recommended):
+```bash
+# Install Certbot and Nginx plugin
+sudo apt update
+sudo apt install certbot python3-certbot-nginx
+
+# Obtain and install SSL certificate
+sudo certbot --nginx -d code.example.com
+
+# Verify auto-renewal is enabled
+sudo systemctl status certbot.timer
+```
+
+After running Certbot, it will:
+- Automatically modify your Nginx configuration to handle HTTPS
+- Set up automatic certificate renewal (every 90 days)
+- Configure secure SSL settings
+- Optionally redirect all HTTP traffic to HTTPS (recommended)
+
+Note: Make sure your domain's DNS records are properly configured and pointing to your server before running Certbot.
+
 ## Development
 
 1. Install venv
