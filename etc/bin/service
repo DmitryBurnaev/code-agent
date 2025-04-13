@@ -1,0 +1,145 @@
+#!/bin/bash
+
+SERVICE_NAME="code-agent"
+
+# Check if script is run with sudo
+if [ "$EUID" -ne 0 ]; then
+    echo "Please run with sudo"
+    exit 1
+fi
+
+# Function to show service logs with parameters
+show_service_logs() {
+    local tail_lines="50"
+    local since=""
+    local until=""
+    local grep_pattern=""
+    
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --tail)
+                tail_lines="$2"
+                shift 2
+                ;;
+            --since)
+                since="--since $2"
+                shift 2
+                ;;
+            --until)
+                until="--until $2"
+                shift 2
+                ;;
+            --grep)
+                grep_pattern="| grep $2"
+                shift 2
+                ;;
+            *)
+                echo "Unknown parameter: $1"
+                return 1
+                ;;
+        esac
+    done
+
+    if [ -n "$since" ] || [ -n "$until" ]; then
+        eval "journalctl -u $SERVICE_NAME $since $until --no-pager $grep_pattern"
+    else
+        eval "journalctl -u $SERVICE_NAME -n $tail_lines --no-pager $grep_pattern"
+    fi
+}
+
+# Function to show service logs
+show_logs() {
+    echo "Recent service logs:"
+    journalctl -u $SERVICE_NAME -n 50 --no-pager
+}
+
+# Function to follow logs
+follow_logs() {
+    echo "Following service logs (Ctrl+C to stop):"
+    journalctl -u $SERVICE_NAME -f
+}
+
+# Function to check service health
+check_health() {
+    echo "Checking service health..."
+    
+    # Check service status
+    if systemctl is-active --quiet $SERVICE_NAME; then
+        echo "✓ Service is running"
+    else
+        echo "✗ Service is not running"
+        return 1
+    fi
+    
+    # Check systemd service errors
+    local service_errors=$(journalctl -u $SERVICE_NAME -p err -n 1 --no-pager)
+    if [ -z "$service_errors" ]; then
+        echo "✓ No recent errors in logs"
+    else
+        echo "✗ Recent errors found in logs:"
+        echo "$service_errors"
+    fi
+}
+
+case "$1" in
+    start)
+        systemctl start $SERVICE_NAME
+        if [ "$2" = "--logs" ]; then
+            follow_logs
+        else
+            show_logs
+        fi
+        ;;
+    stop)
+        systemctl stop $SERVICE_NAME
+        ;;
+    restart)
+        systemctl restart $SERVICE_NAME
+        show_logs
+        ;;
+    status)
+        if [ "$2" = "--logs" ]; then
+            follow_logs
+        else
+            systemctl status $SERVICE_NAME
+            show_logs
+        fi
+        ;;
+    logs)
+        shift # remove 'logs' from arguments
+        if [ $# -eq 0 ]; then
+            show_logs
+        else
+            show_service_logs "$@"
+        fi
+        ;;
+    health)
+        check_health
+        ;;
+    *)
+        echo "Usage: $0 COMMAND [OPTIONS]"
+        echo ""
+        echo "Commands:"
+        echo "  start [--logs]    Start service (optionally follow logs)"
+        echo "  stop              Stop service"
+        echo "  restart           Restart service"
+        echo "  status [--logs]   Show service status (optionally follow logs)"
+        echo "  logs [OPTIONS]    Show service logs"
+        echo "  health            Check service health"
+        echo ""
+        echo "Log options:"
+        echo "  --tail N          Show last N lines"
+        echo "  --since VALUE     Show logs since (e.g., '1 hour ago', '2024-03-20')"
+        echo "  --until VALUE     Show logs until timestamp"
+        echo "  --grep PATTERN    Filter logs by pattern"
+        echo ""
+        echo "Examples:"
+        echo "  $0 logs --tail 100"
+        echo "  $0 logs --since '1 hour ago'"
+        echo "  $0 logs --until '2024-03-20 15:00:00'"
+        echo "  $0 logs --grep error"
+        exit 1
+        ;;
+esac
+
+exit 0 
