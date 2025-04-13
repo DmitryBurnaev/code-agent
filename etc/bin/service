@@ -2,36 +2,37 @@
 
 SERVICE_NAME="code-agent"
 
-# Check if script is run with sudo
-if [ "$EUID" -ne 0 ]; then
-    echo "Please run with sudo"
-    exit 1
-fi
-
 # Function to show service logs with parameters
 show_service_logs() {
     local tail_lines="50"
     local since=""
     local until=""
     local grep_pattern=""
+    local follow=""
+    local args=()
     
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --tail)
                 tail_lines="$2"
+                args+=("-n" "$tail_lines")
                 shift 2
                 ;;
             --since)
-                since="--since $2"
+                args+=("--since" "$2")
                 shift 2
                 ;;
             --until)
-                until="--until $2"
+                args+=("--until" "$2")
                 shift 2
                 ;;
             --grep)
-                grep_pattern="| grep $2"
+                grep_pattern="$2"
                 shift 2
+                ;;
+            --follow)
+                args+=("-f")
+                shift 1
                 ;;
             *)
                 echo "Unknown parameter: $1"
@@ -40,23 +41,26 @@ show_service_logs() {
         esac
     done
 
-    if [ -n "$since" ] || [ -n "$until" ]; then
-        eval "journalctl -u $SERVICE_NAME $since $until --no-pager $grep_pattern"
+    # Add common arguments
+    args+=("-u" "$SERVICE_NAME" "--no-pager")
+
+    if [ -n "$grep_pattern" ]; then
+        sudo journalctl "${args[@]}" | grep "$grep_pattern"
     else
-        eval "journalctl -u $SERVICE_NAME -n $tail_lines --no-pager $grep_pattern"
+        sudo journalctl "${args[@]}"
     fi
 }
 
 # Function to show service logs
 show_logs() {
     echo "Recent service logs:"
-    journalctl -u $SERVICE_NAME -n 50 --no-pager
+    sudo journalctl -u $SERVICE_NAME -n 50 --no-pager
 }
 
 # Function to follow logs
 follow_logs() {
     echo "Following service logs (Ctrl+C to stop):"
-    journalctl -u $SERVICE_NAME -f
+    sudo journalctl -u $SERVICE_NAME -f
 }
 
 # Function to check service health
@@ -64,7 +68,7 @@ check_health() {
     echo "Checking service health..."
     
     # Check service status
-    if systemctl is-active --quiet $SERVICE_NAME; then
+    if sudo systemctl is-active --quiet $SERVICE_NAME; then
         echo "✓ Service is running"
     else
         echo "✗ Service is not running"
@@ -72,7 +76,7 @@ check_health() {
     fi
     
     # Check systemd service errors
-    local service_errors=$(journalctl -u $SERVICE_NAME -p err -n 1 --no-pager)
+    local service_errors=$(sudo journalctl -u $SERVICE_NAME -p err -n 1 --no-pager)
     if [ -z "$service_errors" ]; then
         echo "✓ No recent errors in logs"
     else
@@ -83,7 +87,7 @@ check_health() {
 
 case "$1" in
     start)
-        systemctl start $SERVICE_NAME
+        sudo systemctl start $SERVICE_NAME
         if [ "$2" = "--logs" ]; then
             follow_logs
         else
@@ -91,17 +95,22 @@ case "$1" in
         fi
         ;;
     stop)
-        systemctl stop $SERVICE_NAME
+        sudo systemctl stop $SERVICE_NAME
+        sudo systemctl status $SERVICE_NAME
         ;;
     restart)
-        systemctl restart $SERVICE_NAME
-        show_logs
-        ;;
-    status)
+        sudo systemctl restart $SERVICE_NAME
         if [ "$2" = "--logs" ]; then
             follow_logs
         else
-            systemctl status $SERVICE_NAME
+            show_logs
+        fi
+        ;;
+    status)
+        sudo systemctl status $SERVICE_NAME
+        if [ "$2" = "--logs" ]; then
+            follow_logs
+        else
             show_logs
         fi
         ;;
@@ -122,7 +131,7 @@ case "$1" in
         echo "Commands:"
         echo "  start [--logs]    Start service (optionally follow logs)"
         echo "  stop              Stop service"
-        echo "  restart           Restart service"
+        echo "  restart [--logs]  Restart service (optionally follow logs)"
         echo "  status [--logs]   Show service status (optionally follow logs)"
         echo "  logs [OPTIONS]    Show service logs"
         echo "  health            Check service health"
@@ -132,12 +141,15 @@ case "$1" in
         echo "  --since VALUE     Show logs since (e.g., '1 hour ago', '2024-03-20')"
         echo "  --until VALUE     Show logs until timestamp"
         echo "  --grep PATTERN    Filter logs by pattern"
+        echo "  --follow          Follow logs in real-time (like tail -f)"
         echo ""
         echo "Examples:"
         echo "  $0 logs --tail 100"
         echo "  $0 logs --since '1 hour ago'"
         echo "  $0 logs --until '2024-03-20 15:00:00'"
         echo "  $0 logs --grep error"
+        echo "  $0 logs --follow"
+        echo "  $0 logs --tail 100 --follow"
         exit 1
         ;;
 esac
