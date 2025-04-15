@@ -1,12 +1,15 @@
 import platform
+from typing import Any
+from unittest.mock import ANY
 
 import pytest
 from fastapi.testclient import TestClient
+from httpx import Request, Response
 from pydantic import SecretStr
 
 from src.dependencies.settings import get_app_settings
 from src.main import make_app
-from src.settings import AppSettings, LLMProvider
+from src.settings import AppSettings, LLMProvider, Provider, PROVIDER_URLS
 
 
 @pytest.fixture
@@ -23,7 +26,12 @@ def auth_test_header(auth_test_token) -> dict[str, str]:
 
 @pytest.fixture
 def providers() -> list[LLMProvider]:
-    return [LLMProvider(api_provider="test-provider", api_key=SecretStr("test-api-key"))]
+    return [
+        LLMProvider(
+            api_provider=Provider.OPENAI,
+            api_key=SecretStr("test-key"),
+        )
+    ]
 
 
 @pytest.fixture
@@ -73,5 +81,63 @@ def test_system_info_authorized(client: TestClient, auth_test_header: dict[str, 
     assert data == {
         "status": "ok",
         "os_version": platform.platform(),
-        "providers": ["test-provider"],
+        "providers": ["openai"],
     }
+
+
+def test_proxy_route_not_found(client: TestClient, auth_test_header: dict[str, str]) -> None:
+    """Test proxy route with non-existent provider."""
+    response = client.get("/api/proxy/non-existent/test", headers=auth_test_header)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "No matching proxy route found"
+
+
+def test_proxy_route_unauthorized(client: TestClient) -> None:
+    """Test proxy route without authorization."""
+    response = client.get("/api/proxy/openai/models")
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
+
+
+def test_proxy_route_success(
+    client: TestClient,
+    auth_test_header: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test successful proxy request."""
+
+    def mock_request(self: Request, **kwargs: Any) -> Response:
+        """Mock successful response from provider."""
+        assert kwargs["url"] == f"{PROVIDER_URLS[Provider.OPENAI]}/models"
+        assert kwargs["headers"].get("Authorization") == auth_test_header["Authorization"]
+        return Response(200, json={"models": ["gpt-4", "gpt-3.5-turbo"]})
+
+    # Патчим httpx.AsyncClient.request чтобы не делать реальных запросов
+    monkeypatch.setattr("httpx.AsyncClient.request", mock_request)
+
+    response = client.get("/api/proxy/openai/models", headers=auth_test_header)
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {"models": ["gpt-4", "gpt-3.5-turbo"]}
+
+
+def test_proxy_route_provider_error(
+    client: TestClient,
+    auth_test_header: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test proxy request when provider returns error."""
+
+    def mock_request(self: Request, **kwargs: Any) -> Response:
+        """Mock error response from provider."""
+        return Response(
+            429,
+            json={"error": {"message": "Rate limit exceeded"}},
+        )
+
+    monkeypatch.setattr("httpx.AsyncClient.request", mock_request)
+
+    response = client.get("/api/proxy/openai/chat/completions", headers=auth_test_header)
+    assert response.status_code == 429
+    data = response.json()
+    assert data == {"error": {"message": "Rate limit exceeded"}}
