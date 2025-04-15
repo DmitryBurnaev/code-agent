@@ -1,23 +1,66 @@
 import logging
 from functools import lru_cache
-
+from enum import StrEnum
 from typing import Annotated, Any
 
 from pydantic import SecretStr, BaseModel, StringConstraints, Field
 from pydantic_core import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-__all__ = ["get_settings", "AppSettings"]
+__all__ = ["get_settings", "AppSettings", "Provider"]
 
 from src.exceptions import AppSettingsError
+
+
+class Provider(StrEnum):
+    """Available LLM providers."""
+
+    OPENAI = "openai"
+    ANTHROPIC = "anthropic"
+    GOOGLE = "google"
+    MISTRAL = "mistral"
+
+
+# Mapping of provider to their base URLs
+PROVIDER_URLS: dict[Provider, str] = {
+    Provider.OPENAI: "https://api.openai.com/v1",
+    Provider.ANTHROPIC: "https://api.anthropic.com/v1",
+    Provider.GOOGLE: "https://generativelanguage.googleapis.com/v1",
+    Provider.MISTRAL: "https://api.mistral.ai/v1",
+}
+
 
 LOG_LEVELS = "DEBUG|INFO|WARNING|ERROR|CRITICAL"
 LogLevelString = Annotated[str, StringConstraints(to_upper=True, pattern=rf"^(?i:{LOG_LEVELS})$")]
 
 
 class LLMProvider(BaseModel):
-    api_provider: str
+    """Provider configuration with API key."""
+
+    api_provider: Provider
     api_key: SecretStr
+
+    @property
+    def base_url(self) -> str:
+        """Get base URL for provider."""
+        return PROVIDER_URLS[self.api_provider]
+
+
+class ProxyRoute(BaseModel):
+    """Configuration for proxy routes"""
+
+    source_path: str = Field(description="Source path to match incoming requests")
+    target_url: str = Field(description="Target URL to proxy requests to")
+    strip_path: bool = Field(default=True, description="Strip source path from request URL")
+
+    @classmethod
+    def from_provider(cls, provider: LLMProvider) -> "ProxyRoute":
+        """Create proxy route from provider configuration."""
+        return cls(
+            source_path=f"/proxy/{provider.api_provider}",
+            target_url=provider.base_url,
+            strip_path=True,
+        )
 
 
 class AppSettings(BaseSettings):
@@ -30,6 +73,11 @@ class AppSettings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8003
     log_level: LogLevelString = "INFO"
+
+    @property
+    def proxy_routes(self) -> list[ProxyRoute]:
+        """Generate proxy routes from providers."""
+        return [ProxyRoute.from_provider(provider) for provider in self.providers]
 
     @property
     def log_config(self) -> dict[str, Any]:
