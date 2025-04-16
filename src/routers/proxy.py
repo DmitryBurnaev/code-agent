@@ -10,7 +10,7 @@ __all__ = ["router"]
 
 
 router = APIRouter(
-    prefix="/proxy",
+    prefix="/ai-proxy",
     tags=["proxy"],
     responses={404: {"description": "Not found"}},
 )
@@ -38,6 +38,7 @@ async def proxy_request(
     settings: SettingsDep,
 ) -> Response:
     """Proxy incoming request to configured target."""
+    # TODO: use given model name from requested data to get correct proxy route
     route = _find_matching_route(f"/proxy/{path}", settings.proxy_routes)
     if not route:
         raise HTTPException(status_code=404, detail="No matching proxy route found")
