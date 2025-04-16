@@ -18,7 +18,7 @@ class Provider(StrEnum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     GOOGLE = "google"
-    MISTRAL = "mistral"
+    DEEPSEEK = "deepseek"
 
 
 # Mapping of provider to their base URLs
@@ -26,7 +26,7 @@ PROVIDER_URLS: dict[Provider, str] = {
     Provider.OPENAI: "https://api.openai.com/v1",
     Provider.ANTHROPIC: "https://api.anthropic.com/v1",
     Provider.GOOGLE: "https://generativelanguage.googleapis.com/v1",
-    Provider.MISTRAL: "https://api.mistral.ai/v1",
+    Provider.DEEPSEEK: "https://api.deepseek.com/v1",
 }
 
 
@@ -79,6 +79,15 @@ class AppSettings(BaseSettings):
         """Generate proxy routes from providers."""
         return [ProxyRoute.from_provider(provider) for provider in self.providers]
 
+    @property
+    def proxy_by_provider_name(self) -> dict[str, ProxyRoute]:
+        """
+        Generate proxy info with provider's name linking
+        (just mapping: provider-name -> ProxyRoute())
+        """
+        return {provider.name: ProxyRoute.from_provider(provider) for provider in self.providers}
+
+    # @property
     @property
     def log_config(self) -> dict[str, Any]:
         return {
