@@ -1,7 +1,7 @@
 import logging
 from functools import lru_cache
 from enum import StrEnum
-from typing import Annotated, Any
+from typing import Annotated, Any, Optional
 
 from pydantic import SecretStr, BaseModel, StringConstraints, Field
 from pydantic_core import ValidationError
@@ -47,11 +47,16 @@ class LLMProvider(BaseModel):
 
 
 class ProxyRoute(BaseModel):
-    """Configuration for proxy routes"""
+    """Proxy route configuration."""
 
-    source_path: str = Field(description="Source path to match incoming requests")
-    target_url: str = Field(description="Target URL to proxy requests to")
-    strip_path: bool = Field(default=True, description="Strip source path from request URL")
+    source_path: str = Field(..., description="Source path to match")
+    target_url: str = Field(..., description="Target URL to proxy to")
+    strip_path: bool = Field(False, description="Strip source path from target URL")
+    timeout: float = Field(30.0, description="Request timeout in seconds")
+    auth_token: Optional[SecretStr] = Field(
+        None, description="Authorization token for target service"
+    )
+    auth_type: str = Field("Bearer", description="Authorization type (Bearer, Basic, etc)")
 
     @classmethod
     def from_provider(cls, provider: LLMProvider) -> "ProxyRoute":
@@ -60,6 +65,8 @@ class ProxyRoute(BaseModel):
             source_path=f"/proxy/{provider.api_provider}",
             target_url=provider.base_url,
             strip_path=True,
+            auth_token=provider.api_key,
+            auth_type="Bearer",  # Most providers use Bearer auth
         )
 
 
