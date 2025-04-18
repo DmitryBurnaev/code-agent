@@ -16,3 +16,18 @@ class HealthCheck(BaseModel):
 
     status: str
     timestamp: datetime
+
+
+class ChatMessage(BaseModel):
+    """Request model for chat message."""
+
+    role: str
+    content: str
+
+
+class RequestChatCompletion(BaseModel):
+    """Request model for chat completion (proxy) endpoint."""
+
+    model: str
+    messages: list[ChatMessage]
+    stream: bool
