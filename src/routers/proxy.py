@@ -6,6 +6,7 @@ from fastapi import APIRouter, Request, Response, HTTPException
 from fastapi.responses import StreamingResponse
 
 from src.dependencies import SettingsDep
+from src.models import RequestChatCompletion
 from src.settings import ProxyRoute
 
 __all__ = ["router"]
@@ -80,7 +81,7 @@ async def _stream_response(response: httpx.Response) -> AsyncGenerator[bytes, No
 
 
 @router.api_route(
-    "/{path:path}", methods=["GET", "HEAD", "OPTIONS", "POST", "PUT", "DELETE", "PATCH"]
+    "/test/{path:path}", methods=["GET", "HEAD", "OPTIONS", "POST", "PUT", "DELETE", "PATCH"]
 )
 async def proxy_request(
     request: Request,
@@ -118,6 +119,73 @@ async def proxy_request(
                 content=body if not isinstance(body, (dict, list)) else None,
                 params=request.query_params,
                 stream=is_streaming,
+            )
+
+            if is_streaming:
+                # Set up streaming response with appropriate headers
+                response_headers = dict(response.headers)
+                response_headers.update(
+                    {
+                        "Content-Type": "text/event-stream",
+                        "Cache-Control": "no-cache",
+                        "Connection": "keep-alive",
+                    }
+                )
+
+                return StreamingResponse(
+                    _stream_response(response),
+                    status_code=response.status_code,
+                    headers=response_headers,
+                )
+
+            return Response(
+                content=response.content,
+                status_code=response.status_code,
+                headers=dict(response.headers),
+            )
+
+        except httpx.RequestError as exc:
+            raise HTTPException(status_code=502, detail=f"Error proxying request: {str(exc)}")
+
+
+@router.api_route("/{path:path}", methods=["POST"])
+async def proxy_ai_request(
+    request: Request,
+    chat_completion_request: RequestChatCompletion,
+    path: str,
+    settings: SettingsDep,
+) -> Response | StreamingResponse:
+    """
+    Proxy incoming request to configured target.
+    Supports all HTTP methods and handles both regular and streaming responses.
+    """
+    route = _find_matching_route(f"/proxy/{path}", settings.proxy_routes)
+    if not route:
+        raise HTTPException(status_code=404, detail="No matching proxy route found")
+
+    url = _build_target_url(path, route)
+    headers = _prepare_headers(request, route)
+    is_streaming = chat_completion_request.stream
+
+    # Get request body and check if streaming is requested
+    # body, is_streaming = (
+    #     await _get_request_body(request)
+    #     if request.method in ("POST", "PUT", "PATCH")
+    #     else (None, False)
+    # )
+
+    # Create httpx client with proper timeout for streaming
+    timeout = httpx.Timeout(None) if is_streaming else httpx.Timeout(route.timeout)
+
+    async with httpx.AsyncClient(follow_redirects=True, timeout=timeout) as client:
+        try:
+            response = await client.request(
+                method=request.method,
+                url=url,
+                headers=headers,
+                json=chat_completion_request.model_dump(),
+                params=request.query_params,
+                # stream=is_streaming,
             )
 
             if is_streaming:

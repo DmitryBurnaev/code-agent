@@ -1,6 +1,5 @@
 import platform
 from typing import Any
-from unittest.mock import ANY
 
 import pytest
 from fastapi.testclient import TestClient
