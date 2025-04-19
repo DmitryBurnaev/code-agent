@@ -1,7 +1,7 @@
 import logging
 from functools import lru_cache
 from enum import StrEnum
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any, Optional, List
 
 from pydantic import SecretStr, BaseModel, StringConstraints, Field
 from pydantic_core import ValidationError
@@ -80,6 +80,8 @@ class AppSettings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8003
     log_level: LogLevelString = "INFO"
+    proxy_routes: List[ProxyRoute]
+    models_cache_ttl: float = 300.0  # Cache TTL in seconds, default 5 minutes
 
     @property
     def proxy_routes(self) -> list[ProxyRoute]:

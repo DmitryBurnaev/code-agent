@@ -1,215 +1,103 @@
-import json
-from typing import Any, AsyncGenerator
+import logging
+from typing import Annotated
 
-import httpx
-from fastapi import APIRouter, Request, Response, HTTPException
+from fastapi import APIRouter, Request, Response, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from src.dependencies import SettingsDep
-from src.models import RequestChatCompletion
-from src.settings import ProxyRoute
+from src.models import ChatRequest
+from src.services.proxy import ProxyRequestData, ProxyService, ProxyEndpoint
 
-__all__ = ["router"]
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(
     prefix="/ai-proxy",
-    tags=["proxy"],
-    responses={404: {"description": "Not found"}},
+    tags=["ai-proxy"],
+    responses={
+        404: {"description": "Provider or model not found"},
+        500: {"description": "Error communicating with AI provider"},
+    },
 )
 
 
-def _find_matching_route(path: str, routes: list[ProxyRoute]) -> ProxyRoute | None:
-    """Find matching proxy route for given path."""
-    for route in routes:
-        if path.startswith(route.source_path):
-            return route
-    return None
-
-
-def _build_target_url(path: str, route: ProxyRoute) -> str:
-    """Build target URL for proxy request."""
-    if route.strip_path:
-        path = path.replace(route.source_path, "", 1)
-    return f"{route.target_url.rstrip('/')}/{path.lstrip('/')}"
-
-
-def _prepare_headers(request: Request, route: ProxyRoute) -> dict[str, str]:
-    """Prepare headers for proxy request with auth if configured."""
-    # Copy original headers excluding host and connection
-    headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "connection")}
-
-    # Add auth header if token is configured
-    if route.auth_token:
-        headers["Authorization"] = f"{route.auth_type} {route.auth_token.get_secret_value()}"
-
-    return headers
-
-
-async def _get_request_body(request: Request) -> tuple[Any, bool]:
-    """
-    Get request body and streaming flag based on content type and request data.
-    Returns tuple of (body, is_streaming).
-    """
-    content_type = request.headers.get("content-type", "").lower()
-    body = await request.body()
-
-    if "application/json" in content_type:
-        try:
-            data = json.loads(body)
-            # Check if streaming is requested
-            is_streaming = isinstance(data, dict) and data.get("stream", False)
-            return data, is_streaming
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail="Invalid JSON body")
-    return body, False
-
-
-async def _stream_response(response: httpx.Response) -> AsyncGenerator[bytes, None]:
-    """Stream response chunks with proper error handling."""
-    try:
-        async for chunk in response.aiter_bytes():
-            # Add proper SSE formatting if needed
-            if chunk.strip():
-                yield chunk
-    except httpx.HTTPError as e:
-        # Log error and close connection gracefully
-        print(f"Streaming error: {e}")
-        yield b"data: [DONE]\n\n"
-    finally:
-        await response.aclose()
-
-
-@router.api_route(
-    "/test/{path:path}", methods=["GET", "HEAD", "OPTIONS", "POST", "PUT", "DELETE", "PATCH"]
+@router.post(
+    "/chat/completions",
+    response_class=StreamingResponse,
+    description="Send a chat completion request to the AI provider specified by model name",
 )
-async def proxy_request(
+async def create_chat_completion(
     request: Request,
-    path: str,
+    chat_request: ChatRequest,
     settings: SettingsDep,
 ) -> Response | StreamingResponse:
     """
-    Proxy incoming request to configured target.
-    Supports all HTTP methods and handles both regular and streaming responses.
+    Create a chat completion using the provider specified in the model name.
+
+    The model name in the request should be in format "provider__model_name",
+    where provider determines which AI service to use. Examples:
+    - openai__gpt-4
+    - anthropic__claude-3
+    - deepseek__chat-v1
+
+    The request body follows a standardized format but allows provider-specific parameters
+    to be passed through.
     """
-    route = _find_matching_route(f"/proxy/{path}", settings.proxy_routes)
-    if not route:
-        raise HTTPException(status_code=404, detail="No matching proxy route found")
-
-    url = _build_target_url(path, route)
-    headers = _prepare_headers(request, route)
-
-    # Get request body and check if streaming is requested
-    body, is_streaming = (
-        await _get_request_body(request)
-        if request.method in ("POST", "PUT", "PATCH")
-        else (None, False)
+    request_data = ProxyRequestData(
+        method=request.method,
+        headers=dict(request.headers),
+        query_params=dict(request.query_params),
+        body=chat_request,
     )
 
-    # Create httpx client with proper timeout for streaming
-    timeout = httpx.Timeout(None) if is_streaming else httpx.Timeout(route.timeout)
-
-    async with httpx.AsyncClient(follow_redirects=True, timeout=timeout) as client:
-        try:
-            response = await client.request(
-                method=request.method,
-                url=url,
-                headers=headers,
-                json=body if isinstance(body, (dict, list)) else None,
-                content=body if not isinstance(body, (dict, list)) else None,
-                params=request.query_params,
-                stream=is_streaming,
-            )
-
-            if is_streaming:
-                # Set up streaming response with appropriate headers
-                response_headers = dict(response.headers)
-                response_headers.update(
-                    {
-                        "Content-Type": "text/event-stream",
-                        "Cache-Control": "no-cache",
-                        "Connection": "keep-alive",
-                    }
-                )
-
-                return StreamingResponse(
-                    _stream_response(response),
-                    status_code=response.status_code,
-                    headers=response_headers,
-                )
-
-            return Response(
-                content=response.content,
-                status_code=response.status_code,
-                headers=dict(response.headers),
-            )
-
-        except httpx.RequestError as exc:
-            raise HTTPException(status_code=502, detail=f"Error proxying request: {str(exc)}")
+    service = ProxyService(settings)
+    return await service.handle_request(request_data, ProxyEndpoint.CHAT_COMPLETION)
 
 
-@router.api_route("/{path:path}", methods=["POST"])
-async def proxy_ai_request(
+@router.get(
+    "/models",
+    description="List available models from all configured providers",
+)
+async def list_models(
     request: Request,
-    chat_completion_request: RequestChatCompletion,
-    path: str,
     settings: SettingsDep,
-) -> Response | StreamingResponse:
+) -> Response:
     """
-    Proxy incoming request to configured target.
-    Supports all HTTP methods and handles both regular and streaming responses.
+    Get a list of available models from all configured providers.
+    The response will be aggregated and models will be prefixed with provider names.
     """
-    route = _find_matching_route(f"/proxy/{path}", settings.proxy_routes)
-    if not route:
-        raise HTTPException(status_code=404, detail="No matching proxy route found")
+    request_data = ProxyRequestData(
+        method=request.method,
+        headers=dict(request.headers),
+        query_params=dict(request.query_params),
+    )
 
-    url = _build_target_url(path, route)
-    headers = _prepare_headers(request, route)
-    is_streaming = chat_completion_request.stream
+    service = ProxyService(settings)
+    return await service.handle_request(request_data, ProxyEndpoint.LIST_MODELS)
 
-    # Get request body and check if streaming is requested
-    # body, is_streaming = (
-    #     await _get_request_body(request)
-    #     if request.method in ("POST", "PUT", "PATCH")
-    #     else (None, False)
-    # )
 
-    # Create httpx client with proper timeout for streaming
-    timeout = httpx.Timeout(None) if is_streaming else httpx.Timeout(route.timeout)
+@router.delete(
+    "/chat/completions/{completion_id}",
+    description="Cancel an ongoing chat completion request",
+)
+async def cancel_chat_completion(
+    request: Request,
+    completion_id: str,
+    chat_request: ChatRequest,
+    settings: SettingsDep,
+) -> Response:
+    """
+    Cancel an ongoing chat completion request.
+    Requires the original model name to determine the provider.
+    Not all providers support this functionality.
+    """
+    request_data = ProxyRequestData(
+        method=request.method,
+        headers=dict(request.headers),
+        query_params=dict(request.query_params),
+        body=chat_request,
+        completion_id=completion_id,
+    )
 
-    async with httpx.AsyncClient(follow_redirects=True, timeout=timeout) as client:
-        try:
-            response = await client.request(
-                method=request.method,
-                url=url,
-                headers=headers,
-                json=chat_completion_request.model_dump(),
-                params=request.query_params,
-                # stream=is_streaming,
-            )
-
-            if is_streaming:
-                # Set up streaming response with appropriate headers
-                response_headers = dict(response.headers)
-                response_headers.update(
-                    {
-                        "Content-Type": "text/event-stream",
-                        "Cache-Control": "no-cache",
-                        "Connection": "keep-alive",
-                    }
-                )
-
-                return StreamingResponse(
-                    _stream_response(response),
-                    status_code=response.status_code,
-                    headers=response_headers,
-                )
-
-            return Response(
-                content=response.content,
-                status_code=response.status_code,
-                headers=dict(response.headers),
-            )
-
-        except httpx.RequestError as exc:
-            raise HTTPException(status_code=502, detail=f"Error proxying request: {str(exc)}")
+    service = ProxyService(settings)
+    return await service.handle_request(request_data, ProxyEndpoint.CANCEL_CHAT_COMPLETION)
