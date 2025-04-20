@@ -1,7 +1,6 @@
 import logging
-from typing import Annotated
 
-from fastapi import APIRouter, Request, Response, Depends, HTTPException
+from fastapi import APIRouter, Request, Response
 from fastapi.responses import StreamingResponse
 
 from src.dependencies import SettingsDep
