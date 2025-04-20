@@ -8,3 +8,7 @@ class BaseApplicationError(Exception):
 
 class AppSettingsError(BaseApplicationError):
     """Settings error"""
+
+
+class ProviderProxyError(BaseApplicationError):
+    """Provider error"""

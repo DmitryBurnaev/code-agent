@@ -2,7 +2,8 @@ import pytest
 from unittest.mock import AsyncMock, Mock, patch
 import time
 
-from src.services.providers import Cache, ProviderService, AIModel
+from src.services.providers import ProviderService, AIModel
+from src.utils import Cache
 from src.settings import Settings, ProxyRoute
 
 

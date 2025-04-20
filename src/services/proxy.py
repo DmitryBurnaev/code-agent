@@ -10,6 +10,7 @@ import httpx
 from fastapi import HTTPException
 from fastapi.responses import Response, StreamingResponse
 
+from src.exceptions import ProviderProxyError
 from src.models import ChatRequest
 from src.settings import ProxyRoute, Settings
 from src.services.providers import ProviderService
@@ -88,6 +89,17 @@ class ProxyService:
         Raises:
             HTTPException: If provider is not found or request fails
         """
+        match endpoint:
+            case ProxyEndpoint.CHAT_COMPLETION:
+                if not request_data.body:
+                    raise ProviderProxyError("Request body is required for chat completion")
+
+                provider, actual_model = self._extract_provider_from_model(request_data.body.model)
+                request_data.body.model = actual_model
+
+            case ProxyEndpoint.LIST_MODELS:
+                provider, actual_model = self._extract_provider_from_model(request_data.body.model)
+
         # For chat requests, we need to extract provider and update model name
         if endpoint == ProxyEndpoint.CHAT_COMPLETION:
             if not request_data.body:
@@ -98,6 +110,7 @@ class ProxyService:
 
             provider, actual_model = self._extract_provider_from_model(request_data.body.model)
             request_data.body.model = actual_model
+
         elif endpoint == ProxyEndpoint.CANCEL_CHAT_COMPLETION:
             if not request_data.body:
                 raise HTTPException(
@@ -105,6 +118,7 @@ class ProxyService:
                     detail="Request body is required for cancellation",
                 )
             provider, _ = self._extract_provider_from_model(request_data.body.model)
+
         elif endpoint == ProxyEndpoint.LIST_MODELS:
             # Return aggregated list of models from all providers
             models = await self._provider_service.available_models
@@ -207,7 +221,7 @@ class ProxyService:
             provider, model_name = model.split("__", 1)
             provider = provider.lower()
 
-            # Check if provider is supported
+            # Check if the provider is supported
             self._provider_service.get_client(provider)
 
             return provider, model_name
