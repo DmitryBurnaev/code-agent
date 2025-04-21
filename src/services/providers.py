@@ -1,13 +1,14 @@
 import asyncio
 import logging
+import urllib.parse
 from dataclasses import dataclass
 from typing import Dict, List, Optional, TYPE_CHECKING
 
 import httpx
 from fastapi import HTTPException
 
-from src.settings import ProxyRoute
-from src.utils import Cache
+from src.settings import ProxyRoute, LLMProvider
+from src.utils import Cache, retry_with_timeout
 
 if TYPE_CHECKING:
     from src.settings import AppSettings
@@ -20,17 +21,8 @@ class AIModel:
     """Represents an AI model with provider-specific details."""
 
     id: str
-    provider: str
-
-    @property
-    def name(self) -> str:
-        """Get human-readable model name."""
-        return f"{self.provider}: {self.id}"
-
-    @property
-    def full_name(self) -> str:
-        """Get the full model name with provider prefix."""
-        return f"{self.provider}__{self.id}"
+    name: str
+    vendor: str
 
 
 class ProviderClient:
@@ -40,58 +32,26 @@ class ProviderClient:
     _DEFAULT_RETRY_DELAY: float = 1.0  # seconds
     _DEFAULT_MAX_RETRIES: int = 1
 
-    def __init__(self, provider: str, route: ProxyRoute):
+    def __init__(self, provider: LLMProvider):
         self.provider = provider
-        self.route = route
+        self._base_url = provider.base_url
         self._client = httpx.AsyncClient()
 
-    async def _retry_with_timeout(
-        self,
-        operation: callable,
-        *,
-        max_retries: Optional[int] = None,
-        retry_delay: Optional[float] = None,
-    ):
-        """Execute operation with retries on failure."""
-        max_retries = max_retries if max_retries is not None else self._DEFAULT_MAX_RETRIES
-        retry_delay = retry_delay if retry_delay is not None else self._DEFAULT_RETRY_DELAY
-
-        last_error = None
-        for attempt in range(max_retries + 1):
-            try:
-                return await operation()
-            except Exception as e:
-                last_error = e
-                if attempt < max_retries:
-                    delay = retry_delay * (attempt + 1)
-                    logger.warning(
-                        f"Request to {self.provider} failed (attempt {attempt + 1}/{max_retries + 1}): {e}. "
-                        f"Retrying in {delay:.1f}s..."
-                    )
-                    await asyncio.sleep(delay)
-                else:
-                    logger.error(
-                        f"Request to {self.provider} failed after {max_retries + 1} attempts: {e}"
-                    )
-
-        raise last_error
-
-    async def list_models(self) -> List[AIModel]:
+    async def list_models(self) -> list[AIModel]:
         """List available models from the provider."""
 
-        async def _fetch_models():
-            url = f"{self.route.target_url.rstrip('/')}/models"
-            headers = {}
-
-            # Add auth if configured
-            if self.route.auth_token:
-                headers["Authorization"] = (
-                    f"{self.route.auth_type} {self.route.auth_token.get_secret_value()}"
-                )
-
-            # Add any additional headers from route config
-            if self.route.additional_headers:
-                headers.update(self.route.additional_headers)
+        # @retry_with_timeout(
+        #     max_retries=self._DEFAULT_MAX_RETRIES,
+        #     retry_delay=self._DEFAULT_RETRY_DELAY,
+        # )
+        @retry_with_timeout
+        async def _fetch_models() -> list[AIModel]:
+            url = urllib.parse.urljoin(self._base_url, "models")
+            headers = {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Authorization": f"{self.provider.auth_type} {self.provider.api_key}",
+            }
 
             async with self._client as client:
                 response = await client.get(url, headers=headers)
@@ -103,18 +63,22 @@ class ProviderClient:
                 return [
                     AIModel(
                         id=model["id"],
-                        provider=self.provider,
+                        name=model["name"],
+                        vendor=self.provider.vendor,
                     )
                     for model in models_data
-                    # TODO: Make model filtering configurable per provider
                     if self._is_chat_model(model)
                 ]
 
+        # models = await _fetch_models()
+        # models: list[AIModel] = []
+        # TODO: think about typing here
         try:
-            return await self._retry_with_timeout(_fetch_models)
+            models = await _fetch_models()
         except Exception as e:
-            logger.error(f"Failed to list {self.provider} models: {e}")
-            return []
+            logger.error(f"Failed to list {self.provider} models: {e}. Skipping.")
+
+        return models
 
     def _is_chat_model(self, model: Dict) -> bool:
         """Check if model is a chat model based on provider-specific rules."""

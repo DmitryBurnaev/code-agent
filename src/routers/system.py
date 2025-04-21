@@ -22,7 +22,7 @@ async def get_system_info(settings: SettingsDep) -> SystemInfo:
     return SystemInfo(
         status="ok",
         os_version=platform.platform(),
-        providers=[provider.api_provider for provider in settings.providers],
+        providers=[provider.vendor for provider in settings.providers],
     )
 
 

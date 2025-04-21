@@ -12,3 +12,7 @@ class AppSettingsError(BaseApplicationError):
 
 class ProviderProxyError(BaseApplicationError):
     """Provider error"""
+
+
+class ProviderRequestError(BaseApplicationError):
+    """Provider error"""

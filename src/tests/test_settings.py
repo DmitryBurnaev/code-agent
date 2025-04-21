@@ -22,7 +22,7 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     # Test provider configuration
     assert settings.providers == [
         LLMProvider(
-            api_provider=Provider.OPENAI,
+            vendor=Provider.OPENAI,
             api_key=SecretStr("key"),
         ),
     ]
@@ -72,7 +72,7 @@ def test_settings__invalid_provider_name(monkeypatch: pytest.MonkeyPatch) -> Non
 
 def test_llm_provider_model() -> None:
     """Test LLMProvider model validation."""
-    provider = LLMProvider(api_provider=Provider.OPENAI, api_key=SecretStr("key"))
-    assert provider.api_provider == Provider.OPENAI
+    provider = LLMProvider(vendor=Provider.OPENAI, api_key=SecretStr("key"))
+    assert provider.vendor == Provider.OPENAI
     assert provider.api_key.get_secret_value() == "key"
     assert provider.base_url == PROVIDER_URLS[Provider.OPENAI]
