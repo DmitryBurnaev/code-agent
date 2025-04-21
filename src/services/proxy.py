@@ -246,9 +246,6 @@ class ProxyService:
 
     def _build_target_url(self, path: str) -> str:
         """Build target URL for proxy request."""
-        if self.route.strip_path:
-            path = path.replace(self.route.source_path, "", 1)
-
         return f"{self.route.target_url.rstrip('/')}/{path.lstrip('/')}"
 
     def _prepare_headers(self, headers: Dict[str, str]) -> dict[str, str]:

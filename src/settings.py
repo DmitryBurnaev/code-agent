@@ -29,7 +29,7 @@ PROVIDER_URLS: dict[Provider, str] = {
     Provider.DEEPSEEK: "https://api.deepseek.com/v1",
 }
 
-
+DEFAULT_PROVIDER_TIMEOUT = 30
 LOG_LEVELS = "DEBUG|INFO|WARNING|ERROR|CRITICAL"
 LogLevelString = Annotated[str, StringConstraints(to_upper=True, pattern=rf"^(?i:{LOG_LEVELS})$")]
 
@@ -37,13 +37,15 @@ LogLevelString = Annotated[str, StringConstraints(to_upper=True, pattern=rf"^(?i
 class LLMProvider(BaseModel):
     """Provider configuration with API key."""
 
-    api_provider: Provider
+    vendor: Provider
     api_key: SecretStr
+    auth_type: str = "Bearer"
+    timeout: int = DEFAULT_PROVIDER_TIMEOUT
 
     @property
     def base_url(self) -> str:
         """Get base URL for provider."""
-        return PROVIDER_URLS[self.api_provider]
+        return PROVIDER_URLS[self.vendor]
 
 
 class ProxyRoute(BaseModel):
@@ -51,8 +53,7 @@ class ProxyRoute(BaseModel):
 
     source_path: str = Field(..., description="Source path to match")
     target_url: str = Field(..., description="Target URL to proxy to")
-    strip_path: bool = Field(False, description="Strip source path from target URL")
-    timeout: float = Field(30.0, description="Request timeout in seconds")
+    timeout: float = Field(DEFAULT_PROVIDER_TIMEOUT, description="Request timeout in seconds")
     auth_token: Optional[SecretStr] = Field(
         None, description="Authorization token for target service"
     )
@@ -62,7 +63,7 @@ class ProxyRoute(BaseModel):
     def from_provider(cls, provider: LLMProvider) -> "ProxyRoute":
         """Create proxy route from provider configuration."""
         return cls(
-            source_path=f"/proxy/{provider.api_provider}",
+            source_path=f"/proxy/{provider.vendor}",
             target_url=provider.base_url,
             strip_path=True,
             auth_token=provider.api_key,

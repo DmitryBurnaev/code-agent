@@ -27,7 +27,7 @@ def auth_test_header(auth_test_token) -> dict[str, str]:
 def providers() -> list[LLMProvider]:
     return [
         LLMProvider(
-            api_provider=Provider.OPENAI,
+            vendor=Provider.OPENAI,
             api_key=SecretStr("test-key"),
         )
     ]
