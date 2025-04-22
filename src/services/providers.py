@@ -40,11 +40,10 @@ class ProviderClient:
     async def list_models(self) -> list[AIModel]:
         """List available models from the provider."""
 
-        # @retry_with_timeout(
-        #     max_retries=self._DEFAULT_MAX_RETRIES,
-        #     retry_delay=self._DEFAULT_RETRY_DELAY,
-        # )
-        @retry_with_timeout
+        @retry_with_timeout(
+            max_retries=self._DEFAULT_MAX_RETRIES,
+            retry_delay=self._DEFAULT_RETRY_DELAY,
+        )
         async def _fetch_models() -> list[AIModel]:
             url = urllib.parse.urljoin(self._base_url, "models")
             headers = {
@@ -70,9 +69,7 @@ class ProviderClient:
                     if self._is_chat_model(model)
                 ]
 
-        # models = await _fetch_models()
-        # models: list[AIModel] = []
-        # TODO: think about typing here
+        models: list[AIModel] = []
         try:
             models = await _fetch_models()
         except Exception as e:
@@ -80,7 +77,7 @@ class ProviderClient:
 
         return models
 
-    def _is_chat_model(self, model: Dict) -> bool:
+    def _is_chat_model(self, model: dict) -> bool:
         """Check if model is a chat model based on provider-specific rules."""
         model_id = model["id"]
         model_type = model.get("type")
