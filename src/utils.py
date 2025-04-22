@@ -13,12 +13,21 @@ from typing import (
     ParamSpec,
     cast,
     overload,
+    Protocol,
+    TypeGuard,
+    runtime_checkable,
 )
 
 from src.exceptions import ProviderRequestError
 
-T = TypeVar("T")
+T = TypeVar("T", covariant=True)
 logger = logging.getLogger(__name__)
+
+# Type aliases for better readability
+# DecoratedAsyncFunc = Callable[ParamSpec("P"), Awaitable[T]]
+# AsyncDecorator = Callable[
+#     [DecoratedAsyncFunc[ParamSpec("P"), T]], DecoratedAsyncFunc[ParamSpec("P"), T]
+# ]
 
 
 class Cache(Generic[T]):
@@ -90,27 +99,35 @@ def decohints(decorator: Callable[..., Any]) -> Callable[..., Any]:
     return decorator
 
 
-@overload
-def retry_with_timeout(
-    func: Callable[P, Awaitable[T]],
-) -> Callable[P, Awaitable[T]]: ...
+@runtime_checkable
+class AsyncCallable(Protocol[P, T]):
+    """Protocol for async callable that helps with type inference."""
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> Awaitable[T]: ...
 
 
 @overload
 def retry_with_timeout(
-    *,
-    max_retries: int = 3,
-    retry_delay: float = 1.0,
-) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Awaitable[T]]]: ...
+    func: AsyncCallable[P, T],
+) -> AsyncCallable[P, T]: ...
 
 
-# @decohints
+@overload
 def retry_with_timeout(
-    func: Callable[P, Awaitable[T]] | None = None,
+    func: None = None,
     *,
     max_retries: int = 3,
     retry_delay: float = 1.0,
-) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Awaitable[T]]] | Callable[P, Awaitable[T]]:
+) -> Callable[[AsyncCallable[P, T]], AsyncCallable[P, T]]: ...
+
+
+@decohints
+def retry_with_timeout(
+    func: AsyncCallable[P, T] | None = None,
+    *,
+    max_retries: int = 3,
+    retry_delay: float = 1.0,
+) -> Callable[[AsyncCallable[P, T]], AsyncCallable[P, T]] | AsyncCallable[P, T]:
     """
     Decorator that retries an async function with timeout and logs each attempt.
 
@@ -124,13 +141,16 @@ def retry_with_timeout(
         Decorated function that will retry on failure
 
     Raises:
-        ProviderError: If all retry attempts fail
+        ProviderRequestError: If all retry attempts fail
+        TypeError: If decorated function is not async or has wrong return type
     """
 
-    @decohints
-    def decorator(func: Callable[P, Awaitable[RT]]) -> Callable[P, Awaitable[RT]]:
+    def decorator(func: AsyncCallable[P, T]) -> AsyncCallable[P, T]:
+        if not asyncio.iscoroutinefunction(func):
+            raise TypeError(f"Function {func!r} must be async")
+
         @functools.wraps(func)
-        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> RT:
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             last_exception: Exception | None = None
 
             for attempt in range(1, max_retries + 1):
@@ -146,70 +166,13 @@ def retry_with_timeout(
                     if attempt < max_retries:
                         await asyncio.sleep(delay)
 
-            raise ProviderError(
+            raise ProviderRequestError(
                 f"All {max_retries} attempts failed for {func.__name__}"
             ) from last_exception
 
-        # return cast(Callable[P, Awaitable[RT]], wrapper)
         return wrapper
 
     if func is not None:
         return decorator(func)
 
     return decorator
-
-
-#
-# def retry_with_timeout(
-#     max_retries: int = 3, retry_delay: float = 1.0
-# ) -> Callable[[...], Callable[[...], Awaitable[Any]]]:
-#     """Decorator that retries a function with timeout and logs each attempt.
-#
-#     Args:
-#         max_retries: Maximum number of retry attempts (default: 3)
-#         retry_delay: Base delay between retries in seconds (default: 1.0)
-#                     Will be multiplied by attempt number for backoff
-#
-#     Returns:
-#         Decorated function that will retry on failure
-#
-#     Raises:
-#         ProviderError: If all retry attempts fail
-#     """
-#
-#     def decorator[RT, **P](func: Callable[P, Awaitable[RT]]) -> Callable[P, Awaitable[RT]]:
-#
-#         @functools.wraps(func)
-#         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> RT:
-#             last_error = None
-#
-#             for attempt in range(max_retries + 1):
-#                 try:
-#                     logger.debug(
-#                         f"Executing {func.__name__} (attempt {attempt + 1}/{max_retries + 1})"
-#                     )
-#                     return await func(*args, **kwargs)
-#                 except Exception as exc:
-#                     last_error = exc
-#                     if attempt < max_retries:
-#                         delay = retry_delay * (attempt + 1)
-#                         logger.warning(
-#                             f"{func.__name__} failed (attempt {attempt + 1}/{max_retries + 1}): "
-#                             f"{exc!r}. "
-#                             f"Retrying in {delay:.1f}s..."
-#                         )
-#                         await asyncio.sleep(delay)
-#
-#                     else:
-#                         logger.error(
-#                             f"{func.__name__} failed after {max_retries + 1} attempts: {exc!r}"
-#                         )
-#
-#             # If we get here, all retries failed
-#             raise ProviderRequestError(
-#                 f"Operation failed after {max_retries + 1} attempts: {last_error}"
-#             )
-#
-#         return wrapper
-#
-#     return decorator
