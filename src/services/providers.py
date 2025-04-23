@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, TYPE_CHECKING
 import httpx
 from fastapi import HTTPException
 
-from src.settings import ProxyRoute, LLMProvider
+from src.settings import ProxyRoute, LLMProvider, Provider
 from src.utils import Cache, retry_with_timeout
 
 if TYPE_CHECKING:
@@ -77,7 +77,8 @@ class ProviderClient:
 
         return models
 
-    def _is_chat_model(self, model: dict) -> bool:
+    @staticmethod
+    def _is_chat_model(model: dict[str, str]) -> bool:
         """Check if model is a chat model based on provider-specific rules."""
         model_id = model["id"]
         model_type = model.get("type")
@@ -91,7 +92,7 @@ class ProviderClient:
         # Add more provider-specific rules as needed
         return False
 
-    async def close(self):
+    async def close(self) -> None:
         """Close the HTTP client."""
         await self._client.aclose()
 
@@ -107,9 +108,9 @@ class ProviderService:
         """
         self.settings = settings
         self._models_cache = Cache[List[AIModel]](ttl=settings.models_cache_ttl)
-        self._clients: Dict[str, ProviderClient] = {}
+        self._clients: Dict[LLMProvider, ProviderClient] = {}
 
-    def get_client(self, provider: str) -> ProviderClient:
+    def get_client(self, provider: LLMProvider) -> ProviderClient:
         """Get or create a client for the specified provider."""
         if provider not in self._clients:
             route = self._find_provider_route(provider)
@@ -119,11 +120,11 @@ class ProviderService:
                     detail=f"Provider '{provider}' is not configured",
                 )
 
-            self._clients[provider] = ProviderClient(provider, route)
+            self._clients[provider] = ProviderClient(provider)
 
         return self._clients[provider]
 
-    def _find_provider_route(self, provider: str) -> Optional[ProxyRoute]:
+    def _find_provider_route(self, provider: LLMProvider) -> Optional[ProxyRoute]:
         """Find proxy route for the provider."""
         provider_path = f"/proxy/{provider}"
         for route in self.settings.proxy_routes:
@@ -131,8 +132,8 @@ class ProviderService:
                 return route
         return None
 
-    async def list_models(self, force_refresh: bool = False) -> List[AIModel]:
-        """Get list of available models from all configured providers.
+    async def list_models(self, force_refresh: bool = False) -> list[AIModel]:
+        """Get a list of available models from all configured providers.
 
         Args:
             force_refresh: If True, ignore cache and fetch fresh data
@@ -143,21 +144,16 @@ class ProviderService:
         all_models = []
         tasks = []
         providers = []
-
-        # Check cache and create tasks for expired/missing providers
-        for route in self.settings.proxy_routes:
-            if not route.source_path.startswith("/proxy/"):
-                continue
-
-            provider = route.source_path.split("/")[2]
+        for llm_provider in self.settings.providers:
+            # route = self._find_provider_route(llm_provider)
             if not force_refresh:
-                cached = self._models_cache.get(provider)
+                cached = self._models_cache.get(str(llm_provider.vendor))
                 if cached is not None:
                     all_models.extend(cached)
                     continue
 
-            providers.append(provider)
-            client = self.get_client(provider)
+            providers.append(llm_provider)
+            client = self.get_client(llm_provider)
             tasks.append(client.list_models())
 
         if tasks:
@@ -176,7 +172,7 @@ class ProviderService:
         return all_models
 
     def invalidate_models_cache(self, provider: Optional[str] = None) -> None:
-        """Force invalidation of models cache.
+        """Force invalidation of models' cache.
 
         Args:
             provider: Specific provider to invalidate cache for.
@@ -184,7 +180,7 @@ class ProviderService:
         """
         self._models_cache.invalidate(provider)
 
-    async def close(self):
+    async def close(self) -> None:
         """Close all provider clients."""
         for client in self._clients.values():
             await client.close()
