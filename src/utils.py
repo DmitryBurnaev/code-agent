@@ -5,29 +5,21 @@ import time
 from typing import (
     TypeVar,
     Generic,
-    Dict,
-    Optional,
     Callable,
     Awaitable,
     Any,
     ParamSpec,
-    cast,
     overload,
     Protocol,
-    TypeGuard,
     runtime_checkable,
 )
 
 from src.exceptions import ProviderRequestError
 
-T = TypeVar("T", covariant=True)
 logger = logging.getLogger(__name__)
-
-# Type aliases for better readability
-# DecoratedAsyncFunc = Callable[ParamSpec("P"), Awaitable[T]]
-# AsyncDecorator = Callable[
-#     [DecoratedAsyncFunc[ParamSpec("P"), T]], DecoratedAsyncFunc[ParamSpec("P"), T]
-# ]
+T = TypeVar("T")
+RT = TypeVar("RT", covariant=True)
+P = ParamSpec("P")
 
 
 class Cache(Generic[T]):
@@ -35,11 +27,11 @@ class Cache(Generic[T]):
 
     def __init__(self, ttl: float):
         self._ttl = ttl
-        self._data: Dict[str, T] = {}
-        self._last_update: Dict[str, float] = {}
+        self._data: dict[str, T] = {}
+        self._last_update: dict[str, float] = {}
 
-    def get(self, key: str) -> Optional[T]:
-        """Get cached value for key if not expired.
+    def get(self, key: str) -> T | None:
+        """Get cached value for a key if not expired.
 
         Args:
             key: Cache key to look up
@@ -67,7 +59,7 @@ class Cache(Generic[T]):
         self._data[key] = value
         self._last_update[key] = time.monotonic()
 
-    def invalidate(self, key: Optional[str] = None) -> None:
+    def invalidate(self, key: str | None = None) -> None:
         """Force cache invalidation.
 
         Args:
@@ -79,11 +71,6 @@ class Cache(Generic[T]):
         elif key in self._data:
             del self._data[key]
             del self._last_update[key]
-
-
-P = ParamSpec("P")
-RT = TypeVar("RT")
-R = TypeVar("R", bound=Awaitable[Any])
 
 
 class ProviderError(Exception):
@@ -100,16 +87,16 @@ def decohints(decorator: Callable[..., Any]) -> Callable[..., Any]:
 
 
 @runtime_checkable
-class AsyncCallable(Protocol[P, T]):
+class AsyncCallable(Protocol[P, RT]):
     """Protocol for async callable that helps with type inference."""
 
-    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> Awaitable[T]: ...
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> Awaitable[RT]: ...
 
 
 @overload
 def retry_with_timeout(
-    func: AsyncCallable[P, T],
-) -> AsyncCallable[P, T]: ...
+    func: AsyncCallable[P, RT],
+) -> AsyncCallable[P, RT]: ...
 
 
 @overload
@@ -118,16 +105,16 @@ def retry_with_timeout(
     *,
     max_retries: int = 3,
     retry_delay: float = 1.0,
-) -> Callable[[AsyncCallable[P, T]], AsyncCallable[P, T]]: ...
+) -> Callable[[AsyncCallable[P, RT]], AsyncCallable[P, RT]]: ...
 
 
 @decohints
 def retry_with_timeout(
-    func: AsyncCallable[P, T] | None = None,
+    func: AsyncCallable[P, RT] | None = None,
     *,
     max_retries: int = 3,
     retry_delay: float = 1.0,
-) -> Callable[[AsyncCallable[P, T]], AsyncCallable[P, T]] | AsyncCallable[P, T]:
+) -> Callable[[AsyncCallable[P, RT]], AsyncCallable[P, RT]] | AsyncCallable[P, RT]:
     """
     Decorator that retries an async function with timeout and logs each attempt.
 
@@ -142,15 +129,15 @@ def retry_with_timeout(
 
     Raises:
         ProviderRequestError: If all retry attempts fail
-        TypeError: If decorated function is not async or has wrong return type
+        TypeError: If the decorated function is not async or has wrong return type
     """
 
-    def decorator(func: AsyncCallable[P, T]) -> AsyncCallable[P, T]:
+    def decorator(func: AsyncCallable[P, RT]) -> AsyncCallable[P, RT]:
         if not asyncio.iscoroutinefunction(func):
             raise TypeError(f"Function {func!r} must be async")
 
         @functools.wraps(func)
-        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> RT:
             last_exception: Exception | None = None
 
             for attempt in range(1, max_retries + 1):
