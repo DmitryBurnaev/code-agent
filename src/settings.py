@@ -47,6 +47,12 @@ class LLMProvider(BaseModel):
         """Get base URL for provider."""
         return PROVIDER_URLS[self.vendor]
 
+    def __repr__(self) -> str:
+        return f"LLMProvider(vendor={self.vendor}, api_key={self.api_key})"
+
+    def __str__(self) -> str:
+        return f"Provider {self.vendor}"
+
 
 class ProxyRoute(BaseModel):
     """Proxy route configuration."""

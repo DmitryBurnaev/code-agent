@@ -12,7 +12,7 @@ from fastapi.responses import Response, StreamingResponse
 
 from src.exceptions import ProviderProxyError
 from src.models import ChatRequest
-from src.settings import ProxyRoute, Settings
+from src.settings import ProxyRoute, AppSettings
 from src.services.providers import ProviderService
 
 logger = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ class ProxyService:
         ProxyEndpoint.CANCEL_CHAT_COMPLETION: "chat/completions/{completion_id}",
     }
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: AppSettings):
         self._settings = settings
         self._client = None
         self._provider_service = ProviderService(settings)

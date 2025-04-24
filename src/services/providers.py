@@ -1,13 +1,13 @@
 import asyncio
 import logging
 import urllib.parse
-from dataclasses import dataclass
-from typing import Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import httpx
 from fastapi import HTTPException
+from pydantic import BaseModel
 
-from src.settings import ProxyRoute, LLMProvider, Provider
+from src.settings import ProxyRoute, LLMProvider
 from src.utils import Cache, retry_with_timeout
 
 if TYPE_CHECKING:
@@ -16,13 +16,29 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class AIModel:
+class AIModel(BaseModel):
     """Represents an AI model with provider-specific details."""
 
     id: str
     name: str
+    type: str
     vendor: str
+
+    @property
+    def is_chat_model(self) -> bool:
+        if self.type == "chat":  # Anthropic-style
+            return True
+
+        if self.id.startswith(("gpt-", "text-")):  # OpenAI-style
+            return True
+
+        return False
+
+
+class ResponseModel(BaseModel):
+    """Represents an AI model with provider-specific details."""
+
+    models: list[AIModel]
 
 
 class ProviderClient:
@@ -35,51 +51,50 @@ class ProviderClient:
     def __init__(self, provider: LLMProvider):
         self.provider = provider
         self._base_url = provider.base_url
-        self._client = httpx.AsyncClient()
+        self._client = httpx.AsyncClient(
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Authorization": f"{self.provider.auth_type} {self.provider.api_key}",
+            }
+        )
 
     async def list_models(self) -> list[AIModel]:
         """List available models from the provider."""
+        url = urllib.parse.urljoin(self._base_url, "models")
 
         @retry_with_timeout(
             max_retries=self._DEFAULT_MAX_RETRIES,
             retry_delay=self._DEFAULT_RETRY_DELAY,
         )
         async def _fetch_models() -> list[AIModel]:
-            url = urllib.parse.urljoin(self._base_url, "models")
-            headers = {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "Authorization": f"{self.provider.auth_type} {self.provider.api_key}",
-            }
 
             async with self._client as client:
-                response = await client.get(url, headers=headers)
-                response.raise_for_status()
+                response = await client.get(url)
+                if response.status_code != httpx.codes.OK:
+                    logger.warning("%s | Failed to fetch models from provider.", self.provider)
+                    return []
 
-                data = response.json()
-                models_data = data.get("data") or data.get("models", [])
+                if not (response_data := response.json().get("data")):
+                    logger.warning("%s | No models data in provider response.", self.provider)
+                    return []
 
-                return [
-                    AIModel(
-                        id=model["id"],
-                        name=model["name"],
-                        vendor=self.provider.vendor,
-                    )
-                    for model in models_data
-                    if self._is_chat_model(model)
-                ]
+                models_data = ResponseModel.model_validate(
+                    response_data, context={"vendor": self.provider.vendor}
+                )
+                return [ai_model for ai_model in models_data.models if ai_model.is_chat_model]
 
         models: list[AIModel] = []
         try:
             models = await _fetch_models()
-        except Exception as e:
-            logger.error(f"Failed to list {self.provider} models: {e}. Skipping.")
+        except Exception as exc:
+            logger.error(f"Failed to list {self.provider} models: {exc}. Skipping.")
 
         return models
 
     @staticmethod
     def _is_chat_model(model: dict[str, str]) -> bool:
-        """Check if model is a chat model based on provider-specific rules."""
+        """Check if the model is a chat model based on provider-specific rules."""
         model_id = model["id"]
         model_type = model.get("type")
 
@@ -107,8 +122,8 @@ class ProviderService:
             settings: Application settings containing provider configurations.
         """
         self.settings = settings
-        self._models_cache = Cache[List[AIModel]](ttl=settings.models_cache_ttl)
-        self._clients: Dict[LLMProvider, ProviderClient] = {}
+        self._models_cache = Cache[list[AIModel]](ttl=settings.models_cache_ttl)
+        self._clients: dict[LLMProvider, ProviderClient] = {}
 
     def get_client(self, provider: LLMProvider) -> ProviderClient:
         """Get or create a client for the specified provider."""
@@ -124,8 +139,8 @@ class ProviderService:
 
         return self._clients[provider]
 
-    def _find_provider_route(self, provider: LLMProvider) -> Optional[ProxyRoute]:
-        """Find proxy route for the provider."""
+    def _find_provider_route(self, provider: LLMProvider) -> ProxyRoute | None:
+        """Find a proxy route for the provider."""
         provider_path = f"/proxy/{provider}"
         for route in self.settings.proxy_routes:
             if route.source_path.startswith(provider_path):
@@ -171,7 +186,7 @@ class ProviderService:
 
         return all_models
 
-    def invalidate_models_cache(self, provider: Optional[str] = None) -> None:
+    def invalidate_models_cache(self, provider: str | None = None) -> None:
         """Force invalidation of models' cache.
 
         Args:
