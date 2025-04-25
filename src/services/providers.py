@@ -44,31 +44,27 @@ class ResponseModel(BaseModel):
 class ProviderClient:
     """Generic client for AI providers."""
 
-    # Default retry settings
     _DEFAULT_RETRY_DELAY: float = 1.0  # seconds
-    _DEFAULT_MAX_RETRIES: int = 1
+    _DEFAULT_MAX_RETRIES: int = 2
 
     def __init__(self, provider: LLMProvider):
         self.provider = provider
         self._base_url = provider.base_url
+        transport = httpx.AsyncHTTPTransport(retries=self._DEFAULT_MAX_RETRIES)
         self._client = httpx.AsyncClient(
+            transport=transport,
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/json",
                 "Authorization": f"{self.provider.auth_type} {self.provider.api_key}",
-            }
+            },
         )
 
     async def list_models(self) -> list[AIModel]:
         """List available models from the provider."""
         url = urllib.parse.urljoin(self._base_url, "models")
 
-        @retry_with_timeout(
-            max_retries=self._DEFAULT_MAX_RETRIES,
-            retry_delay=self._DEFAULT_RETRY_DELAY,
-        )
         async def _fetch_models() -> list[AIModel]:
-
             async with self._client as client:
                 response = await client.get(url)
                 if response.status_code != httpx.codes.OK:
@@ -177,11 +173,11 @@ class ProviderService:
 
             # Process results and update cache for each provider
             for provider, result in zip(providers, results):
-                if isinstance(result, Exception):
-                    logger.error(f"Failed to list models for {provider}: {result}")
+                if isinstance(result, BaseException):
+                    logger.error(f"Failed to list models for {provider}: {result!r}")
                     continue
 
-                self._models_cache.set(provider, result)
+                self._models_cache.set(provider.vendor, result)
                 all_models.extend(result)
 
         return all_models
