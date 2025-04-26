@@ -50,13 +50,11 @@ class ChatRequest(BaseModel):
         },
     )
 
-    messages: List[Message] = Field(
-        ...,
+    messages: list[Message] = Field(
         description="The list of messages in the conversation",
-        min_items=1,  # At least one message required
+        min_length=1,  # At least one message required
     )
     model: str = Field(
-        ...,
         description="The model to use for chat completion",
     )
     stream: bool = Field(

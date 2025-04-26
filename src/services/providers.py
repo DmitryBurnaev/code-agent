@@ -44,21 +44,10 @@ class ResponseModel(BaseModel):
 class ProviderClient:
     """Generic client for AI providers."""
 
-    _DEFAULT_RETRY_DELAY: float = 1.0  # seconds
-    _DEFAULT_MAX_RETRIES: int = 2
-
     def __init__(self, provider: LLMProvider, http_client: httpx.AsyncClient):
         self._provider = provider
         self._base_url = provider.base_url
         self._http_client = http_client
-        # self._http_client = httpx.AsyncClient(
-        #     transport=httpx.AsyncHTTPTransport(retries=self._DEFAULT_MAX_RETRIES),
-        #     headers={
-        #         "Content-Type": "application/json",
-        #         "Accept": "application/json",
-        #         "Authorization": f"{self._provider.auth_type} {self._provider.api_key}",
-        #     },
-        # )
 
     async def get_list_models(self) -> list[AIModel]:
         """List available models from the provider."""
@@ -66,7 +55,7 @@ class ProviderClient:
 
         async def _fetch_models() -> list[AIModel]:
             async with self._http_client as http_client:
-                response = await http_client.get(url)
+                response = await http_client.get(url, headers=self._provider.auth_headers)
                 if response.status_code != httpx.codes.OK:
                     logger.warning("%s | Failed to fetch models from provider.", self._provider)
                     return []
