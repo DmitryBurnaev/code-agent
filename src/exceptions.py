@@ -10,9 +10,17 @@ class AppSettingsError(BaseApplicationError):
     """Settings error"""
 
 
-class ProviderProxyError(BaseApplicationError):
+class ProviderError(BaseApplicationError):
     """Provider error"""
 
 
-class ProviderRequestError(BaseApplicationError):
+class ProviderLookupError(ProviderError):
+    """Provider lookup error"""
+
+
+class ProviderProxyError(ProviderError):
+    """Provider error"""
+
+
+class ProviderRequestError(ProviderError):
     """Provider error"""

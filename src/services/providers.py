@@ -4,11 +4,11 @@ import urllib.parse
 from typing import TYPE_CHECKING
 
 import httpx
-from fastapi import HTTPException
 from pydantic import BaseModel
 
+from src.exceptions import ProviderLookupError
 from src.settings import ProxyRoute, LLMProvider
-from src.utils import Cache, retry_with_timeout
+from src.utils import Cache
 
 if TYPE_CHECKING:
     from src.settings import AppSettings
@@ -47,36 +47,36 @@ class ProviderClient:
     _DEFAULT_RETRY_DELAY: float = 1.0  # seconds
     _DEFAULT_MAX_RETRIES: int = 2
 
-    def __init__(self, provider: LLMProvider):
-        self.provider = provider
+    def __init__(self, provider: LLMProvider, http_client: httpx.AsyncClient):
+        self._provider = provider
         self._base_url = provider.base_url
-        transport = httpx.AsyncHTTPTransport(retries=self._DEFAULT_MAX_RETRIES)
-        self._client = httpx.AsyncClient(
-            transport=transport,
-            headers={
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "Authorization": f"{self.provider.auth_type} {self.provider.api_key}",
-            },
-        )
+        self._http_client = http_client
+        # self._http_client = httpx.AsyncClient(
+        #     transport=httpx.AsyncHTTPTransport(retries=self._DEFAULT_MAX_RETRIES),
+        #     headers={
+        #         "Content-Type": "application/json",
+        #         "Accept": "application/json",
+        #         "Authorization": f"{self._provider.auth_type} {self._provider.api_key}",
+        #     },
+        # )
 
-    async def list_models(self) -> list[AIModel]:
+    async def get_list_models(self) -> list[AIModel]:
         """List available models from the provider."""
         url = urllib.parse.urljoin(self._base_url, "models")
 
         async def _fetch_models() -> list[AIModel]:
-            async with self._client as client:
-                response = await client.get(url)
+            async with self._http_client as http_client:
+                response = await http_client.get(url)
                 if response.status_code != httpx.codes.OK:
-                    logger.warning("%s | Failed to fetch models from provider.", self.provider)
+                    logger.warning("%s | Failed to fetch models from provider.", self._provider)
                     return []
 
                 if not (response_data := response.json().get("data")):
-                    logger.warning("%s | No models data in provider response.", self.provider)
+                    logger.warning("%s | No models data in provider response.", self._provider)
                     return []
 
                 models_data = ResponseModel.model_validate(
-                    response_data, context={"vendor": self.provider.vendor}
+                    response_data, context={"vendor": self._provider.vendor}
                 )
                 return [ai_model for ai_model in models_data.models if ai_model.is_chat_model]
 
@@ -84,7 +84,7 @@ class ProviderClient:
         try:
             models = await _fetch_models()
         except Exception as exc:
-            logger.error(f"Failed to list {self.provider} models: {exc}. Skipping.")
+            logger.error(f"Failed to list {self._provider} models: {exc}. Skipping.")
 
         return models
 
@@ -105,45 +105,43 @@ class ProviderClient:
 
     async def close(self) -> None:
         """Close the HTTP client."""
-        await self._client.aclose()
+        await self._http_client.aclose()
 
 
 class ProviderService:
     """Service for managing AI providers and their configurations."""
 
-    def __init__(self, settings: "AppSettings") -> None:
+    def __init__(self, settings: "AppSettings", http_client: httpx.AsyncClient) -> None:
         """Initialize the service with settings.
 
         Args:
             settings: Application settings containing provider configurations.
         """
-        self.settings = settings
+        self._settings = settings
         self._models_cache = Cache[list[AIModel]](ttl=settings.models_cache_ttl)
-        self._clients: dict[LLMProvider, ProviderClient] = {}
+        self._provider_clients: dict[LLMProvider, ProviderClient] = {}
+        self._http_client = http_client
 
     def get_client(self, provider: LLMProvider) -> ProviderClient:
         """Get or create a client for the specified provider."""
-        if provider not in self._clients:
+        if provider not in self._provider_clients:
             route = self._find_provider_route(provider)
             if not route:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Provider '{provider}' is not configured",
-                )
+                raise ProviderLookupError(f"Provider {provider} is not configured.")
 
-            self._clients[provider] = ProviderClient(provider)
+            self._provider_clients[provider] = ProviderClient(provider, self._http_client)
 
-        return self._clients[provider]
+        return self._provider_clients[provider]
 
     def _find_provider_route(self, provider: LLMProvider) -> ProxyRoute | None:
         """Find a proxy route for the provider."""
         provider_path = f"/proxy/{provider}"
-        for route in self.settings.proxy_routes:
+        for route in self._settings.proxy_routes:
             if route.source_path.startswith(provider_path):
                 return route
         return None
 
-    async def list_models(self, force_refresh: bool = False) -> list[AIModel]:
+    async def get_list_models(self, force_refresh: bool = False) -> list[AIModel]:
         """Get a list of available models from all configured providers.
 
         Args:
@@ -155,7 +153,7 @@ class ProviderService:
         all_models = []
         tasks = []
         providers = []
-        for llm_provider in self.settings.providers:
+        for llm_provider in self._settings.providers:
             # route = self._find_provider_route(llm_provider)
             if not force_refresh:
                 cached = self._models_cache.get(str(llm_provider.vendor))
@@ -165,7 +163,7 @@ class ProviderService:
 
             providers.append(llm_provider)
             client = self.get_client(llm_provider)
-            tasks.append(client.list_models())
+            tasks.append(client.get_list_models())
 
         if tasks:
             # Run tasks in parallel for providers that need refresh
@@ -193,5 +191,5 @@ class ProviderService:
 
     async def close(self) -> None:
         """Close all provider clients."""
-        for client in self._clients.values():
+        for client in self._provider_clients.values():
             await client.close()
