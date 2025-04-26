@@ -105,12 +105,12 @@ class TestProviderService:
         ]
 
         # Initial fetch should call both providers
-        models = await service.list_models()
+        models = await service.get_list_models()
         assert len(models) == 2
         assert mock_client.list_models.call_count == 2
 
         # Subsequent fetch should use cache
-        models = await service.list_models()
+        models = await service.get_list_models()
         assert len(models) == 2
         assert mock_client.list_models.call_count == 2  # Count shouldn't increase
 
@@ -127,7 +127,7 @@ class TestProviderService:
         ]
 
         # Cache initial data
-        await service.list_models()
+        await service.get_list_models()
         assert mock_client.list_models.call_count == 2
 
         # Invalidate only OpenAI cache
@@ -135,7 +135,7 @@ class TestProviderService:
 
         # Next fetch should only refresh OpenAI
         mock_client.list_models.side_effect = [openai_models]
-        models = await service.list_models()
+        models = await service.get_list_models()
 
         assert len(models) == 2
         assert mock_client.list_models.call_count == 3  # One additional call for OpenAI
@@ -151,13 +151,13 @@ class TestProviderService:
         ]
 
         # Should return models from successful provider only
-        models = await service.list_models()
+        models = await service.get_list_models()
         assert len(models) == 1
         assert models[0].provider == "openai"
 
         # Cached data should persist despite new failures
         mock_client.list_models.side_effect = [Exception("API Error")]
-        models = await service.list_models()
+        models = await service.get_list_models()
         assert len(models) == 1
         assert models[0].provider == "openai"
 
@@ -192,12 +192,12 @@ class TestProviderService2:
         ]
 
         # First call should fetch all providers
-        models = await service.list_models()
+        models = await service.get_list_models()
         assert len(models) == 2
         assert mock_client.list_models.call_count == 2
 
         # Second call should use cache
-        models = await service.list_models()
+        models = await service.get_list_models()
         assert len(models) == 2
         # Call count should not increase as we use cache
         assert mock_client.list_models.call_count == 2
@@ -215,7 +215,7 @@ class TestProviderService2:
         ]
 
         # Initial fetch
-        await service.list_models()
+        await service.get_list_models()
         assert mock_client.list_models.call_count == 2
 
         # Invalidate only openai cache
@@ -223,7 +223,7 @@ class TestProviderService2:
 
         # Next fetch should only call openai
         mock_client.list_models.side_effect = [openai_models]
-        models = await service.list_models()
+        models = await service.get_list_models()
 
         assert len(models) == 2
         # One more call for openai only
@@ -240,12 +240,12 @@ class TestProviderService2:
         ]
 
         # Should return models from successful provider
-        models = await service.list_models()
+        models = await service.get_list_models()
         assert len(models) == 1
         assert models[0].provider == "openai"
 
         # Cache should still work for successful provider
         mock_client.list_models.side_effect = [Exception("API Error")]
-        models = await service.list_models()
+        models = await service.get_list_models()
         assert len(models) == 1
         assert models[0].provider == "openai"

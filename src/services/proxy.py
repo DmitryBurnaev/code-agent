@@ -1,16 +1,16 @@
-import logging
-import time
-from contextlib import asynccontextmanager
-from dataclasses import dataclass
-from enum import Enum, auto
-from typing import AsyncGenerator, Dict, Any, Optional
 import json
+import time
+import logging
+from enum import Enum, auto
+from dataclasses import dataclass
+from typing import AsyncGenerator
+from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import HTTPException
 from fastapi.responses import Response, StreamingResponse
 
-from src.exceptions import ProviderProxyError
+from src.exceptions import ProviderProxyError, ProviderError
 from src.models import ChatRequest
 from src.settings import ProxyRoute, AppSettings
 from src.services.providers import ProviderService
@@ -21,9 +21,9 @@ logger = logging.getLogger(__name__)
 class ProxyEndpoint(Enum):
     """Available proxy endpoints."""
 
-    CHAT_COMPLETION = auto()
-    LIST_MODELS = auto()
-    CANCEL_CHAT_COMPLETION = auto()
+    CHAT_COMPLETION = "CHAT_COMPLETION"
+    LIST_MODELS = "LIST_MODELS"
+    CANCEL_CHAT_COMPLETION = "CANCEL_CHAT_COMPLETION"
 
 
 @dataclass
@@ -31,10 +31,10 @@ class ProxyRequestData:
     """Data required for proxy request."""
 
     method: str
-    headers: Dict[str, str]
-    query_params: Dict[str, str]
-    body: Optional[ChatRequest] = None
-    completion_id: Optional[str] = None
+    headers: dict[str, str]
+    query_params: dict[str, str]
+    body: ChatRequest | None = None
+    completion_id: str | None = None
 
 
 class ProxyService:
@@ -60,16 +60,26 @@ class ProxyService:
 
     # Mapping of endpoints to their paths
     _ENDPOINT_PATHS = {
-        ProxyEndpoint.CHAT_COMPLETION: "chat/completions",
         ProxyEndpoint.LIST_MODELS: "models",
+        ProxyEndpoint.CHAT_COMPLETION: "chat/completions",
         ProxyEndpoint.CANCEL_CHAT_COMPLETION: "chat/completions/{completion_id}",
     }
+    _DEFAULT_RETRY_DELAY: float = 1.0  # seconds
+    _DEFAULT_MAX_RETRIES: int = 2
 
     def __init__(self, settings: AppSettings):
         self._settings = settings
-        self._client = None
-        self._provider_service = ProviderService(settings)
-        self.route: ProxyRoute | None = None
+        self._http_client = httpx.AsyncClient(
+            transport=httpx.AsyncHTTPTransport(retries=self._DEFAULT_MAX_RETRIES),
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                # TODO: provide correct auth headers for each provider inside!
+                # "Authorization": f"{self._provider.auth_type} {self._provider.api_key}",
+            },
+        )
+        self._provider_service = ProviderService(settings, self._http_client)
+        self._route: ProxyRoute | None = None
 
     async def handle_request(
         self,
@@ -81,14 +91,31 @@ class ProxyService:
 
         Args:
             request_data: Encapsulated request data including method, headers, params and body
-            endpoint: Which endpoint to proxy to (chat, models, etc)
+            endpoint: Which endpoint to proxy to (chat, models, etc.)
 
         Returns:
             Response from the provider, may be streaming or regular response
 
         Raises:
-            HTTPException: If provider is not found or request fails
+            HTTPException: If provider is not found or the request fails
         """
+
+        try:
+            response = await self._do_handle(request_data, endpoint)
+        except ProviderError as exc:
+            logger.error("Provider proxy: unable to handle request: %r", exc)
+            raise HTTPException(
+                status_code=400,
+                detail="Unable to handle request",
+            )
+
+        return response
+
+    async def _do_handle(
+        self,
+        request_data: ProxyRequestData,
+        endpoint: ProxyEndpoint,
+    ) -> Response | StreamingResponse:
         match endpoint:
             case ProxyEndpoint.CHAT_COMPLETION:
                 if not request_data.body:
@@ -121,7 +148,7 @@ class ProxyService:
 
         elif endpoint == ProxyEndpoint.LIST_MODELS:
             # Return aggregated list of models from all providers
-            models = await self._provider_service.available_models
+            models = await self._provider_service.get_list_models()
             return Response(
                 content=json.dumps(
                     {
@@ -239,24 +266,24 @@ class ProxyService:
         """Find matching proxy route for given path."""
         for route in self._settings.proxy_routes:
             if path.startswith(route.source_path):
-                self.route = route
+                self._route = route
                 return
 
         raise HTTPException(status_code=404, detail="No matching proxy route found")
 
     def _build_target_url(self, path: str) -> str:
         """Build target URL for proxy request."""
-        return f"{self.route.target_url.rstrip('/')}/{path.lstrip('/')}"
+        return f"{self._route.target_url.rstrip('/')}/{path.lstrip('/')}"
 
-    def _prepare_headers(self, headers: Dict[str, str]) -> dict[str, str]:
+    def _prepare_headers(self, headers: dict[str, str]) -> dict[str, str]:
         """Prepare headers for proxy request with auth if configured."""
         clean_headers = {
             k: v for k, v in headers.items() if k.lower() not in ("host", "connection")
         }
 
-        if self.route.auth_token:
+        if self._route.auth_token:
             clean_headers["Authorization"] = (
-                f"{self.route.auth_type} {self.route.auth_token.get_secret_value()}"
+                f"{self._route.auth_type} {self._route.auth_token.get_secret_value()}"
             )
 
         return clean_headers
@@ -276,7 +303,7 @@ class ProxyService:
     @asynccontextmanager
     async def _get_client(self, is_streaming: bool):
         """Context manager for httpx client with proper timeout configuration."""
-        timeout = httpx.Timeout(None) if is_streaming else httpx.Timeout(self.route.timeout)
+        timeout = httpx.Timeout(None) if is_streaming else httpx.Timeout(self._route.timeout)
         start_time = time.monotonic()
 
         async with httpx.AsyncClient(follow_redirects=True, timeout=timeout) as client:
@@ -284,7 +311,7 @@ class ProxyService:
             logger.info(
                 "Created httpx client [streaming=%s, timeout=%s]",
                 is_streaming,
-                "infinite" if is_streaming else self.route.timeout,
+                "infinite" if is_streaming else self._route.timeout,
             )
 
             try:
