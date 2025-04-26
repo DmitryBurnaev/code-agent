@@ -1,5 +1,5 @@
 import logging
-from functools import lru_cache
+from functools import lru_cache, cached_property
 from enum import StrEnum
 from typing import Annotated, Any, Optional, List
 
@@ -47,6 +47,10 @@ class LLMProvider(BaseModel):
         """Get base URL for provider."""
         return PROVIDER_URLS[self.vendor]
 
+    @property
+    def auth_headers(self) -> dict[str, str]:
+        return {"Authorization": f"{self.auth_type} {self.api_key.get_secret_value()}"}
+
     def __repr__(self) -> str:
         return f"LLMProvider(vendor={self.vendor}, api_key={self.api_key})"
 
@@ -89,6 +93,7 @@ class AppSettings(BaseSettings):
     log_level: LogLevelString = "INFO"
     proxy_routes: List[ProxyRoute]
     models_cache_ttl: float = 300.0  # Cache TTL in seconds, default 5 minutes
+    http_proxy_url: str | None = Field(None, description="Socks5 URL to use")
 
     @property
     def proxy_routes(self) -> list[ProxyRoute]:
@@ -102,6 +107,10 @@ class AppSettings(BaseSettings):
         (just mapping: provider-name -> ProxyRoute())
         """
         return {provider.name: ProxyRoute.from_provider(provider) for provider in self.providers}
+
+    @cached_property
+    def provider_by_vendor(self) -> dict[str, LLMProvider]:
+        return {provider.vendor: provider for provider in self.providers}
 
     # @property
     @property

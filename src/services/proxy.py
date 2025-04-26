@@ -1,7 +1,7 @@
-import json
 import time
 import logging
-from enum import Enum, auto
+import urllib.parse
+from enum import Enum
 from dataclasses import dataclass
 from typing import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -12,8 +12,9 @@ from fastapi.responses import Response, StreamingResponse
 
 from src.exceptions import ProviderProxyError, ProviderError
 from src.models import ChatRequest
-from src.settings import ProxyRoute, AppSettings
-from src.services.providers import ProviderService
+from src.services.http import AIProviderHTTPClient
+from src.settings import AppSettings, LLMProvider
+from src.services.providers import ProviderService, AIModel
 
 logger = logging.getLogger(__name__)
 
@@ -64,28 +65,17 @@ class ProxyService:
         ProxyEndpoint.CHAT_COMPLETION: "chat/completions",
         ProxyEndpoint.CANCEL_CHAT_COMPLETION: "chat/completions/{completion_id}",
     }
-    _DEFAULT_RETRY_DELAY: float = 1.0  # seconds
-    _DEFAULT_MAX_RETRIES: int = 2
 
     def __init__(self, settings: AppSettings):
         self._settings = settings
-        self._http_client = httpx.AsyncClient(
-            transport=httpx.AsyncHTTPTransport(retries=self._DEFAULT_MAX_RETRIES),
-            headers={
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                # TODO: provide correct auth headers for each provider inside!
-                # "Authorization": f"{self._provider.auth_type} {self._provider.api_key}",
-            },
-        )
+        self._http_client = AIProviderHTTPClient(settings)
         self._provider_service = ProviderService(settings, self._http_client)
-        self._route: ProxyRoute | None = None
 
     async def handle_request(
         self,
         request_data: ProxyRequestData,
         endpoint: ProxyEndpoint,
-    ) -> Response | StreamingResponse:
+    ) -> Response | StreamingResponse | list[AIModel]:
         """
         Handle an incoming proxy request by forwarding it to the appropriate provider.
 
@@ -115,67 +105,31 @@ class ProxyService:
         self,
         request_data: ProxyRequestData,
         endpoint: ProxyEndpoint,
-    ) -> Response | StreamingResponse:
+    ) -> Response | StreamingResponse | list[AIModel]:
+        if not request_data.body:
+            raise ProviderProxyError(f"Request body is required for {endpoint}")
+
         match endpoint:
             case ProxyEndpoint.CHAT_COMPLETION:
-                if not request_data.body:
-                    raise ProviderProxyError("Request body is required for chat completion")
-
-                provider, actual_model = self._extract_provider_from_model(request_data.body.model)
+                logger.info("ProxyService: Chat completion requested | %s", request_data.body.model)
+                provider, actual_model = self._extract_provider_requested(request_data.body.model)
                 request_data.body.model = actual_model
 
+            case ProxyEndpoint.CANCEL_CHAT_COMPLETION:
+                logger.info("ProxyService: Chat canceling requested | %s", request_data.body.model)
+                provider, _ = self._extract_provider_requested(request_data.body.model)
+
             case ProxyEndpoint.LIST_MODELS:
-                provider, actual_model = self._extract_provider_from_model(request_data.body.model)
+                logger.info("ProxyService: List models requested | %s", request_data.body.model)
+                provider, _ = self._extract_provider_requested(request_data.body.model)
+                return await self._provider_service.get_list_models()
 
-        # For chat requests, we need to extract provider and update model name
-        if endpoint == ProxyEndpoint.CHAT_COMPLETION:
-            if not request_data.body:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Request body is required for chat completion",
-                )
+            case _:
+                raise ProviderProxyError(f"Unknown endpoint {endpoint}")
 
-            provider, actual_model = self._extract_provider_from_model(request_data.body.model)
-            request_data.body.model = actual_model
-
-        elif endpoint == ProxyEndpoint.CANCEL_CHAT_COMPLETION:
-            if not request_data.body:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Request body is required for cancellation",
-                )
-            provider, _ = self._extract_provider_from_model(request_data.body.model)
-
-        elif endpoint == ProxyEndpoint.LIST_MODELS:
-            # Return aggregated list of models from all providers
-            models = await self._provider_service.get_list_models()
-            return Response(
-                content=json.dumps(
-                    {
-                        "data": [
-                            {
-                                "id": model.full_name,
-                                "name": model.name,
-                                "provider": model.provider,
-                            }
-                            for model in models
-                        ]
-                    }
-                ),
-                media_type="application/json",
-            )
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Unknown endpoint",
-            )
-
-        path = self._build_provider_path(provider, endpoint, request_data)
-        self._find_matching_route(path)
-        url = self._build_target_url(path)
-        headers = self._prepare_headers(request_data.headers)
-
-        # Prepare request body
+        # Prepare request data
+        url = self._build_target_url(provider, endpoint, request_data)
+        headers = self._prepare_headers(provider, request_data.headers)
         is_streaming = False
         body = None
 
@@ -186,7 +140,9 @@ class ProxyService:
                 **request_data.body.get_provider_params(),
             }
 
-        logger.info(f"Proxying {request_data.method} request to {url}")
+        logger.info("ProxyService: Sending proxy %s request to %s", request_data.method, url)
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("ProxyService: Requested body: '%s'", request_data.body)
 
         async with self._get_client(is_streaming) as client:
             try:
@@ -225,68 +181,51 @@ class ProxyService:
                 logger.error(f"Error during proxy request: {e}")
                 raise HTTPException(status_code=500, detail="Internal Server Error")
 
-    def _build_provider_path(
-        self, provider: str, endpoint: ProxyEndpoint, request_data: ProxyRequestData
+    def _build_target_url(
+        self,
+        provider: LLMProvider,
+        endpoint: ProxyEndpoint,
+        request_data: ProxyRequestData,
     ) -> str:
-        """Build provider-specific path for the endpoint."""
+        """Build a provider-specific path for the endpoint."""
         path = self._ENDPOINT_PATHS[endpoint]
 
         # Replace path parameters if needed
         if endpoint == ProxyEndpoint.CANCEL_CHAT_COMPLETION:
             if not request_data.completion_id:
-                raise HTTPException(
-                    status_code=400,
-                    detail="completion_id is required for cancellation",
-                )
+                raise ProviderProxyError("completion_id is required for cancellation")
+
             path = path.format(completion_id=request_data.completion_id)
 
-        return f"/proxy/{provider}/{path}"
+        return urllib.parse.urljoin(provider.base_url, path)
 
-    def _extract_provider_from_model(self, model: str) -> tuple[str, str]:
+    def _extract_provider_requested(self, model: str) -> tuple[LLMProvider, str]:
         """Extract provider and actual model name from the composite model identifier."""
         try:
             provider, model_name = model.split("__", 1)
-            provider = provider.lower()
+            llm_provider = self._settings.provider_by_vendor[provider.lower()]
+        except ValueError as exc:
+            raise ProviderProxyError(
+                "Invalid model format. Expected 'provider__model_name', " "e.g. 'openai__gpt-4'"
+            ) from exc
 
-            # Check if the provider is supported
-            self._provider_service.get_client(provider)
+        except KeyError as exc:
+            raise ProviderProxyError("Unable to extract provider from model name") from exc
 
-            return provider, model_name
-
-        except ValueError:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Invalid model format. Expected 'provider__model_name', "
-                    "e.g. 'openai__gpt-4' or 'anthropic__claude-3'"
-                ),
+        else:
+            logger.debug(
+                "ProxyService: detected provider %s | source model: %s", llm_provider, model
             )
 
-    def _find_matching_route(self, path: str) -> None:
-        """Find matching proxy route for given path."""
-        for route in self._settings.proxy_routes:
-            if path.startswith(route.source_path):
-                self._route = route
-                return
+        return llm_provider, model_name
 
-        raise HTTPException(status_code=404, detail="No matching proxy route found")
-
-    def _build_target_url(self, path: str) -> str:
-        """Build target URL for proxy request."""
-        return f"{self._route.target_url.rstrip('/')}/{path.lstrip('/')}"
-
-    def _prepare_headers(self, headers: dict[str, str]) -> dict[str, str]:
+    @staticmethod
+    def _prepare_headers(provider: LLMProvider, headers: dict[str, str]) -> dict[str, str]:
         """Prepare headers for proxy request with auth if configured."""
         clean_headers = {
             k: v for k, v in headers.items() if k.lower() not in ("host", "connection")
         }
-
-        if self._route.auth_token:
-            clean_headers["Authorization"] = (
-                f"{self._route.auth_type} {self._route.auth_token.get_secret_value()}"
-            )
-
-        return clean_headers
+        return clean_headers | provider.auth_headers
 
     async def _stream_response(self, response: httpx.Response) -> AsyncGenerator[bytes, None]:
         """Stream response chunks with proper error handling."""
@@ -323,3 +262,19 @@ class ProxyService:
                     duration,
                 )
                 self._client = None
+
+                # response = JSONResponse(
+                #     content=json.dumps(
+                #         {
+                #             "data": [
+                #                 {
+                #                     "id": model.full_name,
+                #                     "name": model.name,
+                #                     "provider": model.provider,
+                #                 }
+                #                 for model in models
+                #             ]
+                #         }
+                #     ),
+                #     media_type="application/json",
+                # )
