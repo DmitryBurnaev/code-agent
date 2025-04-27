@@ -4,7 +4,8 @@ from fastapi import APIRouter, Request, Response
 from fastapi.responses import StreamingResponse
 
 from src.dependencies import SettingsDep
-from src.models import ChatRequest
+from src.models import ChatRequest, AIModel
+from src.services.providers import ProviderService
 from src.services.proxy import ProxyRequestData, ProxyService, ProxyEndpoint
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,19 @@ router = APIRouter(
         500: {"description": "Error communicating with AI provider"},
     },
 )
+
+
+@router.get(
+    "/models",
+    description="List available models from all configured providers",
+)
+async def list_models(settings: SettingsDep) -> list[AIModel]:
+    """
+    Get a list of available models from all configured providers.
+    The response will be aggregated and models will be prefixed with provider names.
+    """
+    service = ProviderService(settings)
+    return await service.get_list_models()
 
 
 @router.post(
@@ -48,31 +62,8 @@ async def create_chat_completion(
         query_params=dict(request.query_params),
         body=chat_request,
     )
-
-    service = ProxyService(settings)
-    return await service.handle_request(request_data, ProxyEndpoint.CHAT_COMPLETION)
-
-
-@router.get(
-    "/models",
-    description="List available models from all configured providers",
-)
-async def list_models(
-    request: Request,
-    settings: SettingsDep,
-) -> Response:
-    """
-    Get a list of available models from all configured providers.
-    The response will be aggregated and models will be prefixed with provider names.
-    """
-    request_data = ProxyRequestData(
-        method=request.method,
-        headers=dict(request.headers),
-        query_params=dict(request.query_params),
-    )
-
-    service = ProxyService(settings)
-    return await service.handle_request(request_data, ProxyEndpoint.LIST_MODELS)
+    async with ProxyService(settings) as service:
+        return await service.handle_request(request_data, ProxyEndpoint.CHAT_COMPLETION)
 
 
 @router.delete(
@@ -97,6 +88,5 @@ async def cancel_chat_completion(
         body=chat_request,
         completion_id=completion_id,
     )
-
-    service = ProxyService(settings)
-    return await service.handle_request(request_data, ProxyEndpoint.CANCEL_CHAT_COMPLETION)
+    async with ProxyService(settings) as service:
+        return await service.handle_request(request_data, ProxyEndpoint.CANCEL_CHAT_COMPLETION)

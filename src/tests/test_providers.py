@@ -1,31 +1,19 @@
 import pytest
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 import time
 
-from src.services.providers import ProviderService, AIModel
+from src.services.providers import ProviderService
+from src.models import AIModel
+from src.settings import AppSettings
 from src.utils import Cache
-from src.settings import Settings, ProxyRoute
+
+# from src.settings import Settings, ProxyRoute
 
 
 @pytest.fixture
-def settings():
+def settings() -> AppSettings:
     """Create test settings with two providers."""
-    return Settings(
-        auth_api_token="test_token",
-        providers=[],
-        proxy_routes=[
-            ProxyRoute(
-                source_path="/proxy/openai",
-                target_url="http://test.openai",
-                auth_token="test",
-            ),
-            ProxyRoute(
-                source_path="/proxy/anthropic",
-                target_url="http://test.anthropic",
-                auth_token="test",
-            ),
-        ],
-    )
+    return AppSettings(auth_api_token="test_token", providers=[])
 
 
 class TestCache:

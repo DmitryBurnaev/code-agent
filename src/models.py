@@ -1,6 +1,17 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Any
+from pydantic import BaseModel, Field, ConfigDict, SecretStr
+
+from src.constants import Provider, DEFAULT_PROVIDER_TIMEOUT, PROVIDER_URLS
+
+__all__ = (
+    "SystemInfo",
+    "HealthCheck",
+    "Message",
+    "ChatRequest",
+    "LLMProvider",
+    "AIModel",
+)
 
 
 class SystemInfo(BaseModel):
@@ -62,7 +73,7 @@ class ChatRequest(BaseModel):
         description="Whether to stream the response",
     )
 
-    def get_provider_params(self) -> Dict[str, Any]:
+    def get_provider_params(self) -> dict[str, Any]:
         """
         Get provider-specific parameters that were passed in the request.
         Excludes the required fields.
@@ -70,3 +81,46 @@ class ChatRequest(BaseModel):
         required_fields = {"messages", "model", "stream"}
 
         return {k: v for k, v in self.model_dump().items() if k not in required_fields}
+
+
+class LLMProvider(BaseModel):
+    """Provider configuration with API key."""
+
+    vendor: Provider
+    api_key: SecretStr
+    auth_type: str = "Bearer"
+    timeout: int = DEFAULT_PROVIDER_TIMEOUT
+
+    @property
+    def base_url(self) -> str:
+        """Get base URL for provider."""
+        return PROVIDER_URLS[self.vendor]
+
+    @property
+    def auth_headers(self) -> dict[str, str]:
+        return {"Authorization": f"{self.auth_type} {self.api_key.get_secret_value()}"}
+
+    def __repr__(self) -> str:
+        return f"LLMProvider(vendor={self.vendor}, api_key={self.api_key})"
+
+    def __str__(self) -> str:
+        return f"Provider {self.vendor}"
+
+
+class AIModel(BaseModel):
+    """Represents an AI model with provider-specific details."""
+
+    id: str
+    name: str
+    type: str
+    vendor: str
+
+    @property
+    def is_chat_model(self) -> bool:
+        if self.type == "chat":  # Anthropic-style
+            return True
+
+        if self.id.startswith(("gpt-", "text-")):  # OpenAI-style
+            return True
+
+        return False

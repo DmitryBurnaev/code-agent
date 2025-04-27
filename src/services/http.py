@@ -1,6 +1,7 @@
 import httpx
 
-from src.settings import LLMProvider, AppSettings
+from src.settings import AppSettings
+from src.models import LLMProvider
 
 
 class AIProviderHTTPClient(httpx.AsyncClient):

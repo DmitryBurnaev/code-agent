@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 import httpx
 from pydantic import BaseModel
 
-from src.exceptions import ProviderLookupError
-from src.settings import ProxyRoute, LLMProvider
+from src.services.http import AIProviderHTTPClient
+from src.models import LLMProvider, AIModel
 from src.utils import Cache
 
 if TYPE_CHECKING:
@@ -16,26 +16,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class AIModel(BaseModel):
-    """Represents an AI model with provider-specific details."""
-
-    id: str
-    name: str
-    type: str
-    vendor: str
-
-    @property
-    def is_chat_model(self) -> bool:
-        if self.type == "chat":  # Anthropic-style
-            return True
-
-        if self.id.startswith(("gpt-", "text-")):  # OpenAI-style
-            return True
-
-        return False
-
-
-class ResponseModel(BaseModel):
+class ProviderAIModelsResponse(BaseModel):
     """Represents an AI model with provider-specific details."""
 
     models: list[AIModel]
@@ -64,7 +45,7 @@ class ProviderClient:
                     logger.warning("%s | No models data in provider response.", self._provider)
                     return []
 
-                models_data = ResponseModel.model_validate(
+                models_data = ProviderAIModelsResponse.model_validate(
                     response_data, context={"vendor": self._provider.vendor}
                 )
                 return [ai_model for ai_model in models_data.models if ai_model.is_chat_model]
@@ -100,7 +81,9 @@ class ProviderClient:
 class ProviderService:
     """Service for managing AI providers and their configurations."""
 
-    def __init__(self, settings: "AppSettings", http_client: httpx.AsyncClient) -> None:
+    def __init__(
+        self, settings: "AppSettings", http_client: httpx.AsyncClient | None = None
+    ) -> None:
         """Initialize the service with settings.
 
         Args:
@@ -109,26 +92,14 @@ class ProviderService:
         self._settings = settings
         self._models_cache = Cache[list[AIModel]](ttl=settings.models_cache_ttl)
         self._provider_clients: dict[LLMProvider, ProviderClient] = {}
-        self._http_client = http_client
+        self._http_client = http_client or AIProviderHTTPClient(settings)
 
     def get_client(self, provider: LLMProvider) -> ProviderClient:
         """Get or create a client for the specified provider."""
         if provider not in self._provider_clients:
-            route = self._find_provider_route(provider)
-            if not route:
-                raise ProviderLookupError(f"Provider {provider} is not configured.")
-
             self._provider_clients[provider] = ProviderClient(provider, self._http_client)
 
         return self._provider_clients[provider]
-
-    def _find_provider_route(self, provider: LLMProvider) -> ProxyRoute | None:
-        """Find a proxy route for the provider."""
-        provider_path = f"/proxy/{provider}"
-        for route in self._settings.proxy_routes:
-            if route.source_path.startswith(provider_path):
-                return route
-        return None
 
     async def get_list_models(self, force_refresh: bool = False) -> list[AIModel]:
         """Get a list of available models from all configured providers.

@@ -8,7 +8,9 @@ from pydantic import SecretStr
 
 from src.dependencies.settings import get_app_settings
 from src.main import make_app
-from src.settings import AppSettings, LLMProvider, Provider, PROVIDER_URLS
+from src.settings import AppSettings
+from src.models import LLMProvider
+from src.constants import Provider, PROVIDER_URLS
 
 
 @pytest.fixture
