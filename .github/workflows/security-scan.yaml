@@ -1,0 +1,42 @@
+name: Security Scan
+
+on:
+  push:
+    branches:
+      - 'main'
+  schedule:
+    - cron: '0 0 * * 1'  # Every Monday at 00:00
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare .env file
+        env:
+          PWD: $(PWD)
+        run: |
+          cp .env.template .env
+          env >> .env
+
+      - name: Build image
+        run: docker compose build api
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'image'
+          image-ref: 'code-agent:latest'
+          format: 'json'
+          output: 'trivy-results.json'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-scan-results
+          path: trivy-results.json
+          retention-days: 30 
