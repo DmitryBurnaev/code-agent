@@ -23,4 +23,24 @@ services:
     environment:
       - APP_SERVICE=test
     volumes:
-      - ${PWD}/.data:/app/.data
+      - ${PWD}/.local:/app/.local
+
+  lint:
+    image:
+      code-agent:test
+    build:
+      context: .
+      args:
+        DEV_DEPS: "true"
+    env_file:
+      - .env
+    environment:
+      - APP_SERVICE=lint
+    volumes:
+      - ${PWD}/src:/src/src
+      - ${PWD}/.local:/app/.local
+    command: >
+      sh -c "black --check src/ &&
+             isort --check-only src/ &&
+             mypy src/ &&
+             ruff check src/"

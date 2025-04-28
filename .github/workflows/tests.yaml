@@ -5,6 +5,7 @@ on:
       - 'main'
   push:
     branches:
+      - 'main'
       - 'feature/2-implement-ci-cd-process'
 
 jobs:
@@ -20,8 +21,19 @@ jobs:
           cp .env.template .env
           env >> .env
 
-      - name: Build image
-        run: docker compose build test
+      - name: Build images
+        run: |
+          docker compose build test
+          docker compose build lint
 
       - name: Run tests
         run: docker compose up --exit-code-from test test
+
+      - name: Run linters
+        run: docker compose up --exit-code-from lint lint
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./.local/coverage.xml
+          fail_ci_if_error: true
