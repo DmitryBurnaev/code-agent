@@ -1,4 +1,5 @@
 import logging
+from typing import Union
 
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import StreamingResponse
@@ -24,6 +25,7 @@ router = APIRouter(
 @router.get(
     "/models",
     description="List available models from all configured providers",
+    response_model=list[AIModel],
 )
 async def list_models(settings: SettingsDep) -> list[AIModel]:
     """
@@ -36,14 +38,13 @@ async def list_models(settings: SettingsDep) -> list[AIModel]:
 
 @router.post(
     "/chat/completions",
-    response_class=StreamingResponse,
     description="Send a chat completion request to the AI provider specified by model name",
 )
 async def create_chat_completion(
     request: Request,
     chat_request: ChatRequest,
     settings: SettingsDep,
-) -> Response | StreamingResponse:
+) -> StreamingResponse:
     """
     Create a chat completion using the provider specified in the model name.
 
@@ -63,12 +64,22 @@ async def create_chat_completion(
         body=chat_request,
     )
     async with ProxyService(settings) as service:
-        return await service.handle_request(request_data, ProxyEndpoint.CHAT_COMPLETION)
+        response = await service.handle_request(request_data, ProxyEndpoint.CHAT_COMPLETION)
+        # Ensure we return StreamingResponse
+        if isinstance(response, StreamingResponse):
+            return response
+        # Convert regular response to streaming if needed
+        return StreamingResponse(
+            content=iter([response.body]),
+            status_code=response.status_code,
+            headers=dict(response.headers),
+        )
 
 
 @router.delete(
     "/chat/completions/{completion_id}",
     description="Cancel an ongoing chat completion request",
+    response_class=Response,
 )
 async def cancel_chat_completion(
     request: Request,
