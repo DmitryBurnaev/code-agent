@@ -1,3 +1,4 @@
+"""HTTP client for AI providers."""
 import httpx
 
 from src.settings import AppSettings
@@ -14,7 +15,7 @@ class AIProviderHTTPClient(httpx.AsyncClient):
         retries: int = _DEFAULT_MAX_RETRIES,
     ) -> None:
         transport = httpx.AsyncHTTPTransport(retries=retries)
-        proxy = httpx.Proxy(url=settings.http_proxy_url) if settings.http_proxy_url else None
+        proxy = settings.http_proxy_url
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
@@ -27,3 +28,13 @@ class AIProviderHTTPClient(httpx.AsyncClient):
             proxy=proxy,
             headers=headers,
         )
+
+    @property
+    def transport(self) -> httpx.AsyncHTTPTransport:
+        """Return the transport instance."""
+        return self._transport  # type: ignore
+
+    @property
+    def proxies(self) -> dict[str, str] | None:
+        """Return the proxies configuration."""
+        return self._proxies  # type: ignore
