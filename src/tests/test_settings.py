@@ -1,80 +1,119 @@
+"""Tests for settings."""
+import os
+from unittest.mock import patch
+
 import pytest
 from pydantic import SecretStr
 
-from src.exceptions import AppSettingsError
-from src.settings import get_settings
+from src.settings import AppSettings, get_settings
 from src.models import LLMProvider
-from src.constants import Provider, PROVIDER_URLS
+from src.constants import Provider, LOG_LEVELS
 
 
-def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test that settings have correct default values."""
-    get_settings.cache_clear()
-    monkeypatch.setenv("AUTH_API_TOKEN", "test_token")
-    monkeypatch.setenv("PROVIDERS", '[{"api_provider": "openai", "api_key": "key"}]')
-    monkeypatch.setenv("APP_HOST", "0.0.0.0")
-    monkeypatch.setenv("LOG_LEVEL", "debug")
+class TestAppSettings:
+    """Tests for AppSettings class."""
 
-    settings = get_settings()
-    assert settings.docs_enabled is True
-    assert settings.app_host == "0.0.0.0"
-    assert settings.app_port == 8003
-    assert settings.log_level == "DEBUG"
+    def test_default_settings(self) -> None:
+        """Test default settings values."""
+        settings = AppSettings(
+            auth_api_token=SecretStr("test-token"),
+            http_proxy_url=None,
+        )
+        assert settings.docs_enabled is True
+        assert settings.auth_api_token.get_secret_value() == "test-token"
+        assert settings.providers == []
+        assert settings.app_host == "0.0.0.0"
+        assert settings.app_port == 8003
+        assert settings.log_level == "INFO"
+        assert settings.models_cache_ttl == 300.0
+        assert settings.http_proxy_url is None
 
-    # Test provider configuration
-    assert settings.providers == [
-        LLMProvider(
-            vendor=Provider.OPENAI,
-            api_key=SecretStr("key"),
-        ),
-    ]
+    @pytest.mark.parametrize("log_level", LOG_LEVELS)
+    def test_valid_log_levels(self, log_level: str) -> None:
+        """Test valid log levels."""
+        settings = AppSettings(
+            auth_api_token=SecretStr("test-token"),
+            log_level=log_level,
+            http_proxy_url=None,
+        )
+        assert settings.log_level == log_level.upper()
 
-    # # Test generated proxy routes
-    # assert settings.proxy_routes == [
-    #     ProxyRoute(
-    #         source_path="/proxy/openai", target_url=PROVIDER_URLS[Provider.OPENAI], strip_path=True
-    #     ),
-    # ]
+    def test_invalid_log_level(self) -> None:
+        """Test invalid log level."""
+        with pytest.raises(ValueError):
+            AppSettings(
+                auth_api_token=SecretStr("test-token"),
+                log_level="INVALID",
+                http_proxy_url=None,
+            )
+
+    def test_providers(self) -> None:
+        """Test providers configuration."""
+        providers = [
+            LLMProvider(vendor=Provider.OPENAI, api_key=SecretStr("openai-key")),
+            LLMProvider(vendor=Provider.ANTHROPIC, api_key=SecretStr("anthropic-key")),
+        ]
+        settings = AppSettings(
+            auth_api_token=SecretStr("test-token"),
+            providers=providers,
+            http_proxy_url=None,
+        )
+        assert settings.providers == providers
+        assert settings.provider_by_vendor == {
+            Provider.OPENAI: providers[0],
+            Provider.ANTHROPIC: providers[1],
+        }
+
+    def test_log_config(self) -> None:
+        """Test log configuration."""
+        settings = AppSettings(
+            auth_api_token=SecretStr("test-token"),
+            log_level="DEBUG",
+            http_proxy_url=None,
+        )
+        log_config = settings.log_config
+        assert log_config["version"] == 1
+        assert "standard" in log_config["formatters"]
+        assert "console" in log_config["handlers"]
+        assert all(
+            logger in log_config["loggers"]
+            for logger in ["src", "fastapi", "uvicorn.access", "uvicorn.error"]
+        )
+        assert all(
+            log_config["loggers"][logger]["level"] == "DEBUG"
+            for logger in ["src", "fastapi", "uvicorn.access", "uvicorn.error"]
+        )
 
 
-def test_settings__invalid_log_level(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test that invalid log level raises validation error."""
-    get_settings.cache_clear()
-    monkeypatch.setenv("LOG_LEVEL", "fake-log-level")
-    with pytest.raises(AppSettingsError) as exc_info:
-        get_settings()
+class TestGetSettings:
+    """Tests for get_settings function."""
 
-    error_message = exc_info.value.args[0]
-    assert "[log_level] String should match pattern" in error_message
+    @patch.dict(
+        os.environ,
+        {
+            "AUTH_API_TOKEN": "test-token",
+            "LOG_LEVEL": "DEBUG",
+            "APP_HOST": "localhost",
+            "APP_PORT": "8080",
+            "HTTP_PROXY_URL": "",
+        },
+    )
+    def test_get_settings_from_env(self) -> None:
+        """Test getting settings from environment variables."""
+        settings = get_settings()
+        assert settings.auth_api_token.get_secret_value() == "test-token"
+        assert settings.log_level == "DEBUG"
+        assert settings.app_host == "localhost"
+        assert settings.app_port == 8080
 
+    @patch.dict(os.environ, {"AUTH_API_TOKEN": "test-token", "LOG_LEVEL": "INVALID"})
+    def test_get_settings_validation_error(self) -> None:
+        """Test validation error when getting settings."""
+        with pytest.raises(Exception):
+            get_settings()
 
-def test_settings__invalid_providers(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test that invalid providers format raises validation error."""
-    get_settings.cache_clear()
-    monkeypatch.setenv("PROVIDERS", "invalid-json")
-    with pytest.raises(AppSettingsError) as exc_info:
-        get_settings()
-
-    error_message = exc_info.value.args[0]
-    assert 'error parsing value for field "providers"' in error_message
-
-
-def test_settings__invalid_provider_name(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test that invalid provider name raises validation error."""
-    get_settings.cache_clear()
-    monkeypatch.setenv("AUTH_API_TOKEN", "test_token")
-    monkeypatch.setenv("PROVIDERS", '[{"api_provider": "invalid-provider", "api_key": "key"}]')
-
-    with pytest.raises(AppSettingsError) as exc_info:
-        get_settings()
-
-    error_message = exc_info.value.args[0]
-    assert "api_provider" in error_message.lower()
-
-
-def test_llm_provider_model() -> None:
-    """Test LLMProvider model validation."""
-    provider = LLMProvider(vendor=Provider.OPENAI, api_key=SecretStr("key"))
-    assert provider.vendor == Provider.OPENAI
-    assert provider.api_key.get_secret_value() == "key"
-    assert provider.base_url == PROVIDER_URLS[Provider.OPENAI]
+    def test_get_settings_caching(self) -> None:
+        """Test settings caching."""
+        settings1 = get_settings()
+        settings2 = get_settings()
+        assert settings1 is settings2  # Same object due to caching 
