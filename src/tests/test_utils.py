@@ -1,4 +1,5 @@
 """Tests for utils."""
+
 import time
 from typing import TypeVar
 
@@ -69,4 +70,4 @@ class TestCache:
         # Test with list
         list_cache = Cache[list[str]](ttl=0.1)
         list_cache.set("test", ["value1", "value2"])
-        assert list_cache.get("test") == ["value1", "value2"] 
+        assert list_cache.get("test") == ["value1", "value2"]

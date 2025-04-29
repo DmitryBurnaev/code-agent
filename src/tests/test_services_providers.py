@@ -1,6 +1,7 @@
 """Tests for provider service."""
+
 import pytest
-from unittest.mock import Mock, AsyncMock, PropertyMock
+from unittest.mock import Mock, AsyncMock
 import httpx
 
 from src.services.providers import ProviderService, ProviderClient
@@ -65,10 +66,10 @@ class TestProviderService:
             AIModel(id="gpt-4", name="GPT-4", type="chat", vendor="openai"),
             AIModel(id="claude-3", name="Claude 3", type="chat", vendor="anthropic"),
         ]
-        
+
         # Set cache for first provider
         service._models_cache.set(mock_settings.providers[0].vendor, [mock_models[0]])
-        
+
         # Mock response for second provider
         mock_response = Mock(spec=httpx.Response)
         mock_response.status_code = 200
@@ -81,7 +82,7 @@ class TestProviderService:
 
         # Get models
         models = await service.get_list_models()
-        
+
         # Verify results
         assert len(models) == 2
         assert any(m.id == "gpt-4" for m in models)
@@ -97,7 +98,7 @@ class TestProviderService:
             AIModel(id="gpt-4", name="GPT-4", type="chat", vendor="openai"),
             AIModel(id="claude-3", name="Claude 3", type="chat", vendor="anthropic"),
         ]
-        
+
         # Set cache for both providers
         for provider, model in zip(mock_settings.providers, mock_models):
             service._models_cache.set(provider.vendor, [model])
@@ -114,7 +115,7 @@ class TestProviderService:
 
         # Get models with force refresh
         models = await service.get_list_models(force_refresh=True)
-        
+
         # Verify results
         assert len(models) == 4  # 2 from each provider
         assert len([m for m in models if m.id == "gpt-4"]) == 2
@@ -130,7 +131,7 @@ class TestProviderService:
 
         # Get models (should not raise exception)
         models = await service.get_list_models(force_refresh=True)
-        
+
         # Verify empty result
         assert len(models) == 0
 
@@ -144,7 +145,7 @@ class TestProviderService:
             AIModel(id="gpt-4", name="GPT-4", type="chat", vendor="openai"),
             AIModel(id="claude-3", name="Claude 3", type="chat", vendor="anthropic"),
         ]
-        
+
         # Set cache for both providers
         for provider, model in zip(mock_settings.providers, mock_models):
             service._models_cache.set(provider.vendor, [model])
@@ -172,4 +173,4 @@ class TestProviderService:
         await service.close()
 
         # Verify all clients were closed
-        assert mock_http_client.aclose.called 
+        assert mock_http_client.aclose.called

@@ -1,4 +1,5 @@
 """Tests for settings."""
+
 import os
 from unittest.mock import patch
 
@@ -28,7 +29,7 @@ class TestAppSettings:
         assert settings.models_cache_ttl == 300.0
         assert settings.http_proxy_url is None
 
-    @pytest.mark.parametrize("log_level", LOG_LEVELS)
+    @pytest.mark.parametrize("log_level", LOG_LEVELS.split("|"))
     def test_valid_log_levels(self, log_level: str) -> None:
         """Test valid log levels."""
         settings = AppSettings(
@@ -100,6 +101,7 @@ class TestGetSettings:
     )
     def test_get_settings_from_env(self) -> None:
         """Test getting settings from environment variables."""
+        get_settings.cache_clear()
         settings = get_settings()
         assert settings.auth_api_token.get_secret_value() == "test-token"
         assert settings.log_level == "DEBUG"
@@ -109,11 +111,14 @@ class TestGetSettings:
     @patch.dict(os.environ, {"AUTH_API_TOKEN": "test-token", "LOG_LEVEL": "INVALID"})
     def test_get_settings_validation_error(self) -> None:
         """Test validation error when getting settings."""
+        get_settings.cache_clear()
         with pytest.raises(Exception):
             get_settings()
 
+    @patch.dict(os.environ, {"AUTH_API_TOKEN": "test-token"})
     def test_get_settings_caching(self) -> None:
         """Test settings caching."""
+        get_settings.cache_clear()
         settings1 = get_settings()
         settings2 = get_settings()
-        assert settings1 is settings2  # Same object due to caching 
+        assert settings1 is settings2  # Same object due to caching

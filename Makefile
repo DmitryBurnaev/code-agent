@@ -22,10 +22,10 @@ install: ## Install dependencies
 	uv venv
 	uv sync
 
-.PHONY: upgrade
-upgrade: ## Update dependencies
+.PHONY: deps
+deps: ## Update dependencies
 	@echo Updating dependencies...
-	uv lock
+	uv lock --upgrade
 	uv sync --reinstall
 
 .PHONY: run

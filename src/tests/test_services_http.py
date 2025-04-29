@@ -1,6 +1,6 @@
 """Tests for HTTP client."""
+
 import pytest
-from unittest.mock import Mock
 
 from src.services.http import AIProviderHTTPClient
 from src.settings import AppSettings
@@ -31,7 +31,9 @@ class TestAIProviderHTTPClient:
         )
 
     @pytest.mark.anyio
-    async def test_init_without_provider(self, mock_settings: AppSettings, override_get_settings: None) -> None:
+    async def test_init_without_provider(
+        self, mock_settings: AppSettings, override_get_settings: None
+    ) -> None:
         """Test client initialization without provider."""
         client = AIProviderHTTPClient(mock_settings)
         try:
@@ -60,7 +62,9 @@ class TestAIProviderHTTPClient:
             await client.aclose()
 
     @pytest.mark.anyio
-    async def test_init_with_proxy(self, mock_settings: AppSettings, override_get_settings: None) -> None:
+    async def test_init_with_proxy(
+        self, mock_settings: AppSettings, override_get_settings: None
+    ) -> None:
         """Test client initialization with proxy."""
         mock_settings.http_proxy_url = "http://proxy.com"
         client = AIProviderHTTPClient(mock_settings)
@@ -71,11 +75,13 @@ class TestAIProviderHTTPClient:
             await client.aclose()
 
     @pytest.mark.anyio
-    async def test_init_with_custom_retries(self, mock_settings: AppSettings, override_get_settings: None) -> None:
+    async def test_init_with_custom_retries(
+        self, mock_settings: AppSettings, override_get_settings: None
+    ) -> None:
         """Test client initialization with custom retries."""
         client = AIProviderHTTPClient(mock_settings, retries=5)
         try:
             # Just check that the client can be created with custom retries
             assert client is not None
         finally:
-            await client.aclose() 
+            await client.aclose()

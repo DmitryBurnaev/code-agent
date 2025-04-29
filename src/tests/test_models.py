@@ -1,4 +1,5 @@
 """Tests for models."""
+
 import pytest
 from datetime import datetime
 from pydantic import SecretStr
@@ -101,15 +102,16 @@ class TestAIModel:
     """Tests for AIModel model."""
 
     @pytest.mark.parametrize(
-        "model_id,expected",
+        "model_id,model_type,expected",
         [
-            ("gpt-4", True),
-            ("text-davinci-003", True),
-            ("claude-2", True),
-            ("other-model", False),
+            ("gpt-4", "chat", True),
+            ("text-davinci-003", "chat", True),
+            ("claude-2", "chat", True),
+            ("other-model", "chat", True),
+            ("other-model", "other", False),
         ],
     )
-    def test_is_chat_model(self, model_id: str, expected: bool) -> None:
+    def test_is_chat_model(self, model_id: str, model_type: str, expected: bool) -> None:
         """Test AIModel is_chat_model property."""
-        model = AIModel(id=model_id, name="Test Model", type="chat", vendor="test")
-        assert model.is_chat_model == expected 
+        model = AIModel(id=model_id, name="Test Model", type=model_type, vendor="test")
+        assert model.is_chat_model == expected
