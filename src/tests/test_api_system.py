@@ -1,15 +1,15 @@
 """Tests for system API endpoints."""
+
 import platform
 from datetime import datetime
 from typing import AsyncGenerator
-from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 from pydantic import SecretStr
 
-from src.models import SystemInfo, HealthCheck, LLMProvider
+from src.models import LLMProvider
 from src.settings import AppSettings
 from src.constants import Provider
 from src.main import make_app
@@ -71,4 +71,4 @@ class TestSystemAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
-        assert isinstance(datetime.fromisoformat(data["timestamp"]), datetime) 
+        assert isinstance(datetime.fromisoformat(data["timestamp"]), datetime)

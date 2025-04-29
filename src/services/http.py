@@ -1,4 +1,5 @@
 """HTTP client for AI providers."""
+
 import httpx
 
 from src.settings import AppSettings

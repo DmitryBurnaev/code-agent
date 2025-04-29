@@ -1,5 +1,5 @@
 """Tests for proxy service."""
-import json
+
 from unittest.mock import Mock, AsyncMock
 
 import pytest
@@ -69,13 +69,16 @@ class TestProxyService:
 
     @pytest.mark.anyio
     async def test_handle_request_regular(
-        self, mock_settings: AppSettings, mock_request_data: ProxyRequestData, mock_http_client: AsyncMock
+        self,
+        mock_settings: AppSettings,
+        mock_request_data: ProxyRequestData,
+        mock_http_client: AsyncMock,
     ) -> None:
         """Test handling regular (non-streaming) request."""
         async with ProxyService(mock_settings) as service:
             # Replace service's HTTP client with our mock
             service._http_client = mock_http_client
-            
+
             # Mock response
             mock_response = AsyncMock(spec=httpx.Response)
             mock_response.status_code = 200
@@ -84,7 +87,9 @@ class TestProxyService:
             mock_http_client.send.return_value = mock_response
 
             # Handle request
-            response = await service.handle_request(mock_request_data, ProxyEndpoint.CHAT_COMPLETION)
+            response = await service.handle_request(
+                mock_request_data, ProxyEndpoint.CHAT_COMPLETION
+            )
 
             # Verify response
             assert isinstance(response, Response)
@@ -94,13 +99,16 @@ class TestProxyService:
 
     @pytest.mark.anyio
     async def test_handle_request_streaming(
-        self, mock_settings: AppSettings, mock_streaming_request_data: ProxyRequestData, mock_http_client: AsyncMock
+        self,
+        mock_settings: AppSettings,
+        mock_streaming_request_data: ProxyRequestData,
+        mock_http_client: AsyncMock,
     ) -> None:
         """Test handling streaming request."""
         async with ProxyService(mock_settings) as service:
             # Replace service's HTTP client with our mock
             service._http_client = mock_http_client
-            
+
             # Mock response
             mock_response = AsyncMock(spec=httpx.Response)
             mock_response.status_code = 200
@@ -162,13 +170,16 @@ class TestProxyService:
 
     @pytest.mark.anyio
     async def test_handle_request_cancellation(
-        self, mock_settings: AppSettings, mock_request_data: ProxyRequestData, mock_http_client: AsyncMock
+        self,
+        mock_settings: AppSettings,
+        mock_request_data: ProxyRequestData,
+        mock_http_client: AsyncMock,
     ) -> None:
         """Test handling cancellation request."""
         async with ProxyService(mock_settings) as service:
             # Replace service's HTTP client with our mock
             service._http_client = mock_http_client
-            
+
             # Add completion ID
             mock_request_data.completion_id = "test-completion"
 
@@ -199,4 +210,4 @@ class TestProxyService:
             with pytest.raises(ProviderProxyError, match="completion_id is required"):
                 await service.handle_request(
                     mock_request_data, ProxyEndpoint.CANCEL_CHAT_COMPLETION
-                ) 
+                )
