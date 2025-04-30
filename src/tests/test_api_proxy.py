@@ -1,11 +1,13 @@
 """Tests for proxy API endpoints."""
 
+import json
 from typing import Any, Generator
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
+from starlette.responses import Response
 
 from src.models import ChatRequest, Message, AIModel, LLMProvider
 from src.settings import AppSettings
@@ -33,7 +35,7 @@ def mock_proxy_service() -> Generator[AsyncMock, Any, None]:
     """Return mock proxy service."""
     service = AsyncMock(spec=ProxyService)
     service.handle_request.return_value = AsyncMock()
-    with patch("src.routers.proxy.ProxyService", return_value=service):
+    with patch("src.routers.proxy.ProxyService.__aenter__", return_value=service):
         yield service
 
 
@@ -48,15 +50,6 @@ def mock_settings() -> AppSettings:
         ],
         http_proxy_url=None,
     )
-
-
-#
-#
-# @pytest.fixture
-# def mocked_provider_service() -> Generator[Callable[[], AsyncMock], None, None]:
-#     with patch("src.routers.proxy.ProviderService", return_value=mock_provider_service):
-#         yield mock_provider_service
-#
 
 
 class TestProxyAPI:
@@ -83,17 +76,15 @@ class TestProxyAPI:
             messages=[Message(role="user", content="Ping")],
             model="openai__gpt-4",
         )
-        mock_proxy_service.handle_request.return_value = AsyncMock(
-            return_value=AsyncMock(
-                status_code=200,
-                headers={"content-type": "application/json"},
-                json=AsyncMock(
-                    return_value={
-                        "id": "test-completion-id",
-                        "choices": [{"message": {"content": "Pong"}}],
-                    }
-                ),
-            )
+        mocked_response = {
+            "id": "test-completion-id",
+            "choices": [{"message": {"content": "Pong"}}],
+        }
+        mock_proxy_service.handle_request.return_value = Response(
+            media_type="application/json",
+            content=json.dumps(mocked_response),
+            headers={"content-type": "application/json"},
+            status_code=200,
         )
         response = client.post(
             "/api/ai-proxy/chat/completions",
@@ -107,10 +98,20 @@ class TestProxyAPI:
         mock_proxy_service.handle_request.assert_awaited_once_with(
             ProxyRequestData(
                 method="POST",
-                headers={"Authorization": "Bearer test-token"},
-                query_params={"model": "openai__gpt-4"},
+                headers={
+                    "host": "testserver",
+                    "accept": "*/*",
+                    "accept-encoding": "gzip, deflate",
+                    "connection": "keep-alive",
+                    "authorization": "Bearer test-auth-token",
+                    "user-agent": "testclient",
+                    "content-length": "86",
+                    "content-type": "application/json",
+                },
+                query_params={},
                 body=chat_request,
-            )
+            ),
+            ProxyEndpoint.CHAT_COMPLETION,
         )
 
     def test_create_chat_completion__streaming(
