@@ -76,13 +76,27 @@ class ProxyService:
         exc_value: BaseException,
         traceback: TracebackType,
     ) -> None:
-        if exc_type is not None:
+        # Store exception info for logging in close
+        self._exc_type = exc_type
+        self._exc_value = exc_value
+        self._traceback = traceback
+        await self.close()
+
+    async def close(self) -> None:
+        """Close all resources and cleanup."""
+        # Log any errors that occurred during the request
+        if hasattr(self, "_exc_type") and self._exc_type is not None:
             logger.error(
-                "ProxyService: unable to finish proxy request: %r", exc_value, exc_info=exc_value
+                "ProxyService: unable to finish proxy request: %r",
+                self._exc_value,
+                exc_info=self._exc_value,
             )
 
         if self._response is not None:
             await self._response.aclose()
+            self._response = None
+        await self._http_client.aclose()
+        await self._provider_service.close()
 
     async def handle_request(
         self,
@@ -181,7 +195,7 @@ class ProxyService:
             llm_provider = self._settings.provider_by_vendor[provider.lower()]
         except ValueError as exc:
             raise ProviderProxyError(
-                "Invalid model format. Expected 'provider__model_name', " "e.g. 'openai__gpt-4'"
+                "Invalid model format. Expected 'provider__model_name', e.g. 'openai__gpt-4'"
             ) from exc
 
         except KeyError as exc:

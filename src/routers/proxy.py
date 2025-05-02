@@ -2,6 +2,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Request, Response
+from fastapi.responses import StreamingResponse
 
 from src.dependencies import SettingsDep
 from src.models import ChatRequest, AIModel
@@ -63,17 +64,33 @@ async def create_chat_completion(
         query_params=dict(request.query_params),
         body=chat_request,
     )
-    async with ProxyService(settings) as service:
-        return await service.handle_request(request_data, ProxyEndpoint.CHAT_COMPLETION)
-        # Ensure we return StreamingResponse
-        # if isinstance(response, StreamingResponse):
-        #     return response
-        # # Convert regular response to streaming if needed
-        # return StreamingResponse(
-        #     content=iter([response.body]),
-        #     status_code=response.status_code,
-        #     headers=dict(response.headers),
-        # )
+
+    # Create service instance
+    service = ProxyService(settings)
+
+    # Get response using context manager
+    async with service:
+        response = await service.handle_request(request_data, ProxyEndpoint.CHAT_COMPLETION)
+
+        # For streaming responses, we need to ensure cleanup happens after stream completion
+        if isinstance(response, StreamingResponse):
+            # Create a wrapper generator that will ensure cleanup after stream completion
+            async def stream_wrapper():
+                try:
+                    async for chunk in response.body_iterator:
+                        yield chunk
+                finally:
+                    # Ensure service cleanup
+                    await service.close()
+
+            return StreamingResponse(
+                content=stream_wrapper(),
+                status_code=response.status_code,
+                headers=dict(response.headers),
+            )
+
+        # For non-streaming responses, cleanup is handled by context manager
+        return response
 
 
 @router.delete(
