@@ -18,7 +18,6 @@ class SystemInfo(BaseModel):
     """Response model for system information endpoint."""
 
     status: str = "ok"
-    os_version: str
     providers: list[str] = Field(default_factory=list)
 
 
@@ -73,7 +72,7 @@ class ChatRequest(BaseModel):
         description="Whether to stream the response",
     )
 
-    def get_provider_params(self) -> dict[str, Any]:
+    def get_extra_params(self) -> dict[str, Any]:
         """
         Get provider-specific parameters that were passed in the request.
         Excludes the required fields.

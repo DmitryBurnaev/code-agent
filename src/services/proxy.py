@@ -4,7 +4,7 @@ import urllib.parse
 from enum import Enum
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Self
+from typing import Self, AsyncIterator
 
 import httpx
 from starlette.responses import StreamingResponse, Response
@@ -14,6 +14,7 @@ from src.models import ChatRequest, LLMProvider
 from src.services.http import AIProviderHTTPClient
 from src.settings import AppSettings
 from src.services.providers import ProviderService
+from src.utils import Cache
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,12 @@ class ProxyRequestData:
     query_params: dict[str, str]
     body: ChatRequest | None = None
     completion_id: str | None = None
+
+    def __str__(self) -> str:
+        return (
+            f"Requested Proxy: method={self.method} | body={self.body} "
+            f"| completion_id={self.completion_id}"
+        )
 
 
 class ProxyService:
@@ -66,35 +73,40 @@ class ProxyService:
         self._http_client = AIProviderHTTPClient(settings)
         self._provider_service = ProviderService(settings, self._http_client)
         self._response: httpx.Response | None = None
+        self._cache = Cache[str](ttl=settings.chat_completion_id_ttl)
 
     async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(
         self,
-        exc_type: type[BaseException],
-        exc_value: BaseException,
-        traceback: TracebackType,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
     ) -> None:
         # Store exception info for logging in close
-        self._exc_type = exc_type
-        self._exc_value = exc_value
-        self._traceback = traceback
-        await self.close()
+        await self.aclose(exc_type=exc_type, exc_value=exc_value)
 
-    async def close(self) -> None:
+    async def aclose(
+        self,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+    ) -> None:
         """Close all resources and cleanup."""
+        logger.debug("ProxyService: closing resources and cleanup")
+
         # Log any errors that occurred during the request
-        if hasattr(self, "_exc_type") and self._exc_type is not None:
+        if exc_type is not None:
             logger.error(
                 "ProxyService: unable to finish proxy request: %r",
-                self._exc_value,
-                exc_info=self._exc_value,
+                exc_value,
+                exc_info=exc_value,
             )
 
         if self._response is not None:
             await self._response.aclose()
             self._response = None
+
         await self._http_client.aclose()
         await self._provider_service.close()
 
@@ -116,12 +128,11 @@ class ProxyService:
         Raises:
             HTTPException: If a provider is not found or the request fails
         """
-        if not request_data.body:
+        if not request_data.body and endpoint != ProxyEndpoint.CANCEL_CHAT_COMPLETION:
             raise ProviderProxyError(f"Request body is required for {endpoint}")
 
-        logger.info("ProxyService: %s requested |  %s", endpoint, request_data.body.model)
-        provider, actual_model = self._extract_provider_requested(request_data.body.model)
-        request_data.body.model = actual_model
+        logger.info("ProxyService: %s requested |  %s", endpoint, request_data)
+        provider, actual_model = self._extract_provider_requested(request_data, endpoint)
 
         # Prepare request data
         url = self._build_target_url(provider, endpoint, request_data)
@@ -129,10 +140,11 @@ class ProxyService:
         is_streaming = False
         body = None
         if request_data.body:
+            request_data.body.model = actual_model
             is_streaming = request_data.body.stream
             body = {
                 **request_data.body.model_dump(),
-                **request_data.body.get_provider_params(),
+                **request_data.body.get_extra_params(),
             }
 
         logger.info("ProxyService: Sending proxy %s request to %s", request_data.method, url)
@@ -148,26 +160,39 @@ class ProxyService:
         httpx_response = await self._http_client.send(request, stream=is_streaming)
         result_response: Response | StreamingResponse
         if is_streaming:
-            response_headers = dict(httpx_response.headers)
-            response_headers.update(
-                {
-                    "Content-Type": "text/event-stream",
-                    "Cache-Control": "no-cache",
-                    "Connection": "keep-alive",
-                }
-            )
-            result_response = StreamingResponse(
-                content=httpx_response.aiter_bytes(),
-                status_code=httpx_response.status_code,
-                headers=response_headers,
-            )
-        else:
-            result_response = Response(
-                content=httpx_response.content,
-                status_code=httpx_response.status_code,
-                headers=dict(httpx_response.headers),
-            )
+            return await self._handle_stream(httpx_response)
 
+        return Response(
+            content=httpx_response.content,
+            status_code=httpx_response.status_code,
+            headers=dict(httpx_response.headers),
+        )
+
+    async def _handle_stream(self, httpx_response: httpx.Response) -> StreamingResponse:
+        """Wraps the response in a StreamingResponse for correct closing connection"""
+
+        async def stream_wrapper() -> AsyncIterator[bytes]:
+            try:
+                # response.
+                async for chunk in httpx_response.aiter_bytes():
+                    yield chunk
+            finally:
+                # Ensure service cleanup
+                await self.aclose()
+
+        response_headers = dict(httpx_response.headers)
+        response_headers.update(
+            {
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+            }
+        )
+        result_response = StreamingResponse(
+            content=stream_wrapper(),
+            status_code=httpx_response.status_code,
+            headers=response_headers,
+        )
         return result_response
 
     def _build_target_url(
@@ -188,8 +213,30 @@ class ProxyService:
 
         return urllib.parse.urljoin(provider.base_url, path)
 
-    def _extract_provider_requested(self, model: str) -> tuple[LLMProvider, str]:
+    def _extract_provider_requested(
+        self,
+        request_data: ProxyRequestData,
+        endpoint: ProxyEndpoint,
+    ) -> tuple[LLMProvider, str]:
         """Extract provider and actual model name from the composite model identifier."""
+
+        if endpoint == ProxyEndpoint.CANCEL_CHAT_COMPLETION:
+            completion_id = request_data.completion_id
+            if not completion_id:
+                raise ProviderProxyError("completion_id is required for cancellation")
+
+            # TODO: use DB storage for caching completion_id -> provider mapping
+            provider = self._cache.get(completion_id)
+            if not provider:
+                raise ProviderProxyError(
+                    f"Unable to find provider for completion_id {completion_id}"
+                )
+
+            model = f"{provider}__SKIP"
+
+        else:
+            model = request_data.body.model if request_data.body else ""
+
         try:
             provider, model_name = model.split("__", 1)
             llm_provider = self._settings.provider_by_vendor[provider.lower()]
