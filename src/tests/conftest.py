@@ -1,6 +1,5 @@
 """Test configuration and fixtures."""
 
-
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -30,7 +29,7 @@ def auth_test_token() -> str:
 
 
 @pytest.fixture
-def auth_test_header(auth_test_token) -> dict[str, str]:
+def auth_test_header(auth_test_token: str) -> dict[str, str]:
     return {
         "Authorization": f"Bearer {auth_test_token}",
     }

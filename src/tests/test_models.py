@@ -20,9 +20,8 @@ class TestSystemInfo:
 
     def test_system_info_creation(self) -> None:
         """Test SystemInfo model creation."""
-        info = SystemInfo(os_version="test-os")
+        info = SystemInfo()
         assert info.status == "ok"
-        assert info.os_version == "test-os"
         assert info.providers == []
 
     def test_system_info_with_providers(self) -> None:
@@ -78,7 +77,7 @@ class TestChatRequest:
             model="test-model",
             **{"temperature": 0.7, "max_tokens": 1000},  # type: ignore
         )
-        provider_params = request.get_provider_params()
+        provider_params = request.get_extra_params()
         assert provider_params == {"temperature": 0.7, "max_tokens": 1000}
 
 

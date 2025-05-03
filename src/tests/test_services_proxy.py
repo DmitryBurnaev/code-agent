@@ -211,3 +211,384 @@ class TestProxyService:
                 await service.handle_request(
                     mock_request_data, ProxyEndpoint.CANCEL_CHAT_COMPLETION
                 )
+
+
+class TestIdeas:
+
+    def test_create_chat_completion__streaming_single_chunk(
+        self,
+        client: TestClient,
+        mock_proxy_service: AsyncMock,
+    ) -> None:
+        """Test streaming response with single chunk."""
+        # Create mock streaming response with single chunk
+        mock_response = AsyncMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {"Content-Type": "text/event-stream"}
+
+        # Single chunk
+        chunks = [
+            b'data: {"id": "test-1", "choices": [{"delta": {"content": "Hello World!"}}]}\n\n',
+        ]
+
+        async def mock_aiter_bytes():
+            for chunk in chunks:
+                yield chunk
+
+        mock_response.aiter_bytes = mock_aiter_bytes
+
+        # Setup mock service
+        mock_proxy_service.handle_request.return_value = StreamingResponse(
+            content=mock_response.aiter_bytes(),
+            status_code=200,
+            headers={"Content-Type": "text/event-stream"},
+        )
+
+        # Make request
+        chat_request = ChatRequest(
+            messages=[Message(role="user", content="Ping")],
+            model="openai__gpt-4",
+            stream=True,
+        )
+
+        response = client.post(
+            "/api/ai-proxy/chat/completions",
+            json=chat_request.model_dump(),
+            headers={"accept": "text/event-stream"},
+        )
+
+        # Verify response
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "text/event-stream"
+
+        # Verify content
+        content = response.text
+        assert "Hello World!" in content
+
+        # Verify service cleanup
+        mock_proxy_service.close.assert_awaited_once()
+
+    def test_create_chat_completion__streaming_empty(
+        self,
+        client: TestClient,
+        mock_proxy_service: AsyncMock,
+    ) -> None:
+        """Test streaming response with empty stream."""
+        # Create mock streaming response with no chunks
+        mock_response = AsyncMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {"Content-Type": "text/event-stream"}
+
+        # Empty chunks
+        chunks = []
+
+        async def mock_aiter_bytes():
+            for chunk in chunks:
+                yield chunk
+
+        mock_response.aiter_bytes = mock_aiter_bytes
+
+        # Setup mock service
+        mock_proxy_service.handle_request.return_value = StreamingResponse(
+            content=mock_response.aiter_bytes(),
+            status_code=200,
+            headers={"Content-Type": "text/event-stream"},
+        )
+
+        # Make request
+        chat_request = ChatRequest(
+            messages=[Message(role="user", content="Ping")],
+            model="openai__gpt-4",
+            stream=True,
+        )
+
+        response = client.post(
+            "/api/ai-proxy/chat/completions",
+            json=chat_request.model_dump(),
+            headers={"accept": "text/event-stream"},
+        )
+
+        # Verify response
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "text/event-stream"
+        assert response.text == ""
+
+        # Verify service cleanup
+        mock_proxy_service.close.assert_awaited_once()
+
+    def test_create_chat_completion__streaming_error(
+        self,
+        client: TestClient,
+        mock_proxy_service: AsyncMock,
+    ) -> None:
+        """Test streaming response with error in stream."""
+        # Create mock streaming response that raises error
+        mock_response = AsyncMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {"Content-Type": "text/event-stream"}
+
+        async def mock_aiter_bytes():
+            yield b'data: {"id": "test-1", "choices": [{"delta": {"content": "Hello"}}]}\n\n'
+            raise RuntimeError("Stream error")
+
+        mock_response.aiter_bytes = mock_aiter_bytes
+
+        # Setup mock service
+        mock_proxy_service.handle_request.return_value = StreamingResponse(
+            content=mock_response.aiter_bytes(),
+            status_code=200,
+            headers={"Content-Type": "text/event-stream"},
+        )
+
+        # Make request
+        chat_request = ChatRequest(
+            messages=[Message(role="user", content="Ping")],
+            model="openai__gpt-4",
+            stream=True,
+        )
+
+        response = client.post(
+            "/api/ai-proxy/chat/completions",
+            json=chat_request.model_dump(),
+            headers={"accept": "text/event-stream"},
+        )
+
+        # Verify response
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "text/event-stream"
+
+        # Verify partial content
+        content = response.text
+        assert "Hello" in content
+
+        # Verify service cleanup
+        mock_proxy_service.close.assert_awaited_once()
+
+    def test_create_chat_completion__streaming_headers(
+        self,
+        client: TestClient,
+        mock_proxy_service: AsyncMock,
+    ) -> None:
+        """Test streaming response headers."""
+        # Create mock streaming response
+        mock_response = AsyncMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Custom-Header": "test",
+        }
+
+        # Single chunk
+        chunks = [
+            b'data: {"id": "test-1", "choices": [{"delta": {"content": "Hello"}}]}\n\n',
+        ]
+
+        async def mock_aiter_bytes():
+            for chunk in chunks:
+                yield chunk
+
+        mock_response.aiter_bytes = mock_aiter_bytes
+
+        # Setup mock service
+        mock_proxy_service.handle_request.return_value = StreamingResponse(
+            content=mock_response.aiter_bytes(),
+            status_code=200,
+            headers=mock_response.headers,
+        )
+
+        # Make request
+        chat_request = ChatRequest(
+            messages=[Message(role="user", content="Ping")],
+            model="openai__gpt-4",
+            stream=True,
+        )
+
+        response = client.post(
+            "/api/ai-proxy/chat/completions",
+            json=chat_request.model_dump(),
+            headers={"accept": "text/event-stream"},
+        )
+
+        # Verify response headers
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "text/event-stream"
+        assert response.headers["cache-control"] == "no-cache"
+        assert response.headers["connection"] == "keep-alive"
+        assert response.headers["x-custom-header"] == "test"
+
+        # Verify service cleanup
+        mock_proxy_service.close.assert_awaited_once()
+
+    def test_create_chat_completion__timeout(
+        self,
+        client: TestClient,
+        mock_proxy_service: AsyncMock,
+    ) -> None:
+        """Test non-streaming response with timeout."""
+        # Create mock response that takes too long
+        mock_response = AsyncMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {"Content-Type": "application/json"}
+
+        async def mock_content():
+            await asyncio.sleep(0.3)  # Simulate long processing > client timeout
+            return json.dumps({"error": "timeout"}).encode()
+
+        mock_response.content = mock_content()
+
+        # Setup mock service
+        mock_proxy_service.handle_request.return_value = Response(
+            content=mock_response.content,
+            status_code=200,
+            headers=mock_response.headers,
+        )
+
+        # Make request with short timeout
+        chat_request = ChatRequest(
+            messages=[Message(role="user", content="Ping")],
+            model="openai__gpt-4",
+        )
+
+        with pytest.raises(httpx.ReadTimeout):
+            client.post(
+                "/api/ai-proxy/chat/completions",
+                json=chat_request.model_dump(),
+                timeout=0.1,  # Very short timeout < sleep time
+            )
+
+        # Verify service cleanup
+        mock_proxy_service.close.assert_awaited_once()
+
+    def test_create_chat_completion__error_status(
+        self,
+        client: TestClient,
+        mock_proxy_service: AsyncMock,
+    ) -> None:
+        """Test non-streaming response with error status code."""
+        # Create mock error response
+        mock_response = AsyncMock(spec=httpx.Response)
+        mock_response.status_code = 429  # Too Many Requests
+        mock_response.headers = {"Content-Type": "application/json"}
+        mock_response.content = json.dumps(
+            {
+                "error": {
+                    "message": "Rate limit exceeded",
+                    "type": "rate_limit_error",
+                }
+            }
+        ).encode()
+
+        # Setup mock service
+        mock_proxy_service.handle_request.return_value = Response(
+            content=mock_response.content,
+            status_code=mock_response.status_code,
+            headers=mock_response.headers,
+        )
+
+        # Make request
+        chat_request = ChatRequest(
+            messages=[Message(role="user", content="Ping")],
+            model="openai__gpt-4",
+        )
+
+        response = client.post(
+            "/api/ai-proxy/chat/completions",
+            json=chat_request.model_dump(),
+        )
+
+        # Verify error response
+        assert response.status_code == 429
+        assert response.json()["error"]["type"] == "rate_limit_error"
+
+        # Verify service cleanup
+        mock_proxy_service.close.assert_awaited_once()
+
+    def test_create_chat_completion__streaming_timeout(
+        self,
+        client: TestClient,
+        mock_proxy_service: AsyncMock,
+    ) -> None:
+        """Test streaming response with timeout."""
+        # Create mock streaming response that takes too long
+        mock_response = AsyncMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {"Content-Type": "text/event-stream"}
+
+        async def mock_aiter_bytes():
+            yield b'data: {"id": "test-1", "choices": [{"delta": {"content": "Hello"}}]}\n\n'
+            await asyncio.sleep(0.3)  # Simulate long processing > client timeout
+            yield b'data: {"id": "test-2", "choices": [{"delta": {"content": " World"}}]}\n\n'
+
+        mock_response.aiter_bytes = mock_aiter_bytes
+
+        # Setup mock service
+        mock_proxy_service.handle_request.return_value = StreamingResponse(
+            content=mock_response.aiter_bytes(),
+            status_code=200,
+            headers={"Content-Type": "text/event-stream"},
+        )
+
+        # Make request with short timeout
+        chat_request = ChatRequest(
+            messages=[Message(role="user", content="Ping")],
+            model="openai__gpt-4",
+            stream=True,
+        )
+
+        with pytest.raises(httpx.ReadTimeout):
+            client.post(
+                "/api/ai-proxy/chat/completions",
+                json=chat_request.model_dump(),
+                headers={"accept": "text/event-stream"},
+                timeout=0.1,  # Very short timeout < sleep time
+            )
+
+        # Verify service cleanup
+        mock_proxy_service.close.assert_awaited_once()
+
+    def test_create_chat_completion__streaming_error_status(
+        self,
+        client: TestClient,
+        mock_proxy_service: AsyncMock,
+    ) -> None:
+        """Test streaming response with error status code."""
+        # Create mock streaming error response
+        mock_response = AsyncMock(spec=httpx.Response)
+        mock_response.status_code = 503  # Service Unavailable
+        mock_response.headers = {"Content-Type": "text/event-stream"}
+
+        async def mock_aiter_bytes():
+            yield b'data: {"error": {"message": "Service unavailable", "type": "service_error"}}\n\n'
+
+        mock_response.aiter_bytes = mock_aiter_bytes
+
+        # Setup mock service
+        mock_proxy_service.handle_request.return_value = StreamingResponse(
+            content=mock_response.aiter_bytes(),
+            status_code=503,
+            headers={"Content-Type": "text/event-stream"},
+        )
+
+        # Make request
+        chat_request = ChatRequest(
+            messages=[Message(role="user", content="Ping")],
+            model="openai__gpt-4",
+            stream=True,
+        )
+
+        response = client.post(
+            "/api/ai-proxy/chat/completions",
+            json=chat_request.model_dump(),
+            headers={"accept": "text/event-stream"},
+        )
+
+        # Verify error response
+        assert response.status_code == 503
+        content = response.text
+        assert "service_error" in content
+        assert "Service unavailable" in content
+
+        # Verify service cleanup
+        mock_proxy_service.close.assert_awaited_once()

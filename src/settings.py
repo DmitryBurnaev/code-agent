@@ -29,6 +29,7 @@ class AppSettings(BaseSettings):
     app_port: int = 8003
     log_level: LogLevelString = "INFO"
     models_cache_ttl: float = 300.0  # Cache TTL in seconds, default 5 minutes
+    chat_completion_id_ttl: float = 3600 * 24 * 30
     http_proxy_url: str | None = Field(None, description="Socks5 URL to use")
 
     @cached_property

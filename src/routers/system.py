@@ -1,4 +1,3 @@
-import platform
 from datetime import datetime
 
 from fastapi import APIRouter
@@ -6,7 +5,7 @@ from fastapi import APIRouter
 from src.dependencies import SettingsDep
 from src.models import SystemInfo, HealthCheck
 
-__all__ = ["router"]
+__all__ = ("router",)
 
 
 router = APIRouter(
@@ -21,7 +20,6 @@ async def get_system_info(settings: SettingsDep) -> SystemInfo:
     """Get current system information."""
     return SystemInfo(
         status="ok",
-        os_version=platform.platform(),
         providers=[provider.vendor for provider in settings.providers],
     )
 
