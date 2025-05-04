@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import httpx
 from pydantic import BaseModel
 
+from src.constants import Provider
 from src.services.http import AIProviderHTTPClient
 from src.models import LLMProvider, AIModel
 from src.utils import Cache
@@ -91,15 +92,15 @@ class ProviderService:
         """
         self._settings = settings
         self._models_cache = Cache[list[AIModel]](ttl=settings.models_cache_ttl)
-        self._provider_clients: dict[LLMProvider, ProviderClient] = {}
+        self._provider_clients: dict[Provider, ProviderClient] = {}
         self._http_client = http_client or AIProviderHTTPClient(settings)
 
     def get_client(self, provider: LLMProvider) -> ProviderClient:
         """Get or create a client for the specified provider."""
-        if provider not in self._provider_clients:
-            self._provider_clients[provider] = ProviderClient(provider, self._http_client)
+        if provider.vendor not in self._provider_clients:
+            self._provider_clients[provider.vendor] = ProviderClient(provider, self._http_client)
 
-        return self._provider_clients[provider]
+        return self._provider_clients[provider.vendor]
 
     async def get_list_models(self, force_refresh: bool = False) -> list[AIModel]:
         """Get a list of available models from all configured providers.
