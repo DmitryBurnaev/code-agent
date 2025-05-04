@@ -1,8 +1,6 @@
 """Tests for system API endpoints."""
 
 from datetime import datetime
-from typing import Any, Generator
-from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 from starlette.testclient import TestClient

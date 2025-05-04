@@ -15,8 +15,7 @@ class AIProviderHTTPClient(httpx.AsyncClient):
         provider: LLMProvider | None = None,
         retries: int = _DEFAULT_MAX_RETRIES,
     ) -> None:
-        transport = httpx.AsyncHTTPTransport(retries=retries)
-        proxy = settings.http_proxy_url
+        transport = httpx.AsyncHTTPTransport(retries=retries, proxy=settings.http_proxy_url)
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
@@ -24,11 +23,7 @@ class AIProviderHTTPClient(httpx.AsyncClient):
         if provider is not None:
             headers |= provider.auth_headers
 
-        super().__init__(
-            transport=transport,
-            proxy=proxy,
-            headers=headers,
-        )
+        super().__init__(transport=transport, headers=headers)
 
     @property
     def transport(self) -> httpx.AsyncHTTPTransport:
