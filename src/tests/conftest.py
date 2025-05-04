@@ -1,5 +1,9 @@
 """Test configuration and fixtures."""
 
+import dataclasses
+import json
+from typing import Any
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -84,6 +88,16 @@ def client(
 def test_app(mock_settings: AppSettings) -> FastAPI:
     """Return FastAPI application for testing."""
     return make_app(mock_settings)
+
+
+@dataclasses.dataclass
+class TestResponse:
+    headers: dict[str, str]
+    data: dict[str, Any]
+    status_code: int = 200
+
+    def json(self) -> dict[str, Any]:
+        return self.data
 
 
 # @pytest.fixture
