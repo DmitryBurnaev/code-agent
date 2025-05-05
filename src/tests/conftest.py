@@ -1,7 +1,6 @@
 """Test configuration and fixtures."""
 
 import dataclasses
-import json
 from typing import Any
 
 import pytest

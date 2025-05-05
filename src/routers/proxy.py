@@ -1,8 +1,7 @@
 import logging
-from typing import Any, AsyncIterator, Generator
+from typing import Any
 
 from fastapi import APIRouter, Request, Response
-from fastapi.responses import StreamingResponse
 
 from src.dependencies import SettingsDep
 from src.models import ChatRequest, AIModel

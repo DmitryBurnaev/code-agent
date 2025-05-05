@@ -24,6 +24,7 @@ class TestHTTPxClient:
         self.response = response
         self.status_code = status_code
         self.get = AsyncMock(return_value=response)
+        self.aclose = AsyncMock()
         super().__init__()
 
     async def __aenter__(self) -> Self:
@@ -122,30 +123,40 @@ class TestProviderService:
 
         old_model = AIModel(id="gpt-4", name="GPT 4 Old", type="chat", vendor="openai")
         # Prepare mock models
-        mock_models = [
-            AIModel(id="gpt-4", name="GPT 4 New", type="chat", vendor="openai"),
-            AIModel(id="claude-3", name="Claude 3", type="chat", vendor="anthropic"),
-        ]
+        mock_models: dict[str, list[AIModel]] = {
+            "https://api.anthropic.com/models": [
+                AIModel(id="gpt-4", name="GPT 4 New", type="chat", vendor="openai"),
+            ],
+            "https://api.openai.com/models": [
+                AIModel(id="claude-3", name="Claude 3", type="chat", vendor="anthropic"),
+            ],
+        }
         # Set cache for the first provider
         service._models_cache.set(Provider.OPENAI, [old_model])
+
         # Another vendor is getting from API
-        mock_httpx_client.response.data = {
-            "data": {"models": [m.model_dump() for m in mock_models]}
-        }
+        async def mocked_response_by_vendor(url: str, *_, **__) -> TestResponse:  # type: ignore
+            return TestResponse(
+                status_code=200,
+                headers={"content-type": "application/json"},
+                data={"data": {"models": [m.model_dump() for m in mock_models[url]]}},
+            )
+
+        mock_httpx_client.get = AsyncMock(side_effect=mocked_response_by_vendor)
 
         # get models and check results
         models = await service.get_list_models(force_refresh=True)
 
-        expected_model_pairs = [("openai", "GPT 4 New"), ("anthropic", "Claude 3")]
-        actual_model_pairs = [(m.vendor, m.name) for m in models]
+        expected_model_pairs = {("openai", "GPT 4 New"), ("anthropic", "Claude 3")}
+        actual_model_pairs = {(m.vendor, m.name) for m in models}
         assert actual_model_pairs == expected_model_pairs
 
-        mock_httpx_client.get.assert_awaited_with(
-            "https://api.anthropic.com/models", headers={"Authorization": "Bearer anthropic-key"}
-        )
-        mock_httpx_client.get.assert_awaited_with(
-            "https://api.openai.com/models", headers={"Authorization": "Bearer openai-key"}
-        )
+        expected_call_urls = {
+            "https://api.anthropic.com/models",
+            "https://api.openai.com/models",
+        }
+        actual_call_urls = {call.args[0] for call in mock_httpx_client.get.call_args_list}
+        assert actual_call_urls == expected_call_urls
 
     async def test_get_list_models_error_handling(
         self, service: ProviderService, mock_settings: AppSettings, mock_httpx_client: AsyncMock

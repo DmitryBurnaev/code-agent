@@ -1,7 +1,6 @@
 """Tests for HTTP client."""
 
 import pytest
-from httpx import URL
 
 from src.services.http import AIProviderHTTPClient
 from src.settings import AppSettings

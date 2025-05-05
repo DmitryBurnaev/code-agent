@@ -158,7 +158,6 @@ class ProxyService:
             content=json.dumps(body),
         )
         httpx_response = await self._http_client.send(request, stream=is_streaming)
-        result_response: Response | StreamingResponse
         if is_streaming:
             return await self._handle_stream(httpx_response)
 
