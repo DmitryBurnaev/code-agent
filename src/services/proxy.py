@@ -35,6 +35,7 @@ class ProxyRequestData:
     query_params: dict[str, str]
     body: ChatRequest | None = None
     completion_id: str | None = None
+    timeout: float | None = None
 
     def __str__(self) -> str:
         return (
@@ -127,6 +128,7 @@ class ProxyService:
 
         Raises:
             HTTPException: If a provider is not found or the request fails
+            ProviderProxyError: If request times out or other provider errors occur
         """
         if not request_data.body and endpoint != ProxyEndpoint.CANCEL_CHAT_COMPLETION:
             raise ProviderProxyError(f"Request body is required for {endpoint}")
@@ -157,24 +159,34 @@ class ProxyService:
             headers=headers,
             content=json.dumps(body),
         )
-        httpx_response = await self._http_client.send(request, stream=is_streaming)
-        if is_streaming:
-            return await self._handle_stream(httpx_response)
 
-        return Response(
-            content=httpx_response.content,
-            status_code=httpx_response.status_code,
-            headers=dict(httpx_response.headers),
-        )
+        try:
+            httpx_response = await self._http_client.send(
+                request,
+                stream=is_streaming,
+                timeout=request_data.timeout,
+            )
+            if is_streaming:
+                return await self._handle_stream(httpx_response)
+
+            return Response(
+                content=httpx_response.content,
+                status_code=httpx_response.status_code,
+                headers=dict(httpx_response.headers),
+            )
+        except httpx.TimeoutException as exc:
+            error_msg = "Stream timeout" if is_streaming else "Request timeout"
+            raise ProviderProxyError(error_msg) from exc
 
     async def _handle_stream(self, httpx_response: httpx.Response) -> StreamingResponse:
         """Wraps the response in a StreamingResponse for correct closing connection"""
 
         async def stream_wrapper() -> AsyncIterator[bytes]:
             try:
-                # response.
                 async for chunk in httpx_response.aiter_bytes():
                     yield chunk
+            except httpx.TimeoutException as exc:
+                raise ProviderProxyError("Stream timeout") from exc
             finally:
                 # Ensure service cleanup
                 await self.aclose()

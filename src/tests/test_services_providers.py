@@ -9,7 +9,7 @@ from src.models import AIModel
 from src.settings import AppSettings
 from src.constants import Provider
 
-from src.tests.conftest import TestResponse, TestHTTPxClient
+from src.tests.conftest import MockTestResponse, MockHTTPxClient
 
 pytestmark = pytest.mark.asyncio
 
@@ -17,7 +17,7 @@ pytestmark = pytest.mark.asyncio
 class TestProviderService:
     """Tests for ProviderService."""
 
-    def test_get_client(self, service: ProviderService, mock_settings: AppSettings) -> None:
+    async def test_get_client(self, service: ProviderService, mock_settings: AppSettings) -> None:
         """Test getting provider client."""
         provider = mock_settings.providers[0]
         client = service.get_client(provider)
@@ -29,7 +29,7 @@ class TestProviderService:
         self,
         mock_settings: AppSettings,
         service: ProviderService,
-        mock_httpx_client: TestHTTPxClient,
+        mock_httpx_client: MockHTTPxClient,
     ) -> None:
         """Test getting models' list with cache."""
 
@@ -75,8 +75,8 @@ class TestProviderService:
         service._models_cache.set(Provider.OPENAI, [old_model])
 
         # Another vendor is getting from API
-        async def mocked_response_by_vendor(url: str, *_, **__) -> TestResponse:  # type: ignore
-            return TestResponse(
+        async def mocked_response_by_vendor(url: str, *_, **__) -> MockTestResponse:  # type: ignore
+            return MockTestResponse(
                 status_code=200,
                 headers={"content-type": "application/json"},
                 data={"data": {"models": [m.model_dump() for m in mock_models[url]]}},

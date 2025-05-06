@@ -1,10 +1,11 @@
 """Tests for proxy service."""
 
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, AsyncIterator
 from unittest.mock import Mock, AsyncMock
 
 import pytest
 import httpx
+import json
 from fastapi import Response
 from fastapi.responses import StreamingResponse
 
@@ -187,6 +188,157 @@ class TestProxyService:
             await proxy_service.handle_request(
                 mock_request_data, ProxyEndpoint.CANCEL_CHAT_COMPLETION
             )
+
+    async def test_handle_request_streaming_error(
+        self,
+        mock_streaming_request_data: ProxyRequestData,
+        proxy_service: ProxyService,
+        mock_response: AsyncMock,
+    ) -> None:
+        """Test handling streaming request with error in stream."""
+
+        async def mock_aiter_bytes() -> AsyncIterator[bytes]:
+            yield b'data: {"id": "test-1", "choices": [{"delta": {"content": "Hello"}}]}\n\n'
+            raise RuntimeError("Stream error")
+
+        mock_response.aiter_bytes = mock_aiter_bytes
+        mock_response.headers = {"Content-Type": "text/event-stream"}
+
+        response = await proxy_service.handle_request(
+            mock_streaming_request_data, ProxyEndpoint.CHAT_COMPLETION
+        )
+
+        assert isinstance(response, StreamingResponse)
+        assert response.status_code == 200
+        assert response.headers["Content-Type"] == "text/event-stream"
+
+    async def test_handle_request_streaming_empty(
+        self,
+        mock_streaming_request_data: ProxyRequestData,
+        proxy_service: ProxyService,
+        mock_response: AsyncMock,
+    ) -> None:
+        """Test handling streaming request with empty stream."""
+
+        async def mock_aiter_bytes():
+            if False:  # This ensures the generator is async
+                yield b""
+
+        mock_response.aiter_bytes = mock_aiter_bytes
+        mock_response.headers = {"Content-Type": "text/event-stream"}
+
+        response = await proxy_service.handle_request(
+            mock_streaming_request_data, ProxyEndpoint.CHAT_COMPLETION
+        )
+
+        assert isinstance(response, StreamingResponse)
+        assert response.status_code == 200
+        assert response.headers["Content-Type"] == "text/event-stream"
+
+    async def test_handle_request_streaming_headers(
+        self,
+        mock_streaming_request_data: ProxyRequestData,
+        proxy_service: ProxyService,
+        mock_response: AsyncMock,
+    ) -> None:
+        """Test handling streaming request with custom headers."""
+        mock_response.headers = {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Custom-Header": "test",
+        }
+
+        response = await proxy_service.handle_request(
+            mock_streaming_request_data, ProxyEndpoint.CHAT_COMPLETION
+        )
+
+        assert isinstance(response, StreamingResponse)
+        assert response.status_code == 200
+        assert response.headers["Content-Type"] == "text/event-stream"
+        assert response.headers["Cache-Control"] == "no-cache"
+        assert response.headers["Connection"] == "keep-alive"
+        assert response.headers["X-Custom-Header"] == "test"
+
+    async def test_handle_request_timeout(
+        self,
+        mock_request_data: ProxyRequestData,
+        proxy_service: ProxyService,
+        mock_http_client: AsyncMock,
+    ) -> None:
+        """Test handling request with timeout."""
+        # Set timeout for the request
+        mock_request_data.timeout = 0.1
+        mock_http_client.send.side_effect = httpx.TimeoutException("Request timed out")
+
+        with pytest.raises(ProviderProxyError, match="Request timeout"):
+            await proxy_service.handle_request(mock_request_data, ProxyEndpoint.CHAT_COMPLETION)
+
+    async def test_handle_request_streaming_timeout(
+        self,
+        mock_streaming_request_data: ProxyRequestData,
+        proxy_service: ProxyService,
+        mock_http_client: AsyncMock,
+    ) -> None:
+        """Test handling streaming request with timeout."""
+        # Set timeout for the request
+        mock_streaming_request_data.timeout = 0.1
+        mock_http_client.send.side_effect = httpx.TimeoutException("Stream timed out")
+
+        with pytest.raises(ProviderProxyError, match="Stream timeout"):
+            await proxy_service.handle_request(
+                mock_streaming_request_data, ProxyEndpoint.CHAT_COMPLETION
+            )
+
+    async def test_handle_request_error_status(
+        self,
+        mock_request_data: ProxyRequestData,
+        proxy_service: ProxyService,
+        mock_response: AsyncMock,
+    ) -> None:
+        """Test handling request with error status code."""
+        mock_response.status_code = 429  # Too Many Requests
+        mock_response.content = json.dumps(
+            {
+                "error": {
+                    "message": "Rate limit exceeded",
+                    "type": "rate_limit_error",
+                }
+            }
+        ).encode()
+        mock_response.headers = {"Content-Type": "application/json"}
+
+        response = await proxy_service.handle_request(
+            mock_request_data, ProxyEndpoint.CHAT_COMPLETION
+        )
+
+        assert isinstance(response, Response)
+        assert response.status_code == 429
+        assert response.headers["Content-Type"] == "application/json"
+        assert json.loads(response.body)["error"]["type"] == "rate_limit_error"
+
+    async def test_handle_request_streaming_error_status(
+        self,
+        mock_streaming_request_data: ProxyRequestData,
+        proxy_service: ProxyService,
+        mock_response: AsyncMock,
+    ) -> None:
+        """Test handling streaming request with error status code."""
+        mock_response.status_code = 503  # Service Unavailable
+        mock_response.headers = {"Content-Type": "text/event-stream"}
+
+        async def mock_aiter_bytes():
+            yield b'data: {"error": {"message": "Service unavailable", "type": "service_error"}}\n\n'
+
+        mock_response.aiter_bytes = mock_aiter_bytes
+
+        response = await proxy_service.handle_request(
+            mock_streaming_request_data, ProxyEndpoint.CHAT_COMPLETION
+        )
+
+        assert isinstance(response, StreamingResponse)
+        assert response.status_code == 503
+        assert response.headers["Content-Type"] == "text/event-stream"
 
 
 #

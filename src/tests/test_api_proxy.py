@@ -15,7 +15,7 @@ from src.services.providers import ProviderService
 from src.models import ChatRequest, Message, AIModel, LLMProvider
 from src.services.proxy import ProxyService, ProxyRequestData, ProxyEndpoint
 
-pytestmark = pytest.mark.asyncio
+# pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture

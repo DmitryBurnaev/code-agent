@@ -74,7 +74,7 @@ def client(
 
 
 @dataclasses.dataclass
-class TestResponse:
+class MockTestResponse:
     headers: dict[str, str]
     data: dict[str, Any]
     status_code: int = 200
@@ -84,8 +84,8 @@ class TestResponse:
 
 
 @dataclasses.dataclass
-class TestHTTPxClient:
-    def __init__(self, response: TestResponse, status_code: int = 200):
+class MockHTTPxClient:
+    def __init__(self, response: MockTestResponse, status_code: int = 200):
         self.response = response
         self.status_code = status_code
         self.get = AsyncMock(return_value=response)
@@ -100,19 +100,19 @@ class TestHTTPxClient:
 
 
 @pytest.fixture
-def mock_httpx_client() -> TestHTTPxClient:
+def mock_httpx_client() -> MockHTTPxClient:
     """Return mock HTTP client."""
-    test_response = TestResponse(
+    test_response = MockTestResponse(
         status_code=200,
         headers={"content-type": "application/json"},
         data={},
     )
-    test_client = TestHTTPxClient(test_response)
+    test_client = MockHTTPxClient(test_response)
     return test_client
 
 
 @pytest.fixture
-def service(mock_settings: AppSettings, mock_httpx_client: TestHTTPxClient) -> ProviderService:
+def service(mock_settings: AppSettings, mock_httpx_client: MockHTTPxClient) -> ProviderService:
     """Return a provider service instance."""
     return ProviderService(mock_settings, cast(httpx.AsyncClient, mock_httpx_client))
 

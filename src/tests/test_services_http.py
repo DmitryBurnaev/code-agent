@@ -8,7 +8,7 @@ from src.models import LLMProvider
 from src.constants import Provider
 from pydantic import SecretStr
 
-pytestmark = pytest.mark.asyncio
+# pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture

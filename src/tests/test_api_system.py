@@ -7,8 +7,6 @@ from starlette.testclient import TestClient
 
 from src.models import LLMProvider
 
-pytestmark = pytest.mark.asyncio
-
 
 class TestSystemAPI:
     """Tests for system API endpoints."""
