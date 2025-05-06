@@ -68,9 +68,9 @@ class ProxyService:
         ProxyEndpoint.CANCEL_CHAT_COMPLETION: "chat/completions/{completion_id}",
     }
 
-    def __init__(self, settings: AppSettings):
+    def __init__(self, settings: AppSettings, http_client: httpx.AsyncClient | None = None) -> None:
         self._settings = settings
-        self._http_client = AIProviderHTTPClient(settings)
+        self._http_client = http_client or AIProviderHTTPClient(settings)
         self._provider_service = ProviderService(settings, self._http_client)
         self._response: httpx.Response | None = None
         self._cache = Cache[str](ttl=settings.chat_completion_id_ttl)

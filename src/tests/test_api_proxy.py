@@ -35,7 +35,7 @@ def mock_proxy_service() -> Generator[AsyncMock, Any, None]:
     """Return mock proxy service."""
     service = AsyncMock(spec=ProxyService)
     service.handle_request.return_value = AsyncMock()
-    with patch("src.routers.proxy.ProxyService.__new__", return_value=service):
+    with patch("src.routers.proxy.ProxyService", return_value=service):
         yield service
 
 
