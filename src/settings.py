@@ -31,6 +31,8 @@ class AppSettings(BaseSettings):
     models_cache_ttl: float = 300.0  # Cache TTL in seconds, default 5 minutes
     chat_completion_id_ttl: float = 3600 * 24 * 30
     http_proxy_url: str | None = Field(None, description="Socks5 URL to use")
+    provider_default_timeout: int = 30
+    provider_default_retries: int = 3
 
     @cached_property
     def provider_by_vendor(self) -> dict[str, LLMProvider]:

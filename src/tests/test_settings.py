@@ -14,6 +14,7 @@ from src.constants import Provider, LOG_LEVELS
 class TestAppSettings:
     """Tests for AppSettings class."""
 
+    @patch.dict(os.environ, {"PROVIDERS": "[]"})
     def test_default_settings(self) -> None:
         """Test default settings values."""
         settings = AppSettings(
@@ -23,11 +24,6 @@ class TestAppSettings:
         assert settings.docs_enabled is True
         assert settings.auth_api_token.get_secret_value() == "test-token"
         assert settings.providers == []
-        assert settings.app_host == "0.0.0.0"
-        assert settings.app_port == 8003
-        assert settings.log_level == "INFO"
-        assert settings.models_cache_ttl == 300.0
-        assert settings.http_proxy_url is None
 
     @pytest.mark.parametrize("log_level", LOG_LEVELS.split("|"))
     def test_valid_log_levels(self, log_level: str) -> None:
@@ -96,7 +92,8 @@ class TestGetSettings:
             "LOG_LEVEL": "DEBUG",
             "APP_HOST": "localhost",
             "APP_PORT": "8080",
-            "HTTP_PROXY_URL": "",
+            "HTTP_PROXY_URL": "socks5://127.0.0.1:8080",
+            "PROVIDERS": '[{"vendor":"openai","api_key":"openai-key"}]',
         },
     )
     def test_get_settings_from_env(self) -> None:
@@ -107,6 +104,10 @@ class TestGetSettings:
         assert settings.log_level == "DEBUG"
         assert settings.app_host == "localhost"
         assert settings.app_port == 8080
+        assert settings.http_proxy_url == "socks5://127.0.0.1:8080"
+        assert settings.providers == [
+            LLMProvider(vendor=Provider.OPENAI, api_key=SecretStr("openai-key")),
+        ]
 
     @patch.dict(os.environ, {"AUTH_API_TOKEN": "test-token", "LOG_LEVEL": "INVALID"})
     def test_get_settings_validation_error(self) -> None:

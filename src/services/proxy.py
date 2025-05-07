@@ -161,11 +161,7 @@ class ProxyService:
         )
 
         try:
-            httpx_response = await self._http_client.send(
-                request,
-                stream=is_streaming,
-                timeout=request_data.timeout,
-            )
+            httpx_response = await self._http_client.send(request, stream=is_streaming)
             if is_streaming:
                 return await self._handle_stream(httpx_response)
 
