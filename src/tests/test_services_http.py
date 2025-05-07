@@ -8,8 +8,6 @@ from src.models import LLMProvider
 from src.constants import Provider
 from pydantic import SecretStr
 
-# pytestmark = pytest.mark.asyncio
-
 
 @pytest.fixture
 def mock_settings() -> AppSettings:

@@ -7,17 +7,19 @@ from src.models import LLMProvider
 
 
 class AIProviderHTTPClient(httpx.AsyncClient):
-    _DEFAULT_MAX_RETRIES: int = 2
-    _DEFAULT_TIMEOUT: float = 30.0  # Default timeout in seconds
+    """Wrapper around httpx.AsyncClient for AI providers."""
 
     def __init__(
         self,
         settings: AppSettings,
         provider: LLMProvider | None = None,
-        retries: int = _DEFAULT_MAX_RETRIES,
-        timeout: float | None = None,
+        timeout: int | None = None,
+        retries: int | None = None,
     ) -> None:
-        transport = httpx.AsyncHTTPTransport(retries=retries, proxy=settings.http_proxy_url)
+        transport = httpx.AsyncHTTPTransport(
+            retries=(retries or settings.provider_default_retries),
+            proxy=settings.http_proxy_url,
+        )
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
@@ -28,7 +30,7 @@ class AIProviderHTTPClient(httpx.AsyncClient):
         super().__init__(
             transport=transport,
             headers=headers,
-            timeout=timeout or self._DEFAULT_TIMEOUT,
+            timeout=timeout or settings.provider_default_timeout,
         )
 
     @property
