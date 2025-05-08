@@ -123,3 +123,7 @@ class AIModel(BaseModel):
             return True
 
         return False
+
+    @property
+    def proxy_id(self) -> str:
+        return f"{self.vendor}__{self.id}"

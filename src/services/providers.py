@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import urllib.parse
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterable
 
 import httpx
 from pydantic import BaseModel
@@ -39,7 +39,11 @@ class ProviderClient:
             async with self._http_client as http_client:
                 response = await http_client.get(url, headers=self._provider.auth_headers)
                 if response.status_code != httpx.codes.OK:
-                    logger.warning("%s | Failed to fetch models from provider.", self._provider)
+                    logger.warning(
+                        "%s | Failed to fetch models from provider: %s",
+                        self._provider,
+                        response.text,
+                    )
                     return []
 
                 if not (response_data := response.json().get("data")):
@@ -128,7 +132,9 @@ class ProviderService:
 
         if tasks:
             # Run tasks in parallel for providers that need refresh
-            results = await asyncio.gather(*tasks, return_exceptions=True)
+            results: Iterable[list[AIModel] | BaseException] = await asyncio.gather(
+                *tasks, return_exceptions=True
+            )
 
             # Process results and update cache for each provider
             for provider, result in zip(providers, results):
@@ -136,8 +142,11 @@ class ProviderService:
                     logger.error(f"Failed to list models for {provider}: {result!r}")
                     continue
 
-                self._models_cache.set(provider.vendor, result)
-                all_models.extend(result)
+                if result is not None:
+                    self._models_cache.set(provider.vendor, result)
+                    all_models.extend(result)
+                else:
+                    logger.debug(f"No models for {provider}: {result!r}")
 
         return all_models
 
