@@ -31,7 +31,7 @@ deps: ## Update dependencies
 .PHONY: run
 run: ## Run app
 	@echo Run project...
-	uv run python -m app.main
+	uv run python -m src.main
 
 .PHONY: test
 test: ## Run tests with coverage report
