@@ -36,6 +36,6 @@ run: ## Run app
 .PHONY: test
 test: ## Run tests with coverage report
 	@echo Test project with coverage...
-	uv run coverage run -m pytest
+	uv run coverage run -m pytest -v
 	uv run coverage report
 	rm .coverage
