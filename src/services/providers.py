@@ -4,12 +4,12 @@ import urllib.parse
 from typing import TYPE_CHECKING, Iterable
 
 import httpx
-from pydantic import BaseModel, RootModel
+from pydantic import BaseModel
 
 from src.constants import Provider
 from src.services.http import AIProviderHTTPClient
 from src.models import LLMProvider, AIModel
-from src.utils import Cache
+from src.utils import Cache, singleton
 
 if TYPE_CHECKING:
     from src.settings import AppSettings
@@ -24,11 +24,13 @@ class ProviderAIModel(BaseModel):
     """
 
     id: str
-    created: int
+    # created: int
 
 
-class ProviderAIModelsResponse(RootModel[list[ProviderAIModel]]):
+class ProviderAIModelsResponse(BaseModel):
     """Represents an AI model with provider-specific details."""
+
+    data: list[ProviderAIModel]
 
 
 class ProviderClient:
@@ -59,11 +61,11 @@ class ProviderClient:
                     logger.warning("%s | No models data in provider response.", self._provider)
                     return []
 
-                print(response_data)
                 models_data = ProviderAIModelsResponse.model_validate(response_data)
+                vendor = self._provider.vendor
                 return [
-                    AIModel(id=ai_model.id, vendor=self._provider.vendor)
-                    for ai_model in models_data.root
+                    AIModel(id=f"{vendor}__{model.id}", vendor=vendor, vendor_id=model.id)
+                    for model in models_data.data
                 ]
 
         models: list[AIModel] = []
@@ -94,6 +96,7 @@ class ProviderClient:
         await self._http_client.aclose()
 
 
+@singleton
 class ProviderService:
     """Service for managing AI providers and their configurations."""
 
@@ -129,8 +132,14 @@ class ProviderService:
         all_models = []
         tasks = []
         providers = []
+        logger.info("Fetching models from all providers...")
         for llm_provider in self._settings.providers:
             # route = self._find_provider_route(llm_provider)
+            logger.debug(
+                "Provider %s: fetching models (force_refresh: %s)",
+                llm_provider.vendor,
+                force_refresh,
+            )
             if not force_refresh:
                 cached = self._models_cache.get(str(llm_provider.vendor))
                 if cached is not None:
@@ -153,7 +162,7 @@ class ProviderService:
                     logger.error(f"Failed to list models for {provider}: {result!r}")
                     continue
 
-                if result is not None:
+                if result:
                     self._models_cache.set(provider.vendor, result)
                     all_models.extend(result)
                 else:

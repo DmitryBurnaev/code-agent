@@ -21,8 +21,8 @@ def mock_provider_service() -> Generator[AsyncMock, Any, None]:
     """Return mock provider service."""
     mock_service = AsyncMock(spec=ProviderService)
     mock_service.get_list_models.return_value = [
-        AIModel(id="gpt-4", vendor="openai"),
-        AIModel(id="claude-3", vendor="anthropic"),
+        AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4"),
+        AIModel(id="anthropic__claude-3", vendor="anthropic", vendor_id="claude-3"),
     ]
     with patch("src.routers.proxy.ProviderService", return_value=mock_service):
         yield mock_service
@@ -59,8 +59,8 @@ class TestProxyAPI:
         assert response.status_code == 200
         data = response.json()
         assert data == [
-            {"id": "gpt-4", "name": "GPT-4", "type": "chat", "vendor": "openai"},
-            {"id": "claude-3", "name": "Claude 3", "type": "chat", "vendor": "anthropic"},
+            {"id": "openai__gpt-4", "vendor": "openai", "vendor_id": "gpt-4"},
+            {"id": "anthropic__claude-3", "vendor": "anthropic", "vendor_id": "claude-3"},
         ]
         mock_provider_service.get_list_models.assert_awaited_once()
 

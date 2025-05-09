@@ -14,34 +14,38 @@ from src.constants import Provider
 from src.tests.conftest import MockTestResponse, MockHTTPxClient
 
 pytestmark = pytest.mark.asyncio
-type MOCK_MODELS_TYPE = dict[str, list[dict[str, str | int]]]
+type MOCK_MODELS_TYPE = dict[str, dict[str, list[dict[str, str | int]]]]
 
 
 @pytest.fixture
 def mock_models() -> MOCK_MODELS_TYPE:
     return {
-        "https://api.anthropic.com/v1/models": [
-            {
-                "id": "anthropic-model-1",
-                "object": "model",
-                "created": 1698785180,
-                "owned_by": "system",
-            },
-        ],
-        "https://api.openai.com/v1/models": [
-            {
-                "id": "gpt-4",
-                "object": "model",
-                "created": 1698785180,
-                "owned_by": "system",
-            },
-            {
-                "id": "open-model-e-3",
-                "object": "model",
-                "created": 1698785189,
-                "owned_by": "system",
-            },
-        ],
+        "https://api.anthropic.com/v1/models": {
+            "data": [
+                {
+                    "id": "anthropic-model-1",
+                    "object": "model",
+                    "created": 1698785180,
+                    "owned_by": "system",
+                },
+            ]
+        },
+        "https://api.openai.com/v1/models": {
+            "data": [
+                {
+                    "id": "gpt-4",
+                    "object": "model",
+                    "created": 1698785180,
+                    "owned_by": "system",
+                },
+                {
+                    "id": "open-model-e-3",
+                    "object": "model",
+                    "created": 1698785189,
+                    "owned_by": "system",
+                },
+            ],
+        },
     }
 
 
@@ -61,7 +65,8 @@ def mock_httpx_for_models_client(mock_models: MOCK_MODELS_TYPE) -> MockHTTPxClie
 
 @pytest.fixture
 def service(
-    mock_settings: AppSettings, mock_httpx_for_models_client: MockHTTPxClient
+    mock_settings: AppSettings,
+    mock_httpx_for_models_client: MockHTTPxClient,
 ) -> ProviderService:
     """Return a provider service instance."""
     return ProviderService(mock_settings, cast(httpx.AsyncClient, mock_httpx_for_models_client))
@@ -87,17 +92,23 @@ class TestProviderService:
         """Test getting models' list with cache."""
 
         # Set cache for the first provider
-        service._models_cache.set(Provider.OPENAI, [AIModel(id="gpt-4", vendor="openai")])
+        service._models_cache.set(
+            Provider.OPENAI,
+            [AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4")],
+        )
 
         # get models and check results
         models = await service.get_list_models()
 
         expected_model_pairs = [
-            ("openai", "openai__gpt-4"),  # cached
-            ("anthropic", "anthropic__anthropic-model-1"),  # new (not cached vendor)
+            AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4"),
+            AIModel(
+                id="anthropic__anthropic-model-1",
+                vendor="anthropic",
+                vendor_id="anthropic-model-1",
+            ),
         ]
-        actual_model_pairs = [(m.vendor, m.id) for m in models]
-        assert actual_model_pairs == expected_model_pairs
+        assert models == expected_model_pairs
 
         mock_httpx_for_models_client.get.assert_awaited_once_with(
             "https://api.anthropic.com/v1/models", headers={"Authorization": "Bearer anthropic-key"}
@@ -111,18 +122,24 @@ class TestProviderService:
         """Test getting models list with force refresh."""
 
         # Set cache for the first provider
-        service._models_cache.set(Provider.OPENAI, [AIModel(id="old-gpt-4", vendor="openai")])
+        service._models_cache.set(
+            Provider.OPENAI,
+            [AIModel(id="openai__old-gpt-4", vendor="openai", vendor_id="old-gpt-4")],
+        )
 
         # get models and check results
         models = await service.get_list_models(force_refresh=True)
 
         expected_model_pairs = [
-            ("openai", "openai__gpt-4"),
-            ("openai", "openai__open-model-e-3"),
-            ("anthropic", "anthropic__anthropic-model-1"),
+            AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4"),
+            AIModel(id="openai__open-model-e-3", vendor="openai", vendor_id="open-model-e-3"),
+            AIModel(
+                id="anthropic__anthropic-model-1",
+                vendor="anthropic",
+                vendor_id="anthropic-model-1",
+            ),
         ]
-        actual_model_pairs = [(m.vendor, m.id) for m in models]
-        assert actual_model_pairs == expected_model_pairs
+        assert models == expected_model_pairs
 
         expected_call_urls = [
             "https://api.anthropic.com/v1/models",
@@ -155,8 +172,8 @@ class TestProviderService:
         """Test cache invalidation."""
         # Prepare mock models
         mock_models = [
-            AIModel(id="gpt-4", vendor="openai"),
-            AIModel(id="claude-3", vendor="anthropic"),
+            AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4"),
+            AIModel(id="anthropic__claude-3", vendor="anthropic", vendor_id="claude-3"),
         ]
 
         # Set cache for both providers
