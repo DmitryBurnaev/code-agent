@@ -88,7 +88,7 @@ class ProxyService:
         """
         Store exception info for logging in close
         """
-        # await self.aclose(exc_type=exc_type, exc_value=exc_value)
+        await self.aclose(exc_type=exc_type, exc_value=exc_value)
 
     async def aclose(
         self,
@@ -160,7 +160,7 @@ class ProxyService:
             method=request_data.method,
             url=url,
             headers=headers,
-            content=json.dumps(body),
+            json=body,
         )
 
         try:
@@ -188,8 +188,7 @@ class ProxyService:
                 raise ProviderProxyError("Stream timeout") from exc
             finally:
                 # Ensure service cleanup
-                pass
-                # await self.aclose()
+                await self.aclose()
 
         response_headers = dict(httpx_response.headers)
         response_headers.update(
