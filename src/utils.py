@@ -1,12 +1,31 @@
 import logging
 import time
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Callable, ParamSpec
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T")
+C = TypeVar("C")
+P = ParamSpec("P")
 
 
-class Cache(Generic[T]):
+def singleton(cls: type[C]) -> Callable[P, C]:
+    """Class decorator that implements the Singleton pattern.
+
+    This decorator ensures that only one instance of a class exists.
+    All later instantiations will return the same instance.
+    """
+    instances: dict[str, C] = {}
+
+    def getinstance(*args: P.args, **kwargs: P.kwargs) -> C:
+        if cls.__name__ not in instances:
+            instances[cls.__name__] = cls(*args, **kwargs)
+
+        return instances[cls.__name__]
+
+    return getinstance
+
+
+class Cache(Generic[T], metaclass=type):
     """Simple in-memory cache with TTL per key."""
 
     def __init__(self, ttl: float):
@@ -43,7 +62,7 @@ class Cache(Generic[T]):
         """
         self._data[key] = value
         self._last_update[key] = time.monotonic()
-        logger.debug("Cache: set value for key %s", key)
+        logger.debug("Cache: set value for key %s | value: %s", key, value)
 
     def invalidate(self, key: str | None = None) -> None:
         """Force cache invalidation.

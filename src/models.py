@@ -1,5 +1,5 @@
-from datetime import datetime
 from typing import Any
+from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict, SecretStr
 
 from src.constants import Provider, DEFAULT_PROVIDER_TIMEOUT, PROVIDER_URLS
@@ -111,8 +111,4 @@ class AIModel(BaseModel):
 
     id: str
     vendor: str
-    vendor_id: str | None = None
-
-    def model_post_init(self, context: Any, /) -> None:
-        self.vendor_id = self.id
-        self.id = f"{self.vendor}__{self.vendor_id}"
+    vendor_id: str

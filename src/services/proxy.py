@@ -85,8 +85,10 @@ class ProxyService:
         exc_value: BaseException | None = None,
         traceback: TracebackType | None = None,
     ) -> None:
-        # Store exception info for logging in close
-        await self.aclose(exc_type=exc_type, exc_value=exc_value)
+        """
+        Store exception info for logging in close
+        """
+        # await self.aclose(exc_type=exc_type, exc_value=exc_value)
 
     async def aclose(
         self,
@@ -94,6 +96,7 @@ class ProxyService:
         exc_value: BaseException | None = None,
     ) -> None:
         """Close all resources and cleanup."""
+
         logger.debug("ProxyService: closing resources and cleanup")
 
         # Log any errors that occurred during the request
@@ -185,7 +188,8 @@ class ProxyService:
                 raise ProviderProxyError("Stream timeout") from exc
             finally:
                 # Ensure service cleanup
-                await self.aclose()
+                pass
+                # await self.aclose()
 
         response_headers = dict(httpx_response.headers)
         response_headers.update(
