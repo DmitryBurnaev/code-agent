@@ -1,9 +1,15 @@
 """HTTP client for AI providers."""
 
+import logging
+from typing import Any
+
 import httpx
+from httpx import URL, Response
 
 from src.settings import AppSettings
 from src.models import LLMProvider
+
+logger = logging.getLogger(__name__)
 
 
 class AIProviderHTTPClient(httpx.AsyncClient):
@@ -33,6 +39,11 @@ class AIProviderHTTPClient(httpx.AsyncClient):
             timeout=timeout or settings.provider_default_timeout,
         )
 
+    async def get(self, url: URL | str, **kwargs: Any) -> Response:
+        logger.info(f"Request [GET]: {url}")
+        response = await super().get(url=url, **kwargs)
+        return response
+
     @property
     def transport(self) -> httpx.AsyncHTTPTransport:
         """Return the transport instance."""
@@ -40,5 +51,5 @@ class AIProviderHTTPClient(httpx.AsyncClient):
 
     @property
     def proxies(self) -> dict[str, str] | None:
-        """Return the proxies configuration."""
+        """Return the proxies' configuration."""
         return self._proxies  # type: ignore

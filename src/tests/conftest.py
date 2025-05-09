@@ -1,6 +1,7 @@
 """Test configuration and fixtures."""
 
 import dataclasses
+import json
 from typing import Any, cast, Self
 from unittest.mock import AsyncMock
 
@@ -76,19 +77,30 @@ def client(
 @dataclasses.dataclass
 class MockTestResponse:
     headers: dict[str, str]
-    data: dict[str, Any]
+    data: dict[str, Any] | list[dict[str, Any]]
     status_code: int = 200
 
-    def json(self) -> dict[str, Any]:
+    def json(self) -> dict[str, Any] | list[dict[str, Any]]:
         return self.data
 
+    @property
+    def text(self) -> str:
+        return json.dumps(self.data)
 
-@dataclasses.dataclass
+
 class MockHTTPxClient:
-    def __init__(self, response: MockTestResponse, status_code: int = 200):
+    """Imitate real http client but with mocked response"""
+
+    def __init__(
+        self,
+        response: MockTestResponse | None = None,
+        get_method: AsyncMock | None = None,
+    ):
+        if not any([response, get_method]):
+            raise AssertionError("At least one of `response` or `get_method` must be specified")
+
         self.response = response
-        self.status_code = status_code
-        self.get = AsyncMock(return_value=response)
+        self.get = get_method or AsyncMock(return_value=response)
         self.aclose = AsyncMock()
         super().__init__()
 

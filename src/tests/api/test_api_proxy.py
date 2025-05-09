@@ -21,8 +21,8 @@ def mock_provider_service() -> Generator[AsyncMock, Any, None]:
     """Return mock provider service."""
     mock_service = AsyncMock(spec=ProviderService)
     mock_service.get_list_models.return_value = [
-        AIModel(id="gpt-4", name="GPT-4", type="chat", vendor="openai"),
-        AIModel(id="claude-3", name="Claude 3", type="chat", vendor="anthropic"),
+        AIModel(id="gpt-4", vendor="openai"),
+        AIModel(id="claude-3", vendor="anthropic"),
     ]
     with patch("src.routers.proxy.ProviderService", return_value=mock_service):
         yield mock_service

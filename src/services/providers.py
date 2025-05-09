@@ -4,7 +4,7 @@ import urllib.parse
 from typing import TYPE_CHECKING, Iterable
 
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
 
 from src.constants import Provider
 from src.services.http import AIProviderHTTPClient
@@ -17,10 +17,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class ProviderAIModelsResponse(BaseModel):
-    """Represents an AI model with provider-specific details."""
+class ProviderAIModel(BaseModel):
+    """
+    Parse provider sent data
+    Example: {'id': 'o1-mini', 'object': 'model', 'created': 1725649008, 'owned_by': 'system'}
+    """
 
-    models: list[AIModel]
+    id: str
+    created: int
+
+
+class ProviderAIModelsResponse(RootModel[list[ProviderAIModel]]):
+    """Represents an AI model with provider-specific details."""
 
 
 class ProviderClient:
@@ -33,33 +41,36 @@ class ProviderClient:
 
     async def get_list_models(self) -> list[AIModel]:
         """List available models from the provider."""
-        url = urllib.parse.urljoin(self._base_url, "models")
+        url = urllib.parse.urljoin(self._base_url, "/v1/models")
 
         async def _fetch_models() -> list[AIModel]:
             async with self._http_client as http_client:
                 response = await http_client.get(url, headers=self._provider.auth_headers)
                 if response.status_code != httpx.codes.OK:
                     logger.warning(
-                        "%s | Failed to fetch models from provider: %s",
+                        "%s | Failed to fetch models from provider: code: %s | resp: %s",
                         self._provider,
+                        response.status_code,
                         response.text,
                     )
                     return []
 
-                if not (response_data := response.json().get("data")):
+                if not (response_data := response.json()):
                     logger.warning("%s | No models data in provider response.", self._provider)
                     return []
 
-                models_data = ProviderAIModelsResponse.model_validate(
-                    response_data, context={"vendor": self._provider.vendor}
-                )
-                return [ai_model for ai_model in models_data.models if ai_model.is_chat_model]
+                print(response_data)
+                models_data = ProviderAIModelsResponse.model_validate(response_data)
+                return [
+                    AIModel(id=ai_model.id, vendor=self._provider.vendor)
+                    for ai_model in models_data.root
+                ]
 
         models: list[AIModel] = []
         try:
             models = await _fetch_models()
         except Exception as exc:
-            logger.error(f"Failed to list {self._provider} models: {exc}. Skipping.")
+            logger.exception(f"Failed to list {self._provider} models: {exc}. Skipping.")
 
         return models
 

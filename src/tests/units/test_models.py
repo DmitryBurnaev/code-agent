@@ -10,7 +10,6 @@ from src.models import (
     Message,
     ChatRequest,
     LLMProvider,
-    AIModel,
 )
 from src.constants import DEFAULT_PROVIDER_TIMEOUT, Provider
 
@@ -26,7 +25,7 @@ class TestSystemInfo:
 
     def test_system_info_with_providers(self) -> None:
         """Test SystemInfo model with providers."""
-        info = SystemInfo(os_version="test-os", providers=["test-provider"])
+        info = SystemInfo(providers=["test-provider"])
         assert info.providers == ["test-provider"]
 
 
@@ -41,7 +40,7 @@ class TestHealthCheck:
 
 
 class TestMessage:
-    """Tests for Message model."""
+    """Tests for Message models."""
 
     @pytest.mark.parametrize(
         "role,content",
@@ -95,22 +94,3 @@ class TestLLMProvider:
         """Test LLMProvider auth headers."""
         provider = LLMProvider(vendor=Provider.OPENAI, api_key=SecretStr("test-key"))
         assert provider.auth_headers == {"Authorization": "Bearer test-key"}
-
-
-class TestAIModel:
-    """Tests for AIModel model."""
-
-    @pytest.mark.parametrize(
-        "model_id,model_type,expected",
-        [
-            ("gpt-4", "chat", True),
-            ("text-davinci-003", "chat", True),
-            ("claude-2", "chat", True),
-            ("other-model", "chat", True),
-            ("other-model", "other", False),
-        ],
-    )
-    def test_is_chat_model(self, model_id: str, model_type: str, expected: bool) -> None:
-        """Test AIModel is_chat_model property."""
-        model = AIModel(id=model_id, name="Test Model", type=model_type, vendor="test")
-        assert model.is_chat_model == expected

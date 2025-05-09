@@ -83,7 +83,7 @@ class ChatRequest(BaseModel):
 
 
 class LLMProvider(BaseModel):
-    """Provider configuration with API key."""
+    """Provider configuration with API keys."""
 
     vendor: Provider
     api_key: SecretStr
@@ -110,20 +110,9 @@ class AIModel(BaseModel):
     """Represents an AI model with provider-specific details."""
 
     id: str
-    name: str
-    type: str
     vendor: str
+    vendor_id: str | None = None
 
-    @property
-    def is_chat_model(self) -> bool:
-        if self.type == "chat":  # Anthropic-style
-            return True
-
-        if self.id.startswith(("gpt-", "text-")):  # OpenAI-style
-            return True
-
-        return False
-
-    @property
-    def proxy_id(self) -> str:
-        return f"{self.vendor}__{self.id}"
+    def model_post_init(self, context: Any, /) -> None:
+        self.vendor_id = self.id
+        self.id = f"{self.vendor}__{self.vendor_id}"

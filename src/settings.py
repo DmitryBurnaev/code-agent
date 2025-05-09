@@ -40,6 +40,7 @@ class AppSettings(BaseSettings):
 
     @property
     def log_config(self) -> dict[str, Any]:
+        level = self.log_level
         return {
             "version": 1,
             "disable_existing_loggers": False,
@@ -51,18 +52,10 @@ class AppSettings(BaseSettings):
             },
             "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "standard"}},
             "loggers": {
-                "src": {"handlers": ["console"], "level": self.log_level, "propagate": False},
-                "fastapi": {"handlers": ["console"], "level": self.log_level, "propagate": False},
-                "uvicorn.access": {
-                    "handlers": ["console"],
-                    "level": self.log_level,
-                    "propagate": False,
-                },
-                "uvicorn.error": {
-                    "handlers": ["console"],
-                    "level": self.log_level,
-                    "propagate": False,
-                },
+                "src": {"handlers": ["console"], "level": level, "propagate": False},
+                "fastapi": {"handlers": ["console"], "level": level, "propagate": False},
+                "uvicorn.access": {"handlers": ["console"], "level": level, "propagate": False},
+                "uvicorn.error": {"handlers": ["console"], "level": level, "propagate": False},
             },
         }
 
