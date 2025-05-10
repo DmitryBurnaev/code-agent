@@ -5,6 +5,7 @@ from fastapi import APIRouter, Request, Response
 
 from src.dependencies import SettingsDep
 from src.models import ChatRequest, AIModel
+from src.routers import ErrorHandlingBaseRoute
 from src.services.providers import ProviderService
 from src.services.proxy import ProxyRequestData, ProxyService, ProxyEndpoint
 
@@ -18,6 +19,7 @@ router = APIRouter(
         404: {"description": "Provider or model not found"},
         500: {"description": "Error communicating with AI provider"},
     },
+    route_class=ErrorHandlingBaseRoute,
 )
 
 
@@ -38,7 +40,6 @@ async def list_models(settings: SettingsDep) -> list[AIModel]:
 @router.post(
     "/chat/completions",
     description="Send a chat completion request to the AI provider specified by model name",
-    # response_class=Response,
 )
 async def create_chat_completion(
     request: Request,
@@ -72,7 +73,6 @@ async def create_chat_completion(
 @router.delete(
     "/chat/completions/{completion_id}",
     description="Cancel an ongoing chat completion request",
-    # response_class=Response,
 )
 async def cancel_chat_completion(
     request: Request,

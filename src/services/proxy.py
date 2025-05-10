@@ -1,4 +1,3 @@
-import json
 import logging
 import urllib.parse
 from enum import Enum
@@ -269,6 +268,8 @@ class ProxyService:
     def _prepare_headers(provider: LLMProvider, headers: dict[str, str]) -> dict[str, str]:
         """Prepare headers for proxy request with auth if configured."""
         clean_headers = {
-            k: v for k, v in headers.items() if k.lower() not in ("host", "connection")
+            k: v
+            for k, v in headers.items()
+            if k.lower() not in ("host", "connection", "content-length")
         }
         return clean_headers | provider.auth_headers

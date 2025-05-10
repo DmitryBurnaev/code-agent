@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict, SecretStr
 
@@ -122,4 +122,3 @@ class ErrorResponse(BaseModel):
     error: str
     detail: Optional[str] = None
     code: int = status.HTTP_500_INTERNAL_SERVER_ERROR
-    extra: Optional[Dict[str, Any]] = None

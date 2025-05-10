@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from src.dependencies import SettingsDep
 from src.models import SystemInfo, HealthCheck
+from src.routers import ErrorHandlingBaseRoute
 
 __all__ = ("router",)
 
@@ -12,6 +13,7 @@ router = APIRouter(
     prefix="/system",
     tags=["system"],
     responses={404: {"description": "Not found"}},
+    route_class=ErrorHandlingBaseRoute,
 )
 
 
