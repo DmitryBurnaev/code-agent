@@ -1,5 +1,14 @@
+import logging
+
+from fastapi import status
+
+
 class BaseApplicationError(Exception):
     """Base application error"""
+
+    log_level: int = logging.ERROR
+    log_message: str = "Application error"
+    status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR
 
     def __init__(self, message: str) -> None:
         super().__init__(message)
@@ -17,10 +26,22 @@ class ProviderError(BaseApplicationError):
 class ProviderLookupError(ProviderError):
     """Provider lookup error"""
 
+    log_level: int = logging.ERROR
+    log_message: str = "Provider lookup error"
+    status_code: int = status.HTTP_404_NOT_FOUND
+
 
 class ProviderProxyError(ProviderError):
-    """Provider error"""
+    """Provider proxy error"""
+
+    log_level: int = logging.ERROR
+    log_message: str = "Provider proxy error"
+    status_code: int = status.HTTP_502_BAD_GATEWAY
 
 
 class ProviderRequestError(ProviderError):
-    """Provider error"""
+    """Provider request error"""
+
+    log_level: int = logging.ERROR
+    log_message: str = "Provider request error"
+    status_code: int = status.HTTP_400_BAD_REQUEST
