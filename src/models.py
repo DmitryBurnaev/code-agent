@@ -1,8 +1,9 @@
-from typing import Any
+from typing import Any, Dict, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict, SecretStr
 
 from src.constants import Provider, DEFAULT_PROVIDER_TIMEOUT, PROVIDER_URLS
+from fastapi import status
 
 __all__ = (
     "SystemInfo",
@@ -11,6 +12,7 @@ __all__ = (
     "ChatRequest",
     "LLMProvider",
     "AIModel",
+    "ErrorResponse",
 )
 
 
@@ -112,3 +114,12 @@ class AIModel(BaseModel):
     id: str
     vendor: str
     vendor_id: str
+
+
+class ErrorResponse(BaseModel):
+    """Base error response model"""
+
+    error: str
+    detail: Optional[str] = None
+    code: int = status.HTTP_500_INTERNAL_SERVER_ERROR
+    extra: Optional[Dict[str, Any]] = None

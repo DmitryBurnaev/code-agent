@@ -104,7 +104,7 @@ class ProxyService:
             logger.error(
                 "ProxyService: unable to finish proxy request: %r",
                 exc_value,
-                exc_info=exc_value,
+                # exc_info=exc_value,
             )
 
         if self._response is not None:

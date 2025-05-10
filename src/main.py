@@ -6,6 +6,7 @@ from fastapi import FastAPI, Depends
 from src.settings import get_settings, AppSettings
 from src.routers import system_router, proxy_router
 from src.dependencies.auth import verify_api_token
+from src.utils import setup_exception_handlers
 
 logger = logging.getLogger("src.main")
 
@@ -32,6 +33,7 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPI:
     logging.config.dictConfig(settings.log_config)
     logging.captureWarnings(capture=True)
 
+    logger.debug("Setting up application...")
     app = CodeAgentAPI(
         title="System Info API",
         description="API for retrieving system information",
@@ -40,9 +42,15 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPI:
         dependencies=[Depends(verify_api_token)],
     )
     app.set_settings(settings)
+
+    logger.debug("Setting up routers...")
     app.include_router(system_router, prefix="/api")
     app.include_router(proxy_router, prefix="/api")
-    logger.debug("Application configured")
+
+    logger.debug("Setting up exception handlers...")
+    setup_exception_handlers(app)
+
+    logger.info("Application configured")
     return app
 
 
