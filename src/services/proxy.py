@@ -153,7 +153,7 @@ class ProxyService:
 
         logger.info("ProxyService: Sending proxy %s request to %s", request_data.method, url)
         if logger.isEnabledFor(logging.DEBUG):
-            logger.debug("ProxyService: Requested body: '%s'", request_data.body)
+            logger.debug("ProxyService: Requested body: '%s'", body)
 
         request = self._http_client.build_request(
             method=request_data.method,
@@ -172,6 +172,7 @@ class ProxyService:
                 status_code=httpx_response.status_code,
                 headers=dict(httpx_response.headers),
             )
+
         except httpx.TimeoutException as exc:
             error_msg = "Stream timeout" if is_streaming else "Request timeout"
             raise ProviderProxyError(error_msg) from exc

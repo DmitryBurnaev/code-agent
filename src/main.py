@@ -7,8 +7,6 @@ from src.settings import get_settings, AppSettings
 from src.routers import system_router, proxy_router
 from src.dependencies.auth import verify_api_token
 
-# from src.utils import universal_exception_handler
-
 logger = logging.getLogger("src.main")
 
 
@@ -41,14 +39,10 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPI:
         docs_url="/api/docs/" if settings.docs_enabled else None,
         redoc_url="/api/redoc/" if settings.docs_enabled else None,
         dependencies=[Depends(verify_api_token)],
-        # exception_handlers={
-        #     Exception: universal_exception_handler,
-        # },
     )
     app.set_settings(settings)
 
     logger.debug("Setting up routers...")
-    # app.router.route_class = ErrorHandlingBaseRoute
     app.include_router(system_router, prefix="/api")
     app.include_router(proxy_router, prefix="/api")
 
