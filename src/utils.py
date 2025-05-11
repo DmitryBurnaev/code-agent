@@ -103,7 +103,7 @@ async def universal_exception_handler(request: Request, exc: Exception) -> JSONR
         log_level = exc.log_level
         log_message = f"{exc.log_message}: {exc.message}"
         status_code = exc.status_code
-        log_data |= {"error": log_message, "detail": str(exc)}
+        log_data |= {"error": exc.log_message, "detail": str(exc.message)}
 
     elif isinstance(exc, (RequestValidationError, ValidationError)):
         log_level = logging.WARNING

@@ -121,4 +121,3 @@ class ErrorResponse(BaseModel):
 
     error: str
     detail: Optional[str] = None
-    code: int = status.HTTP_500_INTERNAL_SERVER_ERROR

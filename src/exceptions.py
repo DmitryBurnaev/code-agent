@@ -34,9 +34,9 @@ class ProviderLookupError(ProviderError):
 class ProviderProxyError(ProviderError):
     """Provider proxy error"""
 
-    log_level: int = logging.ERROR
+    log_level: int = logging.WARNING
     log_message: str = "Provider proxy error"
-    status_code: int = status.HTTP_502_BAD_GATEWAY
+    status_code: int = status.HTTP_400_BAD_REQUEST
 
 
 class ProviderRequestError(ProviderError):
