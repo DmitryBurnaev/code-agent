@@ -43,7 +43,7 @@ class ProviderClient:
 
     async def get_list_models(self) -> list[AIModel]:
         """List available models from the provider."""
-        url = urllib.parse.urljoin(self._base_url, "/v1/models")
+        url = urllib.parse.urljoin(self._base_url, "models")
 
         async def _fetch_models() -> list[AIModel]:
             async with self._http_client as http_client:
@@ -134,7 +134,6 @@ class ProviderService:
         providers = []
         logger.info("Fetching models from all providers...")
         for llm_provider in self._settings.providers:
-            # route = self._find_provider_route(llm_provider)
             logger.debug(
                 "Provider %s: fetching models (force_refresh: %s)",
                 llm_provider.vendor,

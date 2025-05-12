@@ -6,6 +6,8 @@ from types import TracebackType
 from typing import Self, AsyncIterator
 
 import httpx
+import openai
+from click import prompt
 from starlette.responses import StreamingResponse, Response
 
 from src.exceptions import ProviderProxyError
@@ -103,7 +105,6 @@ class ProxyService:
             logger.error(
                 "ProxyService: unable to finish proxy request: %r",
                 exc_value,
-                # exc_info=exc_value,
             )
 
         if self._response is not None:
@@ -112,6 +113,21 @@ class ProxyService:
 
         await self._http_client.aclose()
         await self._provider_service.close()
+
+    # async def handle_completion(self, request_data: ProxyRequestData) -> Response:
+    #     """
+    #     Handle a completion request via open ai SDK library.
+    #     """
+    #     model = "test"
+    #     prompt = "Hello"
+    #     response = openai.ChatCompletion.create(
+    #         model=model, messages=[{"role": "user", "content": prompt}], stream=True
+    #     )
+    #     for chunk in response:
+    #         content = chunk["choices"][0]["delta"].get("content")
+    #         if content:
+    #             print(content, end="", flush=True)
+    #     print()  # Перевод строки после окончания потока
 
     async def handle_request(
         self,
@@ -155,6 +171,16 @@ class ProxyService:
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("ProxyService: Requested body: '%s'", body)
 
+        headers = {
+            "Authorization": headers["Authorization"],
+        }
+        logger.debug(
+            "ProxyService: [%s] %s\n headers: %s\n body: %s",
+            request_data.method,
+            url,
+            headers,
+            body,
+        )
         request = self._http_client.build_request(
             method=request_data.method,
             url=url,
@@ -167,6 +193,12 @@ class ProxyService:
             if is_streaming:
                 return await self._handle_stream(httpx_response)
 
+            logger.debug(
+                "ProxyService: Got response from %s\n headers: %s\n body: %s",
+                request_data.method,
+                httpx_response.headers,
+                httpx_response.text,
+            )
             return Response(
                 content=httpx_response.content,
                 status_code=httpx_response.status_code,
