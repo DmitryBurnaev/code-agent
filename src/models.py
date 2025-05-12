@@ -95,7 +95,11 @@ class LLMProvider(BaseModel):
     @property
     def base_url(self) -> str:
         """Get base URL for provider."""
-        return PROVIDER_URLS[self.vendor]
+        url = PROVIDER_URLS[self.vendor]
+        if not url.endswith("/"):
+            url += "/"
+
+        return url
 
     @property
     def auth_headers(self) -> dict[str, str]:
