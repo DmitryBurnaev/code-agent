@@ -24,7 +24,6 @@ class ProviderAIModel(BaseModel):
     """
 
     id: str
-    # created: int
 
 
 class ProviderAIModelsResponse(BaseModel):

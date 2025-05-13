@@ -6,8 +6,6 @@ from types import TracebackType
 from typing import Self, AsyncIterator
 
 import httpx
-import openai
-from click import prompt
 from starlette.responses import StreamingResponse, Response
 
 from src.exceptions import ProviderProxyError
@@ -114,21 +112,6 @@ class ProxyService:
         await self._http_client.aclose()
         await self._provider_service.close()
 
-    # async def handle_completion(self, request_data: ProxyRequestData) -> Response:
-    #     """
-    #     Handle a completion request via open ai SDK library.
-    #     """
-    #     model = "test"
-    #     prompt = "Hello"
-    #     response = openai.ChatCompletion.create(
-    #         model=model, messages=[{"role": "user", "content": prompt}], stream=True
-    #     )
-    #     for chunk in response:
-    #         content = chunk["choices"][0]["delta"].get("content")
-    #         if content:
-    #             print(content, end="", flush=True)
-    #     print()  # Перевод строки после окончания потока
-
     async def handle_request(
         self,
         request_data: ProxyRequestData,
@@ -171,9 +154,9 @@ class ProxyService:
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("ProxyService: Requested body: '%s'", body)
 
-        headers = {
-            "Authorization": headers["Authorization"],
-        }
+        # headers = {
+        #     "Authorization": headers["Authorization"],
+        # }
         logger.debug(
             "ProxyService: [%s] %s\n headers: %s\n body: %s",
             request_data.method,
