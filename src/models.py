@@ -3,7 +3,6 @@ from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict, SecretStr
 
 from src.constants import Provider, DEFAULT_PROVIDER_TIMEOUT, PROVIDER_URLS
-from fastapi import status
 
 __all__ = (
     "SystemInfo",

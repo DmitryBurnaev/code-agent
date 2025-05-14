@@ -105,12 +105,13 @@ class ProxyService:
                 exc_value,
             )
 
-        if self._response is not None:
-            await self._response.aclose()
-            self._response = None
+        raise RuntimeError("think about cleanup resources")
+        # if self._response is not None:
+        #     await self._response.aclose()
+        #     self._response = None
 
-        await self._http_client.aclose()
-        await self._provider_service.close()
+        # await self._http_client.aclose()
+        # await self._provider_service.close()
 
     async def handle_request(
         self,
@@ -139,7 +140,7 @@ class ProxyService:
 
         # Prepare request data
         url = self._build_target_url(provider, endpoint, request_data)
-        headers = self._prepare_headers(provider, request_data.headers)
+        headers = self._prepare_headers(provider)
         is_streaming = False
         body = None
         if request_data.body:
@@ -154,9 +155,6 @@ class ProxyService:
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("ProxyService: Requested body: '%s'", body)
 
-        # headers = {
-        #     "Authorization": headers["Authorization"],
-        # }
         logger.debug(
             "ProxyService: [%s] %s\n headers: %s\n body: %s",
             request_data.method,
@@ -182,10 +180,16 @@ class ProxyService:
                 httpx_response.headers,
                 httpx_response.text,
             )
+            safe_headers = {
+                k: v
+                for k, v in httpx_response.headers.items()
+                if k.lower()
+                not in {"transfer-encoding", "content-encoding", "content-length", "connection"}
+            }
             return Response(
                 content=httpx_response.content,
                 status_code=httpx_response.status_code,
-                headers=dict(httpx_response.headers),
+                headers=safe_headers,
             )
 
         except httpx.TimeoutException as exc:
@@ -281,11 +285,10 @@ class ProxyService:
         return llm_provider, model_name
 
     @staticmethod
-    def _prepare_headers(provider: LLMProvider, headers: dict[str, str]) -> dict[str, str]:
+    def _prepare_headers(provider: LLMProvider) -> dict[str, str]:
         """Prepare headers for proxy request with auth if configured."""
-        clean_headers = {
-            k: v
-            for k, v in headers.items()
-            if k.lower() not in ("host", "connection", "content-length")
+        result_headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
         }
-        return clean_headers | provider.auth_headers
+        return result_headers | provider.auth_headers
