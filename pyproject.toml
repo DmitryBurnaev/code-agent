@@ -12,6 +12,7 @@ dependencies = [
 ]
 
 [tool.uv]
+package = true
 dev-dependencies = [
     "pytest>=8.3,<9",
     "pytest-asyncio>=0.26.0,<0.27",
@@ -24,16 +25,11 @@ dev-dependencies = [
     "pip<26"
 ]
 
-[tool.pytest.ini_options]
-testpaths = ["src/tests"]
-python_files = ["test_*.py"]
-asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"
+[project.scripts]
+ai-client = "cli.simple_ai_client:main"
 
-# === Ruff settings ====
-
+# === Ruff settings ===
 [tool.ruff]
-# Exclude a variety of commonly ignored directories.
 exclude = [
     ".git",
     ".pytest_cache",
@@ -50,10 +46,6 @@ line-length = 100
 indent-width = 4
 target-version = "py313"
 
-[tool.black]
-line-length = 100
-target-version = ["py313"]
-
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F"]
 ignore = []
@@ -69,9 +61,18 @@ line-ending = "auto"
 docstring-code-format = false
 docstring-code-line-length = "dynamic"
 
+# === Other tools settings settings ===
+
+[tool.black]
+line-length = 100
+target-version = ["py313"]
+
 [tool.mypy]
 strict = true
 exclude = ['src/tests', 'alembic', '.local', 'test_*']
 
-[project.scripts]
-ai-client = 'src.cli.simple_ai_client:main'
+[tool.pytest.ini_options]
+testpaths = ["src/tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

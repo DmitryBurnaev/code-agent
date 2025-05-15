@@ -21,7 +21,7 @@ class TestAppSettings:
             auth_api_token=SecretStr("test-token"),
             http_proxy_url=None,
         )
-        assert settings.docs_enabled is True
+        assert settings.docs_enabled is False
         assert settings.auth_api_token.get_secret_value() == "test-token"
         assert settings.providers == []
 

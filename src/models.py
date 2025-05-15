@@ -88,13 +88,14 @@ class LLMProvider(BaseModel):
 
     vendor: Provider
     api_key: SecretStr
+    url: str | None = None
     auth_type: str = "Bearer"
     timeout: int = DEFAULT_PROVIDER_TIMEOUT
 
     @property
     def base_url(self) -> str:
         """Get base URL for provider."""
-        url = PROVIDER_URLS[self.vendor]
+        url = self.url or PROVIDER_URLS[self.vendor]
         if not url.endswith("/"):
             url += "/"
 

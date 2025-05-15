@@ -33,6 +33,7 @@ class AppSettings(BaseSettings):
     http_proxy_url: str | None = Field(None, description="Socks5 URL to use")
     provider_default_timeout: int = 30
     provider_default_retries: int = 3
+    provider_custom_url: str | None = Field(None, description="Custom provider URL")
 
     @cached_property
     def provider_by_vendor(self) -> dict[str, LLMProvider]:
