@@ -1,22 +1,27 @@
-#!/usr/bin/env python3
 """
 CLI for interacting with AI models (DeepSeek/OpenAI compatible API)
 
 Requires the DEEPSEEK_API_TOKEN environment variable or --token argument for authorization.
 """
+
 import argparse
+from urllib.parse import urljoin
 import httpx
 import json
 import os
 import sys
 from typing import Any, Dict, Optional, ContextManager
 
-from src.constants import PROVIDER_URLS, Provider
+from constants import PROVIDER_URLS, Provider
+
+DEFAULT_VENDOR_URL = "https://api.deepseek.com/v1"
+DEFAULT_VENDOR = "deepseek"
+DEFAULT_MODEL = "deepseek-chat"
 
 
 def call_ai_model(
-    vendor: str = "deepseek",
-    model_name: str = "deepseek-chat",
+    vendor_url: str = DEFAULT_VENDOR_URL,
+    model_name: str = DEFAULT_MODEL,
     stream: bool = False,
     prompt: str = "Hello!",
     token: str = "",
@@ -25,16 +30,11 @@ def call_ai_model(
     Sends a request to the AI model. In stream mode, returns a context manager for httpx.Response.
     """
     if not token:
-        print("[ERROR] Authorization token is not set (use --token or environment variable)")
+        print("[ERROR] Authorization token is not set (use --token or env 'AI_API_TOKEN')")
         sys.exit(1)
 
-    try:
-        provider_enum = Provider[vendor.upper()]
-    except KeyError:
-        print(f"[ERROR] Unknown vendor: {vendor}. Supported: {[p.value for p in Provider]}")
-        sys.exit(1)
-
-    url = PROVIDER_URLS[provider_enum] + "/chat/completions"
+    url = vendor_url + "/chat/completions"
+    print(f"Sending request to {url}")
     headers = {"Authorization": f"Bearer {token}"}
     data = {
         "max_tokens": 1000,
@@ -86,18 +86,23 @@ def process_stream_response(response_cm: ContextManager[httpx.Response]) -> str:
         for line in r.iter_lines():
             if not line:
                 continue
+
             if isinstance(line, bytes):
                 line = line.decode("utf-8")
+
             if line.startswith("data:"):
-                line = line[len("data:") :].strip()
+                line = line.removeprefix("data:").strip()
+
             if not line or line == "[DONE]":
                 continue
+
             try:
                 data = json.loads(line)
                 content = extract_text_from_response(data)
                 if content:
                     print(content, end="", flush=True)  # Print chunk to CLI
                     result.append(content)
+
             except Exception as e:
                 print(f"\n[stream parse error]: {e}\n{line}")
 
@@ -132,7 +137,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="CLI for interacting with AI models (DeepSeek/OpenAI compatible API)"
     )
-    parser.add_argument("--vendor", default="deepseek", help="AI provider (deepseek, ...)")
+    parser.add_argument("--vendor", help="AI provider (deepseek, ...)")
+    parser.add_argument("--vendor-url", help="AI provider URL (https://api.deepseek.com/v1, ...)")
     parser.add_argument("--model", default="deepseek-chat", help="Model name (e.g. deepseek-chat)")
     parser.add_argument(
         "--token", default=None, help="Authorization token (or environment variable)"
@@ -141,10 +147,24 @@ def main() -> None:
     parser.add_argument("--prompt", default="Hello!", help="Prompt text")
     args = parser.parse_args()
 
-    token = args.token or os.environ.get("AI_API_TOKEN", "")
+    token = args.token or os.environ.get("CLI_AI_API_TOKEN", "")
+    vendor_url = args.vendor_url or DEFAULT_VENDOR_URL
+    vendor = args.vendor or DEFAULT_VENDOR
+    if not vendor_url:
+        if not vendor:
+            print("[ERROR] Either --vendor or --vendor-url must be provided")
+            sys.exit(1)
+
+        vendor_url = PROVIDER_URLS.get(vendor)
+        if not vendor_url:
+            print(f"[ERROR] Unknown vendor: {vendor}. Supported: {[p.value for p in Provider]}")
+            sys.exit(1)
+
+    model_name = args.model or DEFAULT_MODEL
+
     response = call_ai_model(
-        vendor=args.vendor,
-        model_name=args.model,
+        vendor_url=vendor_url,
+        model_name=model_name,
         stream=args.stream,
         prompt=args.prompt,
         token=token,
