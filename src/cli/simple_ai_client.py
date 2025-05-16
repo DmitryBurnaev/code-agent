@@ -5,18 +5,21 @@ Requires the DEEPSEEK_API_TOKEN environment variable or --token argument for aut
 """
 
 import argparse
-from urllib.parse import urljoin
 import httpx
 import json
 import os
 import sys
 from typing import Any, Dict, Optional, ContextManager
 
-from constants import PROVIDER_URLS, Provider
 
 DEFAULT_VENDOR_URL = "https://api.deepseek.com/v1"
 DEFAULT_VENDOR = "deepseek"
 DEFAULT_MODEL = "deepseek-chat"
+PROVIDER_URLS: dict[str, str] = {
+    "openai": "https://api.openai.com/v1",
+    "deepseek": "https://api.deepseek.com/v1",
+    "custom": "https://custom-provider/v1",
+}
 
 
 def call_ai_model(
@@ -157,7 +160,7 @@ def main() -> None:
 
         vendor_url = PROVIDER_URLS.get(vendor)
         if not vendor_url:
-            print(f"[ERROR] Unknown vendor: {vendor}. Supported: {[p.value for p in Provider]}")
+            print(f"[ERROR] Unknown vendor: {vendor}")
             sys.exit(1)
 
     model_name = args.model or DEFAULT_MODEL
@@ -169,12 +172,14 @@ def main() -> None:
         prompt=args.prompt,
         token=token,
     )
-    if response and not args.stream:
-        process_full_response(response)  # type: ignore
-    elif response and args.stream:
-        process_stream_response(response)  # type: ignore
+    if not response:
+        print("[no response from AI model]")
+        sys.exit(1)
+
+    if isinstance(response, httpx.Response):
+        process_full_response(response)
     else:
-        print("Error: Invalid request mode")
+        process_stream_response(response)
 
 
 if __name__ == "__main__":
