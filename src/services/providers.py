@@ -45,6 +45,7 @@ class ProviderClient:
         url = urllib.parse.urljoin(self._base_url, "models")
 
         async def _fetch_models() -> list[AIModel]:
+            # TODO: fix problems with reopening http client in concurrent threads
             async with self._http_client as http_client:
                 response = await http_client.get(url, headers=self._provider.auth_headers)
                 if response.status_code != httpx.codes.OK:
