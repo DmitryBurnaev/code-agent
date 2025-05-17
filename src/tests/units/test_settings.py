@@ -20,6 +20,7 @@ class TestAppSettings:
         settings = AppSettings(
             auth_api_token=SecretStr("test-token"),
             http_proxy_url=None,
+            provider_custom_url=None,
         )
         assert settings.docs_enabled is False
         assert settings.auth_api_token.get_secret_value() == "test-token"
@@ -32,6 +33,7 @@ class TestAppSettings:
             auth_api_token=SecretStr("test-token"),
             log_level=log_level,
             http_proxy_url=None,
+            provider_custom_url=None,
         )
         assert settings.log_level == log_level.upper()
 
@@ -42,6 +44,7 @@ class TestAppSettings:
                 auth_api_token=SecretStr("test-token"),
                 log_level="INVALID",
                 http_proxy_url=None,
+                provider_custom_url=None,
             )
 
     def test_providers(self) -> None:
@@ -54,6 +57,7 @@ class TestAppSettings:
             auth_api_token=SecretStr("test-token"),
             providers=providers,
             http_proxy_url=None,
+            provider_custom_url=None,
         )
         assert settings.providers == providers
         assert settings.provider_by_vendor == {
@@ -67,6 +71,7 @@ class TestAppSettings:
             auth_api_token=SecretStr("test-token"),
             log_level="DEBUG",
             http_proxy_url=None,
+            provider_custom_url=None,
         )
         log_config = settings.log_config
         assert log_config["version"] == 1

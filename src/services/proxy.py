@@ -105,7 +105,7 @@ class ProxyService:
                 exc_value,
             )
 
-        raise RuntimeError("think about cleanup resources")
+        # raise RuntimeError("think about cleanup resources")
         # if self._response is not None:
         #     await self._response.aclose()
         #     self._response = None

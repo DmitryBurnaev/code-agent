@@ -16,6 +16,7 @@ class Provider(StrEnum):
     GOOGLE = "google"
     DEEPSEEK = "deepseek"
     CUSTOM = "custom"
+    LOCAL = "local"
 
 
 # Mapping of provider to their base URLs
@@ -25,6 +26,7 @@ PROVIDER_URLS: dict[Provider, str] = {
     Provider.GOOGLE: "https://generativelanguage.googleapis.com/v1",
     Provider.DEEPSEEK: "https://api.deepseek.com/v1",
     Provider.CUSTOM: "https://custom-provider/v1",
+    Provider.LOCAL: "http://localhost:1234/v1",
 }
 DEFAULT_PROVIDER_TIMEOUT = 30
 LOG_LEVELS = "DEBUG|INFO|WARNING|ERROR|CRITICAL"
