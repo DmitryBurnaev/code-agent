@@ -4,7 +4,7 @@ import uvicorn
 from fastapi import FastAPI, Depends
 
 from src.settings import get_settings, AppSettings
-from src.routers import system_router, proxy_router
+from src.routers import system_router, proxy_router, proxy_cors_router
 from src.dependencies.auth import verify_api_token
 
 logger = logging.getLogger("src.main")
@@ -38,13 +38,13 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPI:
         description="API for retrieving system information",
         docs_url="/api/docs/" if settings.docs_enabled else None,
         redoc_url="/api/redoc/" if settings.docs_enabled else None,
-        dependencies=[Depends(verify_api_token)],
     )
     app.set_settings(settings)
 
     logger.debug("Setting up routers...")
-    app.include_router(system_router, prefix="/api")
-    app.include_router(proxy_router, prefix="/api")
+    app.include_router(system_router, prefix="/api", dependencies=[Depends(verify_api_token)])
+    app.include_router(proxy_router, prefix="/api", dependencies=[Depends(verify_api_token)])
+    app.include_router(proxy_cors_router, prefix="/api")
 
     logger.info("Application configured")
     return app
