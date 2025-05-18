@@ -150,6 +150,8 @@ class ProxyService:
                 **request_data.body.model_dump(),
                 **request_data.body.get_extra_params(),
             }
+            # TODO: thins about potential modifications to the body
+            # body["messages"][1]["content"] = "Just say hi and nothing else."
 
         logger.info("ProxyService: Sending proxy %s request to %s", request_data.method, url)
         if logger.isEnabledFor(logging.DEBUG):

@@ -232,3 +232,13 @@ class TestProxyAPI:
             ProxyEndpoint.CANCEL_CHAT_COMPLETION,
         )
         mock_proxy_service.__aexit__.assert_awaited_once_with(None, None, None)
+
+    def test_options_chat_completion(self, client: TestClient) -> None:
+        """Test OPTIONS /ai-proxy/chat/completions endpoint."""
+        response = client.options("/api/ai-proxy/chat/completions")
+
+        assert response.status_code == 204
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
+        assert response.headers["Access-Control-Allow-Methods"] == "POST, OPTIONS"
+        assert response.headers["Access-Control-Allow-Headers"] == "Content-Type, Authorization"
+        assert response.headers["Access-Control-Max-Age"] == "86400"

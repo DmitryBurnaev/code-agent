@@ -12,6 +12,38 @@ from src.services.proxy import ProxyRequestData, ProxyService, ProxyEndpoint
 logger = logging.getLogger(__name__)
 
 
+# Create a separate router for CORS endpoints without auth
+cors_router = APIRouter(
+    prefix="/ai-proxy",
+    tags=["ai-proxy"],
+    responses={
+        404: {"description": "Provider or model not found"},
+        500: {"description": "Error communicating with AI provider"},
+    },
+    route_class=ErrorHandlingBaseRoute,
+)
+
+
+@cors_router.options(
+    "/chat/completions",
+    description="Handle OPTIONS request for chat completions endpoint",
+)
+async def options_chat_completion() -> Response:
+    """
+    Handle OPTIONS request for chat completions endpoint.
+    Returns necessary CORS headers for preflight requests.
+    """
+    return Response(
+        status_code=204,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Max-Age": "86400",  # 24 hours
+        },
+    )
+
+
 router = APIRouter(
     prefix="/ai-proxy",
     tags=["ai-proxy"],
