@@ -1,7 +1,8 @@
 import logging.config
+from typing import Awaitable, Callable
 
 import uvicorn
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request, Response
 
 from src.settings import get_settings, AppSettings
 from src.routers import system_router, proxy_router, proxy_cors_router
@@ -23,6 +24,32 @@ class CodeAgentAPI(FastAPI):
         return self._settings
 
 
+class AIAgentMiddleware:
+    """Middleware for adding standard headers for AI agent communication"""
+
+    def __init__(self, app: FastAPI) -> None:
+        self.app = app
+
+    async def __call__(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        """
+        Call next middleware in the chain and add standard headers
+        Provide standard headers for AI agent communication
+        """
+        response: Response = await call_next(request)
+
+        # Add CORS headers
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        response.headers["Access-Control-Max-Age"] = "86400"
+
+        return response
+
+
 def make_app(settings: AppSettings | None = None) -> CodeAgentAPI:
     """Forming Application instance with required settings and dependencies"""
 
@@ -40,6 +67,9 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPI:
         redoc_url="/api/redoc/" if settings.docs_enabled else None,
     )
     app.set_settings(settings)
+
+    # Add AI Agent middleware
+    app.add_middleware(AIAgentMiddleware)
 
     logger.debug("Setting up routers...")
     app.include_router(system_router, prefix="/api", dependencies=[Depends(verify_api_token)])

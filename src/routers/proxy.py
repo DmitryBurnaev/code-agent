@@ -4,7 +4,7 @@ from typing import Any
 from fastapi import APIRouter, Request, Response
 
 from src.dependencies import SettingsDep
-from src.models import ChatRequest, AIModel
+from src.models import ChatRequest, ModelListResponse
 from src.routers import ErrorHandlingBaseRoute
 from src.services.providers import ProviderService
 from src.services.proxy import ProxyRequestData, ProxyService, ProxyEndpoint
@@ -24,24 +24,16 @@ cors_router = APIRouter(
 )
 
 
-@cors_router.options(
-    "/chat/completions",
-    description="Handle OPTIONS request for chat completions endpoint",
-)
+@cors_router.options("/chat/completions")
 async def options_chat_completion() -> Response:
-    """
-    Handle OPTIONS request for chat completions endpoint.
-    Returns necessary CORS headers for preflight requests.
-    """
-    return Response(
-        status_code=204,
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            "Access-Control-Max-Age": "86400",  # 24 hours
-        },
-    )
+    """Handle OPTIONS request for chat completions endpoint"""
+    return Response(status_code=204)
+
+
+@cors_router.options("/models")
+async def options_models() -> Response:
+    """Handle OPTIONS request for models endpoint"""
+    return Response(status_code=204)
 
 
 router = APIRouter(
@@ -58,15 +50,13 @@ router = APIRouter(
 @router.get(
     "/models",
     description="List available models from all configured providers",
-    response_model=list[AIModel],
+    response_model=ModelListResponse,
 )
-async def list_models(settings: SettingsDep) -> list[AIModel]:
-    """
-    Get a list of available models from all configured providers.
-    The response will be aggregated and models will be prefixed with provider names.
-    """
+async def list_models(settings: SettingsDep) -> ModelListResponse:
+    """Get a list of available models from all configured providers"""
     service = ProviderService(settings)
-    return await service.get_list_models()
+    models = await service.get_list_models()
+    return ModelListResponse(data=models)
 
 
 @router.post(
@@ -78,18 +68,7 @@ async def create_chat_completion(
     chat_request: ChatRequest,
     settings: SettingsDep,
 ) -> Any:
-    """
-    Create a chat completion using the provider specified in the model name.
-
-    The model name in the request should be in format "provider__model_name",
-    where provider determines which AI service to use. Examples:
-    - openai__gpt-4
-    - anthropic__claude-3
-    - deepseek__chat-v1
-
-    The request body follows a standardized format but allows provider-specific parameters
-    to be passed through.
-    """
+    """Create a chat completion using the provider specified in the model name"""
     request_data = ProxyRequestData(
         method=request.method,
         headers=dict(request.headers),
