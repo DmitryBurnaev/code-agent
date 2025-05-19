@@ -12,6 +12,7 @@ __all__ = (
     "LLMProvider",
     "AIModel",
     "ErrorResponse",
+    "ModelListResponse",
 )
 
 
@@ -125,3 +126,10 @@ class ErrorResponse(BaseModel):
 
     error: str
     detail: Optional[str] = None
+
+
+class ModelListResponse(BaseModel):
+    """Response model for listing available models"""
+
+    object: str = "list"
+    data: list[AIModel]

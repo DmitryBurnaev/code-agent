@@ -150,8 +150,6 @@ class ProxyService:
                 **request_data.body.model_dump(),
                 **request_data.body.get_extra_params(),
             }
-            # TODO: thins about potential modifications to the body
-            # body["messages"][1]["content"] = "Just say hi and nothing else."
 
         logger.info("ProxyService: Sending proxy %s request to %s", request_data.method, url)
         if logger.isEnabledFor(logging.DEBUG):
@@ -188,6 +186,14 @@ class ProxyService:
                 if k.lower()
                 not in {"transfer-encoding", "content-encoding", "content-length", "connection"}
             }
+            #                 | {
+            #     # TODO: perform normalization of headers
+            #     "Access-Control-Allow-Origin": "*",
+            #     "Access-Control-Allow-Methods": "POST, OPTIONS",
+            #     "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            #     "Access-Control-Max-Age": "86400",
+            #     "Host": "https://api.deepseek.com/v1",
+            # })
             return Response(
                 content=httpx_response.content,
                 status_code=httpx_response.status_code,
