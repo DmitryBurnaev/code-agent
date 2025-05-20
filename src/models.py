@@ -1,6 +1,6 @@
-from typing import Any, Optional
+from typing import Any, Optional, Literal
 from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict, SecretStr
+from pydantic import BaseModel, Field, SecretStr
 
 from src.constants import Provider, DEFAULT_PROVIDER_TIMEOUT, PROVIDER_URLS
 
@@ -13,18 +13,22 @@ __all__ = (
     "AIModel",
     "ErrorResponse",
     "ModelListResponse",
+    "ChatMessage",
+    "ChatCompletionResponse",
+    "ChatCompletionStreamResponse",
+    "CancelCompletionResponse",
 )
 
 
 class SystemInfo(BaseModel):
-    """Response model for system information endpoint."""
+    """System information response model."""
 
-    status: str = "ok"
-    providers: list[str] = Field(default_factory=list)
+    status: str
+    providers: list[str]
 
 
 class HealthCheck(BaseModel):
-    """Response model for health check endpoint."""
+    """Health check response model."""
 
     status: str
     timestamp: datetime
@@ -44,44 +48,25 @@ class Message(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    """Base model for chat completion requests with required fields."""
+    """Chat completion request model."""
 
-    model_config = ConfigDict(
-        extra="allow",  # Allow extra fields for provider-specific parameters
-        json_schema_extra={
-            "example": {
-                "messages": [
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": "Hello!"},
-                ],
-                "model": "gpt-4",
-                "stream": True,
-                "temperature": 0.7,  # Optional provider-specific field
-                "max_tokens": 1000,  # Optional provider-specific field
-            }
-        },
-    )
-
-    messages: list[Message] = Field(
-        description="The list of messages in the conversation",
-        min_length=1,  # At least one message required
-    )
-    model: str = Field(
-        description="The model to use for chat completion",
-    )
-    stream: bool = Field(
-        default=False,
-        description="Whether to stream the response",
-    )
+    model: str
+    messages: list[Message]
+    stream: bool = False
+    temperature: float | None = None
+    max_tokens: int | None = None
+    top_p: float | None = None
+    frequency_penalty: float | None = None
+    presence_penalty: float | None = None
+    stop: list[str] | None = None
 
     def get_extra_params(self) -> dict[str, Any]:
-        """
-        Get provider-specific parameters that were passed in the request.
-        Excludes the required fields.
-        """
-        required_fields = {"messages", "model", "stream"}
-
-        return {k: v for k, v in self.model_dump().items() if k not in required_fields}
+        """Get extra parameters for the request."""
+        return {
+            k: v
+            for k, v in self.model_dump().items()
+            if k not in {"model", "messages", "stream"} and v is not None
+        }
 
 
 class LLMProvider(BaseModel):
@@ -114,7 +99,7 @@ class LLMProvider(BaseModel):
 
 
 class AIModel(BaseModel):
-    """Represents an AI model with provider-specific details."""
+    """AI model information."""
 
     id: str
     vendor: str
@@ -129,7 +114,57 @@ class ErrorResponse(BaseModel):
 
 
 class ModelListResponse(BaseModel):
-    """Response model for listing available models"""
+    """Response model for list of available models."""
 
-    object: str = "list"
     data: list[AIModel]
+
+
+class ChatMessage(BaseModel):
+    """Chat message model."""
+
+    role: Literal["system", "user", "assistant"]
+    content: str
+
+
+class ChatCompletionChoice(BaseModel):
+    """Chat completion choice model."""
+
+    index: int
+    message: ChatMessage
+    finish_reason: str | None = None
+
+
+class ChatCompletionChunkChoice(BaseModel):
+    """Chat completion chunk choice model for streaming responses."""
+
+    index: int
+    delta: ChatMessage
+    finish_reason: str | None = None
+
+
+class ChatCompletionResponse(BaseModel):
+    """Chat completion response model."""
+
+    id: str
+    model: str
+    created: int
+    choices: list[ChatCompletionChoice]
+    usage: dict[str, int] | None = None
+
+
+class ChatCompletionStreamResponse(BaseModel):
+    """Chat completion chunk model for streaming responses."""
+
+    id: str
+    model: str
+    created: int
+    choices: list[ChatCompletionChunkChoice]
+
+
+class CancelCompletionResponse(BaseModel):
+    """Response model for chat completion cancellation."""
+
+    id: str
+    model: str
+    cancelled: bool = True
+    created: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
