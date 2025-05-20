@@ -1,50 +1,31 @@
 import logging
-from typing import Any
 
 from fastapi import APIRouter, Request, Response
 
 from src.dependencies import SettingsDep
-from src.models import ChatRequest, ModelListResponse
-from src.routers import ErrorHandlingBaseRoute
+from src.models import (
+    ChatRequest,
+    ModelListResponse,
+    ChatCompletionResponse,
+    ChatCompletionStreamResponse,
+    CancelCompletionResponse,
+)
+from src.routers import CORSBaseRoute
 from src.services.providers import ProviderService
 from src.services.proxy import ProxyRequestData, ProxyService, ProxyEndpoint
 
 logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/ai-proxy", tags=["ai-proxy"], route_class=CORSBaseRoute)
 
 
-# Create a separate router for CORS endpoints without auth
-cors_router = APIRouter(
-    prefix="/ai-proxy",
-    tags=["ai-proxy"],
-    responses={
-        404: {"description": "Provider or model not found"},
-        500: {"description": "Error communicating with AI provider"},
-    },
-    route_class=ErrorHandlingBaseRoute,
+@router.options(
+    "/models",
+    description="Handle CORS preflight request for models endpoint",
+    responses={204: {"description": "CORS preflight request successful"}},
 )
-
-
-@cors_router.options("/chat/completions")
-async def options_chat_completion() -> Response:
-    """Handle OPTIONS request for chat completions endpoint"""
-    return Response(status_code=204)
-
-
-@cors_router.options("/models")
 async def options_models() -> Response:
     """Handle OPTIONS request for models endpoint"""
     return Response(status_code=204)
-
-
-router = APIRouter(
-    prefix="/ai-proxy",
-    tags=["ai-proxy"],
-    responses={
-        404: {"description": "Provider or model not found"},
-        500: {"description": "Error communicating with AI provider"},
-    },
-    route_class=ErrorHandlingBaseRoute,
-)
 
 
 @router.get(
@@ -59,15 +40,36 @@ async def list_models(settings: SettingsDep) -> ModelListResponse:
     return ModelListResponse(data=models)
 
 
+@router.options(
+    "/chat/completions",
+    description="Handle CORS preflight request for chat completions endpoint",
+    responses={204: {"description": "CORS preflight request successful"}},
+)
+async def options_chat_completion() -> Response:
+    """Handle OPTIONS request for chat completions endpoint"""
+    return Response(status_code=204)
+
+
 @router.post(
     "/chat/completions",
     description="Send a chat completion request to the AI provider specified by model name",
+    response_model=ChatCompletionResponse | ChatCompletionStreamResponse,
+    responses={
+        200: {
+            "description": "Chat completion response",
+            "model": ChatCompletionResponse,
+        },
+        201: {
+            "description": "Streaming chat completion response",
+            "model": ChatCompletionStreamResponse,
+        },
+    },
 )
 async def create_chat_completion(
     request: Request,
     chat_request: ChatRequest,
     settings: SettingsDep,
-) -> Any:
+) -> Response:
     """Create a chat completion using the provider specified in the model name"""
     request_data = ProxyRequestData(
         method=request.method,
@@ -84,6 +86,13 @@ async def create_chat_completion(
 @router.delete(
     "/chat/completions/{completion_id}",
     description="Cancel an ongoing chat completion request",
+    response_model=CancelCompletionResponse,
+    responses={
+        200: {
+            "description": "Chat completion cancelled successfully",
+            "model": CancelCompletionResponse,
+        },
+    },
 )
 async def cancel_chat_completion(
     request: Request,
