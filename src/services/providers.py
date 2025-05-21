@@ -45,28 +45,26 @@ class ProviderClient:
         url = urllib.parse.urljoin(self._base_url, "models")
 
         async def _fetch_models() -> list[AIModel]:
-            # TODO: fix problems with reopening http client in concurrent threads
-            async with self._http_client as http_client:
-                response = await http_client.get(url, headers=self._provider.auth_headers)
-                if response.status_code != httpx.codes.OK:
-                    logger.warning(
-                        "%s | Failed to fetch models from provider: code: %s | resp: %s",
-                        self._provider,
-                        response.status_code,
-                        response.text,
-                    )
-                    return []
+            response = await self._http_client.get(url, headers=self._provider.auth_headers)
+            if response.status_code != httpx.codes.OK:
+                logger.warning(
+                    "%s | Failed to fetch models from provider: code: %s | resp: %s",
+                    self._provider,
+                    response.status_code,
+                    response.text,
+                )
+                return []
 
-                if not (response_data := response.json()):
-                    logger.warning("%s | No models data in provider response.", self._provider)
-                    return []
+            if not (response_data := response.json()):
+                logger.warning("%s | No models data in provider response.", self._provider)
+                return []
 
-                models_data = ProviderAIModelsResponse.model_validate(response_data)
-                vendor = self._provider.vendor
-                return [
-                    AIModel(id=f"{vendor}__{model.id}", vendor=vendor, vendor_id=model.id)
-                    for model in models_data.data
-                ]
+            models_data = ProviderAIModelsResponse.model_validate(response_data)
+            vendor = self._provider.vendor
+            return [
+                AIModel(id=f"{vendor}__{model.id}", vendor=vendor, vendor_id=model.id)
+                for model in models_data.data
+            ]
 
         models: list[AIModel] = []
         try:
@@ -91,9 +89,9 @@ class ProviderClient:
         # Add more provider-specific rules as needed
         return False
 
-    async def close(self) -> None:
-        """Close the HTTP client."""
-        await self._http_client.aclose()
+    # async def close(self) -> None:
+    #     """Close the HTTP client."""
+    #     await self._http_client.aclose()
 
 
 @singleton
@@ -178,7 +176,7 @@ class ProviderService:
         """
         self._models_cache.invalidate(provider)
 
-    async def close(self) -> None:
-        """Close all provider clients."""
-        for client in self._provider_clients.values():
-            await client.close()
+    # async def close(self) -> None:
+    #     """Close all provider clients."""
+    #     for client in self._provider_clients.values():
+    #         await client.aclose()
