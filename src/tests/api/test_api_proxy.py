@@ -5,6 +5,7 @@ from typing import Any, Generator, AsyncIterator
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from httpx import Headers
 from pydantic import SecretStr
 from fastapi.testclient import TestClient
 from starlette.responses import Response, StreamingResponse
@@ -58,10 +59,12 @@ class TestProxyAPI:
         response = client.get("/api/ai-proxy/models")
         assert response.status_code == 200
         data = response.json()
-        assert data == [
-            {"id": "openai__gpt-4", "vendor": "openai", "vendor_id": "gpt-4"},
-            {"id": "anthropic__claude-3", "vendor": "anthropic", "vendor_id": "claude-3"},
-        ]
+        assert data == {
+            "data": [
+                {"id": "openai__gpt-4", "vendor": "openai", "vendor_id": "gpt-4"},
+                {"id": "anthropic__claude-3", "vendor": "anthropic", "vendor_id": "claude-3"},
+            ]
+        }
         mock_provider_service.get_list_models.assert_awaited_once()
 
     def test_create_chat_completion(
@@ -104,7 +107,7 @@ class TestProxyAPI:
                     "connection": "keep-alive",
                     "authorization": "Bearer test-auth-token",
                     "user-agent": "testclient",
-                    "content-length": "86",
+                    "content-length": "197",
                     "content-type": "application/json",
                 },
                 query_params={},
@@ -144,11 +147,17 @@ class TestProxyAPI:
         mock_proxy_service.handle_request.return_value = StreamingResponse(
             media_type="application/json",
             content=mock_aiter_bytes(),
-            headers={
-                "Content-Type": "text/event-stream",
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-            },
+            headers=Headers(
+                {
+                    "content-type": "text/event-stream",
+                    "cache-control": "no-cache",
+                    "connection": "keep-alive",
+                    "access-control-allow-origin": "*",
+                    "access-control-allow-methods": "POST, OPTIONS",
+                    "access-control-allow-headers": "Content-Type, Authorization",
+                    "access-control-max-age": "86400",
+                }
+            ),
             status_code=200,
         )
 
