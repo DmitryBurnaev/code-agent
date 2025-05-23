@@ -5,7 +5,7 @@ import pytest
 from src.services.http import AIProviderHTTPClient
 from src.settings import AppSettings
 from src.models import LLMProvider
-from src.constants import Provider
+from src.constants import Vendor
 from pydantic import SecretStr
 
 
@@ -24,7 +24,7 @@ def mock_settings() -> AppSettings:
 def mock_provider() -> LLMProvider:
     """Return mock provider."""
     return LLMProvider(
-        vendor=Provider.OPENAI,
+        vendor=Vendor.OPENAI,
         api_key=SecretStr("test_token"),
     )
 

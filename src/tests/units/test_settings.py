@@ -8,7 +8,7 @@ from pydantic import SecretStr
 
 from src.settings import AppSettings, get_settings
 from src.models import LLMProvider
-from src.constants import Provider, LOG_LEVELS
+from src.constants import Vendor, LOG_LEVELS
 
 
 class TestAppSettings:
@@ -50,8 +50,8 @@ class TestAppSettings:
     def test_providers(self) -> None:
         """Test providers configuration."""
         providers = [
-            LLMProvider(vendor=Provider.OPENAI, api_key=SecretStr("openai-key")),
-            LLMProvider(vendor=Provider.ANTHROPIC, api_key=SecretStr("anthropic-key")),
+            LLMProvider(vendor=Vendor.OPENAI, api_key=SecretStr("openai-key")),
+            LLMProvider(vendor=Vendor.ANTHROPIC, api_key=SecretStr("anthropic-key")),
         ]
         settings = AppSettings(
             auth_api_token=SecretStr("test-token"),
@@ -61,8 +61,8 @@ class TestAppSettings:
         )
         assert settings.providers == providers
         assert settings.provider_by_vendor == {
-            Provider.OPENAI: providers[0],
-            Provider.ANTHROPIC: providers[1],
+            Vendor.OPENAI: providers[0],
+            Vendor.ANTHROPIC: providers[1],
         }
 
     def test_log_config(self) -> None:
@@ -111,7 +111,7 @@ class TestGetSettings:
         assert settings.app_port == 8080
         assert settings.http_proxy_url == "socks5://127.0.0.1:8080"
         assert settings.providers == [
-            LLMProvider(vendor=Provider.OPENAI, api_key=SecretStr("openai-key")),
+            LLMProvider(vendor=Vendor.OPENAI, api_key=SecretStr("openai-key")),
         ]
 
     @patch.dict(os.environ, {"AUTH_API_TOKEN": "test-token", "LOG_LEVEL": "INVALID"})

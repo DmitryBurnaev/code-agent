@@ -9,7 +9,7 @@ import json
 from fastapi import Response
 from fastapi.responses import StreamingResponse
 
-from src.constants import Provider
+from src.constants import Vendor
 from src.services.proxy import ProxyService, ProxyRequestData, ProxyEndpoint
 from src.models import ChatRequest, Message
 from src.settings import AppSettings
@@ -164,7 +164,7 @@ class TestProxyService:
     ) -> None:
         """Test handling cancellation request."""
         completion_id = "test-completion"
-        proxy_service._cache.set(completion_id, Provider.OPENAI)
+        proxy_service._cache.set(completion_id, Vendor.OPENAI)
 
         mock_response.content = b'{"status": "cancelled"}'
         mock_http_client.send.return_value = mock_response

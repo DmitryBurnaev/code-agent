@@ -146,3 +146,11 @@ When enabled, the Swagger documentation is available at `/docs` and ReDoc at `/r
 | SWAGGER_ENABLED | Enables/disables Swagger documentation     | true                   |
 | APP_HOST        | Host address for the application           | localhost              |
 | APP_PORT        | Port number for the application            | 8003                   |
+
+
+## In the Future
+1. Use DB storage for
+   1. AI credentials (encrypted) and user settings
+   2. request-response history (by completion-id)
+   3. models usages 
+2. Use redis-based cache instead of in-memory one

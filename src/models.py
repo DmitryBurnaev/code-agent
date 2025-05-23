@@ -2,7 +2,7 @@ from typing import Any, Optional, Literal
 from datetime import datetime
 from pydantic import BaseModel, Field, SecretStr
 
-from src.constants import Provider, DEFAULT_PROVIDER_TIMEOUT, PROVIDER_URLS
+from src.constants import Vendor, DEFAULT_PROVIDER_TIMEOUT, PROVIDER_URLS
 
 __all__ = (
     "SystemInfo",
@@ -72,7 +72,7 @@ class ChatRequest(BaseModel):
 class LLMProvider(BaseModel):
     """Provider configuration with API keys."""
 
-    vendor: Provider
+    vendor: Vendor
     api_key: SecretStr
     url: str | None = None
     auth_type: str = "Bearer"

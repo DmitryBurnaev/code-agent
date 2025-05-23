@@ -4,7 +4,8 @@ import time
 
 import pytest
 
-from src.utils import Cache, singleton
+from src.services.cache import InMemoryCache
+from src.utils import singleton
 
 
 class TestSingleton:
@@ -86,11 +87,11 @@ class TestCache:
     """Tests for Cache class."""
 
     @pytest.fixture
-    def cache(self) -> Cache[str]:
+    def cache(self) -> InMemoryCache:
         """Return a cache instance for testing."""
-        return Cache[str](ttl=0.1)
+        return InMemoryCache()
 
-    def test_get_set(self, cache: Cache[str]) -> None:
+    def test_get_set(self, cache: InMemoryCache) -> None:
         """Test basic get/set operations."""
         # Test setting and getting value
         cache.set("test", "value")
@@ -99,7 +100,7 @@ class TestCache:
         # Test getting non-existent key
         assert cache.get("non-existent") is None
 
-    def test_ttl_expiration(self, cache: Cache[str]) -> None:
+    def test_ttl_expiration(self, cache: InMemoryCache) -> None:
         """Test TTL expiration."""
         # Set a value and verify it's there
         cache.set("test", "value")
@@ -111,7 +112,7 @@ class TestCache:
         # Verify value is gone
         assert cache.get("test") is None
 
-    def test_invalidate(self, cache: Cache[str]) -> None:
+    def test_invalidate(self, cache: InMemoryCache) -> None:
         """Test cache invalidation."""
         # Set multiple values
         cache.set("key1", "value1")
@@ -126,20 +127,3 @@ class TestCache:
         cache.invalidate()
         assert cache.get("key1") is None
         assert cache.get("key2") is None
-
-    def test_generic_type(self) -> None:
-        """Test generic type support."""
-        # Test with string
-        str_cache = Cache[str](ttl=0.1)
-        str_cache.set("test", "value")
-        assert str_cache.get("test") == "value"
-
-        # Test with int
-        int_cache = Cache[int](ttl=0.1)
-        int_cache.set("test", 42)
-        assert int_cache.get("test") == 42
-
-        # Test with a list
-        list_cache = Cache[list[str]](ttl=0.1)
-        list_cache.set("test", ["value1", "value2"])
-        assert list_cache.get("test") == ["value1", "value2"]

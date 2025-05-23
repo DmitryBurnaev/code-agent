@@ -1,6 +1,5 @@
 import logging
-import time
-from typing import TypeVar, Generic, Callable, ParamSpec
+from typing import TypeVar, Callable, ParamSpec
 
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
@@ -10,7 +9,7 @@ from pydantic import ValidationError
 from src.exceptions import BaseApplicationError
 from src.models import ErrorResponse
 
-__all__ = ("singleton", "Cache", "universal_exception_handler")
+__all__ = ("singleton", "universal_exception_handler")
 logger = logging.getLogger(__name__)
 T = TypeVar("T")
 C = TypeVar("C")
@@ -34,62 +33,9 @@ def singleton(cls: type[C]) -> Callable[P, C]:
     return getinstance
 
 
-class Cache(Generic[T], metaclass=type):
-    """Simple in-memory cache with TTL per key."""
-
-    def __init__(self, ttl: float):
-        self._ttl = ttl
-        self._data: dict[str, T] = {}
-        self._last_update: dict[str, float] = {}
-
-    def get(self, key: str) -> T | None:
-        """Get cached value for a key if not expired.
-
-        Args:
-            key: Cache key to look up
-
-        Returns:
-            Cached value if exists and not expired, None otherwise
-        """
-        if key not in self._data:
-            return None
-
-        if time.monotonic() - self._last_update[key] > self._ttl:
-            del self._data[key]
-            del self._last_update[key]
-            return None
-
-        logger.debug("Cache: got value for key %s", key)
-        return self._data[key]
-
-    def set(self, key: str, value: T) -> None:
-        """Set new cache value for key and update timestamp.
-
-        Args:
-            key: Cache key to store value
-            value: Value to cache
-        """
-        self._data[key] = value
-        self._last_update[key] = time.monotonic()
-        logger.debug("Cache: set value for key %s | value: %s", key, value)
-
-    def invalidate(self, key: str | None = None) -> None:
-        """Force cache invalidation.
-
-        Args:
-            key: Specific key to invalidate, if None - invalidate all cache
-        """
-        if key is None:
-            self._data.clear()
-            self._last_update.clear()
-        elif key in self._data:
-            del self._data[key]
-            del self._last_update[key]
-
-
 async def universal_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Universal exception handler that handles all types of exceptions"""
-    # Match exception type and prepare response data
+
     log_data: dict[str, str] = {
         "error": "Internal server error",
         "detail": str(exc),
