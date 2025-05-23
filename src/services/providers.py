@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING, Iterable
 import httpx
 from pydantic import BaseModel
 
-from src.constants import Provider
+from src.services.cache import CacheProtocol, InMemoryCache
+from src.constants import Vendor
 from src.services.http import AIProviderHTTPClient
 from src.models import LLMProvider, AIModel
-from src.utils import Cache, singleton
 
 if TYPE_CHECKING:
     from src.settings import AppSettings
@@ -94,12 +94,13 @@ class ProviderClient:
     #     await self._http_client.aclose()
 
 
-@singleton
 class ProviderService:
     """Service for managing AI providers and their configurations."""
 
     def __init__(
-        self, settings: "AppSettings", http_client: httpx.AsyncClient | None = None
+        self,
+        settings: "AppSettings",
+        http_client: httpx.AsyncClient | None = None,
     ) -> None:
         """Initialize the service with settings.
 
@@ -107,8 +108,9 @@ class ProviderService:
             settings: Application settings containing provider configurations.
         """
         self._settings = settings
-        self._models_cache = Cache[list[AIModel]](ttl=settings.models_cache_ttl)
-        self._provider_clients: dict[Provider, ProviderClient] = {}
+        # TODO: think about using DI here (note: cache is singletone)
+        self._cache: CacheProtocol = InMemoryCache()
+        self._provider_clients: dict[Vendor, ProviderClient] = {}
         self._http_client = http_client or AIProviderHTTPClient(settings)
 
     def get_client(self, provider: LLMProvider) -> ProviderClient:
@@ -138,7 +140,7 @@ class ProviderService:
                 force_refresh,
             )
             if not force_refresh:
-                cached = self._models_cache.get(str(llm_provider.vendor))
+                cached = self._cache_get_data(llm_provider.vendor)
                 if cached is not None:
                     all_models.extend(cached)
                     continue
@@ -160,22 +162,25 @@ class ProviderService:
                     continue
 
                 if result:
-                    self._models_cache.set(provider.vendor, result)
+                    self._cache_set_data(provider.vendor, result)
                     all_models.extend(result)
                 else:
                     logger.debug(f"No models for {provider}: {result!r}")
 
         return all_models
 
-    def invalidate_models_cache(self, provider: str | None = None) -> None:
-        """Force invalidation of models' cache.
+    def _cache_set_data(self, vendor: Vendor, models: list[AIModel]) -> None:
+        self._cache.set(vendor, [model.model_dump() for model in models])
 
-        Args:
-            provider: Specific provider to invalidate cache for.
-                     If None - invalidate cache for all providers.
-        """
-        self._models_cache.invalidate(provider)
+    def _cache_get_data(self, vendor: Vendor) -> list[AIModel] | None:
+        cached = self._cache.get(vendor)
+        if not cached or not isinstance(cached, list):
+            logger.debug(f"No cached models for {vendor}: {cached!r}")
+            return None
 
+        return [AIModel.model_validate(model_data) for model_data in cached]
+
+    # TODO: think about closing
     # async def close(self) -> None:
     #     """Close all provider clients."""
     #     for client in self._provider_clients.values():

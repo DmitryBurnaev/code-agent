@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock
 from src.services.providers import ProviderService, ProviderClient
 from src.models import AIModel
 from src.settings import AppSettings
-from src.constants import Provider
+from src.constants import Vendor
 
 from src.tests.conftest import MockTestResponse, MockHTTPxClient
 
@@ -92,8 +92,8 @@ class TestProviderService:
         """Test getting models' list with cache."""
 
         # Set cache for the first provider
-        service._models_cache.set(
-            Provider.OPENAI,
+        service._cache_set_data(
+            Vendor.OPENAI,
             [AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4")],
         )
 
@@ -122,8 +122,8 @@ class TestProviderService:
         """Test getting models list with force refresh."""
 
         # Set cache for the first provider
-        service._models_cache.set(
-            Provider.OPENAI,
+        service._cache_set_data(
+            Vendor.OPENAI,
             [AIModel(id="openai__old-gpt-4", vendor="openai", vendor_id="old-gpt-4")],
         )
 
@@ -165,30 +165,6 @@ class TestProviderService:
 
         # Verify empty result
         assert models == []
-
-    async def test_invalidate_models_cache(
-        self, service: ProviderService, mock_settings: AppSettings
-    ) -> None:
-        """Test cache invalidation."""
-        # Prepare mock models
-        mock_models = [
-            AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4"),
-            AIModel(id="anthropic__claude-3", vendor="anthropic", vendor_id="claude-3"),
-        ]
-
-        # Set cache for both providers
-        for provider, model in zip(mock_settings.providers, mock_models):
-            service._models_cache.set(provider.vendor, [model])
-
-        # Invalidate cache for first provider
-        service.invalidate_models_cache(mock_settings.providers[0].vendor)
-        assert service._models_cache.get(mock_settings.providers[0].vendor) is None
-        assert service._models_cache.get(mock_settings.providers[1].vendor) is not None
-
-        # Invalidate all cache
-        service.invalidate_models_cache()
-        assert service._models_cache.get(mock_settings.providers[0].vendor) is None
-        assert service._models_cache.get(mock_settings.providers[1].vendor) is None
 
     async def test_close(
         self,

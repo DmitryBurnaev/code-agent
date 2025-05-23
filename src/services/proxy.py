@@ -3,17 +3,19 @@ import urllib.parse
 from enum import Enum
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Self, AsyncIterator
+from typing import Self, AsyncIterator, Any
 
 import httpx
+from httpx import Headers
 from starlette.responses import StreamingResponse, Response
 
+from src.constants import Vendor
+from src.services.cache import CacheProtocol, InMemoryCache
 from src.exceptions import ProviderProxyError
 from src.models import ChatRequest, LLMProvider
 from src.services.http import AIProviderHTTPClient
 from src.settings import AppSettings
 from src.services.providers import ProviderService
-from src.utils import Cache
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ class ProxyRequestData:
     """Data required for proxy request."""
 
     method: str
-    headers: dict[str, str]
+    headers: dict[str, str] | Headers
     query_params: dict[str, str]
     body: ChatRequest | None = None
     completion_id: str | None = None
@@ -73,7 +75,8 @@ class ProxyService:
         self._http_client = http_client or AIProviderHTTPClient(settings)
         self._provider_service = ProviderService(settings, self._http_client)
         self._response: httpx.Response | None = None
-        self._cache = Cache[str](ttl=settings.chat_completion_id_ttl)
+        self._cache: CacheProtocol = InMemoryCache()
+        # self._cache = Cache[str](ttl=settings.chat_completion_id_ttl)
 
     async def __aenter__(self) -> Self:
         return self
@@ -171,6 +174,9 @@ class ProxyService:
 
         try:
             httpx_response = await self._http_client.send(request, stream=is_streaming)
+            completion_id = self._extract_completion_id(httpx_response, stream=is_streaming)
+            self._cache_set_vendor(completion_id, provider.vendor)
+
             if is_streaming:
                 return await self._handle_stream(httpx_response)
 
@@ -186,14 +192,6 @@ class ProxyService:
                 if k.lower()
                 not in {"transfer-encoding", "content-encoding", "content-length", "connection"}
             }
-            #                 | {
-            #     # TODO: perform normalization of headers
-            #     "Access-Control-Allow-Origin": "*",
-            #     "Access-Control-Allow-Methods": "POST, OPTIONS",
-            #     "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            #     "Access-Control-Max-Age": "86400",
-            #     "Host": "https://api.deepseek.com/v1",
-            # })
             return Response(
                 content=httpx_response.content,
                 status_code=httpx_response.status_code,
@@ -207,6 +205,7 @@ class ProxyService:
     async def _handle_stream(self, httpx_response: httpx.Response) -> StreamingResponse:
         """Wraps the response in a StreamingResponse for correct closing connection"""
 
+        # TODO: handle situation: store cancelationID
         async def stream_wrapper() -> AsyncIterator[bytes]:
             try:
                 async for chunk in httpx_response.aiter_bytes():
@@ -262,14 +261,11 @@ class ProxyService:
             if not completion_id:
                 raise ProviderProxyError("completion_id is required for cancellation")
 
-            # TODO: use DB storage for caching completion_id -> provider mapping
-            provider = self._cache.get(completion_id)
-            if not provider:
-                raise ProviderProxyError(
-                    f"Unable to find provider for completion_id {completion_id}"
-                )
+            vendor = self._cache_get_vendor(completion_id)
+            if not vendor:
+                raise ProviderProxyError(f"Unable to find provider for {completion_id=}")
 
-            model = f"{provider}__SKIP"
+            model = f"{vendor}__SKIP"
 
         else:
             model = request_data.body.model if request_data.body else ""
@@ -300,3 +296,26 @@ class ProxyService:
             "content-type": "application/json",
         }
         return result_headers | provider.auth_headers
+
+    def _extract_completion_id(self, httpx_response: httpx.Response, stream: bool = False) -> str:
+        if stream:
+            raise NotImplementedError("Can't process stream yet")
+
+        content: dict[str, Any] = httpx_response.json()
+        completion_id = content.get("id")
+        if not completion_id:
+            raise ProviderProxyError("Missed completion_id in response")
+
+        return str(completion_id)
+
+    def _cache_set_vendor(self, completion_id: str, vendor: Vendor) -> None:
+        key = f"completion__{completion_id}"
+        self._cache.set(key, vendor)
+
+    def _cache_get_vendor(self, completion_id: str) -> Vendor | None:
+        key = f"completion__{completion_id}"
+        cached = self._cache.get(key)
+        if not cached:
+            return None
+
+        return Vendor.from_string(str(cached))

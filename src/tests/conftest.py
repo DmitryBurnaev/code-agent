@@ -14,7 +14,7 @@ from src.dependencies.settings import get_app_settings
 from src.main import make_app
 from src.services.providers import ProviderService
 from src.settings import AppSettings
-from src.constants import Provider
+from src.constants import Vendor
 from src.models import LLMProvider
 from pydantic import SecretStr
 
@@ -25,8 +25,8 @@ def mock_settings() -> AppSettings:
     return AppSettings(
         auth_api_token=SecretStr("test-token"),
         providers=[
-            LLMProvider(vendor=Provider.OPENAI, api_key=SecretStr("openai-key")),
-            LLMProvider(vendor=Provider.ANTHROPIC, api_key=SecretStr("anthropic-key")),
+            LLMProvider(vendor=Vendor.OPENAI, api_key=SecretStr("openai-key")),
+            LLMProvider(vendor=Vendor.ANTHROPIC, api_key=SecretStr("anthropic-key")),
         ],
         models_cache_ttl=60,
         http_proxy_url=None,
@@ -49,7 +49,7 @@ def auth_test_header(auth_test_token: str) -> dict[str, str]:
 def providers() -> list[LLMProvider]:
     return [
         LLMProvider(
-            vendor=Provider.OPENAI,
+            vendor=Vendor.OPENAI,
             api_key=SecretStr("test-key"),
         )
     ]
