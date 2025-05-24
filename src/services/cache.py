@@ -26,7 +26,7 @@ class InMemoryCache(CacheProtocol):
     """Simple in-memory cache with TTL per key."""
 
     def __init__(self) -> None:
-        self._ttl: int = DEFAULT_CACHE_TTL
+        self._ttl: float = DEFAULT_CACHE_TTL
         self._data: dict[str, CacheValueType] = {}
         self._last_update: dict[str, float] = {}
 

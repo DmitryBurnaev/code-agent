@@ -164,7 +164,7 @@ class TestProxyService:
     ) -> None:
         """Test handling cancellation request."""
         completion_id = "test-completion"
-        proxy_service._cache.set(completion_id, Vendor.OPENAI)
+        proxy_service._cache_set_vendor(completion_id, Vendor.OPENAI)
 
         mock_response.content = b'{"status": "cancelled"}'
         mock_http_client.send.return_value = mock_response

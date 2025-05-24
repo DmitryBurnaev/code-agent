@@ -28,12 +28,13 @@ class AppSettings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8003
     log_level: LogLevelString = "INFO"
-    models_cache_ttl: float = 300.0  # Cache TTL in seconds, default 5 minutes
     chat_completion_id_ttl: float = 3600 * 24 * 30
-    http_proxy_url: str | None = Field(None, description="Socks5 URL to use")
+    http_proxy_url: str | None = Field(default_factory=lambda: None, description="Socks5 Proxy URL")
     provider_default_timeout: int = 30
     provider_default_retries: int = 3
-    provider_custom_url: str | None = Field(None, description="Custom provider URL")
+    provider_custom_url: str | None = Field(
+        default_factory=lambda: None, description="API URL for 'custom' vendor"
+    )
 
     @cached_property
     def provider_by_vendor(self) -> dict[str, LLMProvider]:

@@ -17,11 +17,8 @@ class TestAppSettings:
     @patch.dict(os.environ, {"PROVIDERS": "[]"})
     def test_default_settings(self) -> None:
         """Test default settings values."""
-        settings = AppSettings(
-            auth_api_token=SecretStr("test-token"),
-            http_proxy_url=None,
-            provider_custom_url=None,
-        )
+        get_settings.cache_clear()
+        settings = AppSettings(auth_api_token=SecretStr("test-token"))
         assert settings.docs_enabled is False
         assert settings.auth_api_token.get_secret_value() == "test-token"
         assert settings.providers == []

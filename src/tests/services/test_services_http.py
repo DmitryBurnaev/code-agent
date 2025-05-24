@@ -15,7 +15,6 @@ def mock_settings() -> AppSettings:
     return AppSettings(
         auth_api_token=SecretStr("test_token"),
         providers=[],
-        models_cache_ttl=60,
         http_proxy_url=None,
     )
 

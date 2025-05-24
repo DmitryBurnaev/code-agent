@@ -134,6 +134,17 @@ class TestProxyAPI:
             model="openai__gpt-4",
             stream=True,
         )
+        response_headers = Headers(
+            {
+                "content-type": "text/event-stream",
+                "cache-control": "no-cache",
+                "connection": "keep-alive",
+                "access-control-allow-origin": "*",
+                "access-control-allow-methods": "POST, OPTIONS",
+                "access-control-allow-headers": "Content-Type, Authorization",
+                "access-control-max-age": "86400",
+            }
+        )
 
         async def mock_aiter_bytes() -> AsyncIterator[bytes]:
             for i, word in enumerate(stream_words):
@@ -147,17 +158,7 @@ class TestProxyAPI:
         mock_proxy_service.handle_request.return_value = StreamingResponse(
             media_type="application/json",
             content=mock_aiter_bytes(),
-            headers=Headers(
-                {
-                    "content-type": "text/event-stream",
-                    "cache-control": "no-cache",
-                    "connection": "keep-alive",
-                    "access-control-allow-origin": "*",
-                    "access-control-allow-methods": "POST, OPTIONS",
-                    "access-control-allow-headers": "Content-Type, Authorization",
-                    "access-control-max-age": "86400",
-                }
-            ),
+            headers=response_headers,
             status_code=200,
         )
 
@@ -169,11 +170,7 @@ class TestProxyAPI:
 
         # Verify response
         assert response.status_code == 200
-        assert response.headers == {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-        }
+        assert response.headers == response_headers
 
         # Verify streaming content
         content = response.text
@@ -181,31 +178,19 @@ class TestProxyAPI:
             assert word in content, "Word '{}' not found in response".format(word)
 
         # Verify service was called correctly
-        # Headers({'content-type': 'text/event-stream', 'cache-control': 'no-cache', 'connection': 'keep-alive', 'access-control-allow-origin': '*', 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'Content-Type, Authorization', 'access-control-max-age': '86400'}) != {'Cache-Control': 'no-cache',
         mock_proxy_service.handle_request.assert_awaited_once_with(
             ProxyRequestData(
                 method="POST",
-                headers=Headers(
-                    {
-                        "content-type": "text/event-stream",
-                        "cache-control": "no-cache",
-                        "connection": "keep-alive",
-                        "access-control-allow-origin": "*",
-                        "access-control-allow-methods": "POST, OPTIONS",
-                        "access-control-allow-headers": "Content-Type, Authorization",
-                        "access-control-max-age": "86400",
-                    }
-                ),
-                # {
-                #     "host": "testserver",
-                #     "accept-encoding": "gzip, deflate",
-                #     "connection": "keep-alive",
-                #     "authorization": "Bearer test-auth-token",
-                #     "user-agent": "testclient",
-                #     "accept": "text/event-stream",
-                #     "content-length": "85",
-                #     "content-type": "application/json",
-                # },
+                headers={
+                    "host": "testserver",
+                    "accept-encoding": "gzip, deflate",
+                    "connection": "keep-alive",
+                    "authorization": "Bearer test-auth-token",
+                    "user-agent": "testclient",
+                    "accept": "text/event-stream",
+                    "content-length": "196",
+                    "content-type": "application/json",
+                },
                 query_params={},
                 body=chat_request,
             ),
