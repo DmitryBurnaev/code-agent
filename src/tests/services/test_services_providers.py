@@ -173,6 +173,7 @@ class TestProviderService:
         mock_httpx_for_models_client: AsyncMock,
     ) -> None:
         """Test service cleanup."""
+        raise AssertionError("Not implemented yet")
         # Create some clients
         for provider in mock_settings.providers:
             service.get_client(provider)

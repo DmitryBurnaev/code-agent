@@ -23,8 +23,8 @@ __all__ = (
 class SystemInfo(BaseModel):
     """System information response model."""
 
-    status: str
-    providers: list[str]
+    status: str = "ok"
+    providers: list[str] = Field(default_factory=list)
 
 
 class HealthCheck(BaseModel):
