@@ -13,7 +13,7 @@ from pydantic import SecretStr
 def mock_settings() -> AppSettings:
     """Return mock settings."""
     return AppSettings(
-        auth_api_token=SecretStr("test_token"),
+        api_token=SecretStr("test_token"),
         providers=[],
         http_proxy_url=None,
     )

@@ -14,20 +14,20 @@ from src.constants import Vendor, LOG_LEVELS
 class TestAppSettings:
     """Tests for AppSettings class."""
 
-    @patch.dict(os.environ, {"PROVIDERS": "[]"})
+    @patch.dict(os.environ, {"PROVIDERS": "[]", "API_TOKEN": "test-token"})
     def test_default_settings(self) -> None:
         """Test default settings values."""
         get_settings.cache_clear()
-        settings = AppSettings(auth_api_token=SecretStr("test-token"))
+        settings = AppSettings()  # type: ignore
         assert settings.docs_enabled is False
-        assert settings.auth_api_token.get_secret_value() == "test-token"
+        assert settings.api_token.get_secret_value() == "test-token"
         assert settings.providers == []
 
     @pytest.mark.parametrize("log_level", LOG_LEVELS.split("|"))
     def test_valid_log_levels(self, log_level: str) -> None:
         """Test valid log levels."""
         settings = AppSettings(
-            auth_api_token=SecretStr("test-token"),
+            api_token=SecretStr("test-token"),
             log_level=log_level,
             http_proxy_url=None,
             provider_custom_url=None,
@@ -38,7 +38,7 @@ class TestAppSettings:
         """Test invalid log level."""
         with pytest.raises(ValueError):
             AppSettings(
-                auth_api_token=SecretStr("test-token"),
+                api_token=SecretStr("test-token"),
                 log_level="INVALID",
                 http_proxy_url=None,
                 provider_custom_url=None,
@@ -51,7 +51,7 @@ class TestAppSettings:
             LLMProvider(vendor=Vendor.ANTHROPIC, api_key=SecretStr("anthropic-key")),
         ]
         settings = AppSettings(
-            auth_api_token=SecretStr("test-token"),
+            api_token=SecretStr("test-token"),
             providers=providers,
             http_proxy_url=None,
             provider_custom_url=None,
@@ -65,7 +65,7 @@ class TestAppSettings:
     def test_log_config(self) -> None:
         """Test log configuration."""
         settings = AppSettings(
-            auth_api_token=SecretStr("test-token"),
+            api_token=SecretStr("test-token"),
             log_level="DEBUG",
             http_proxy_url=None,
             provider_custom_url=None,
@@ -90,7 +90,7 @@ class TestGetSettings:
     @patch.dict(
         os.environ,
         {
-            "AUTH_API_TOKEN": "test-token",
+            "API_TOKEN": "test-token",
             "LOG_LEVEL": "DEBUG",
             "APP_HOST": "localhost",
             "APP_PORT": "8080",
@@ -102,7 +102,7 @@ class TestGetSettings:
         """Test getting settings from environment variables."""
         get_settings.cache_clear()
         settings = get_settings()
-        assert settings.auth_api_token.get_secret_value() == "test-token"
+        assert settings.api_token.get_secret_value() == "test-token"
         assert settings.log_level == "DEBUG"
         assert settings.app_host == "localhost"
         assert settings.app_port == 8080
@@ -118,7 +118,7 @@ class TestGetSettings:
         with pytest.raises(Exception):
             get_settings()
 
-    @patch.dict(os.environ, {"AUTH_API_TOKEN": "test-token"})
+    @patch.dict(os.environ, {"API_TOKEN": "test-token"})
     def test_get_settings_caching(self) -> None:
         """Test settings caching."""
         get_settings.cache_clear()

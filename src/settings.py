@@ -23,12 +23,11 @@ class AppSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     docs_enabled: bool = False
-    auth_api_token: SecretStr = Field(description="API token")
+    api_token: SecretStr = Field(description="API token")
     providers: list[LLMProvider] = Field(default_factory=list, description="List of LLM providers")
     app_host: str = "0.0.0.0"
     app_port: int = 8003
     log_level: LogLevelString = "INFO"
-    chat_completion_id_ttl: float = 3600 * 24 * 30
     http_proxy_url: str | None = Field(default_factory=lambda: None, description="Socks5 Proxy URL")
     provider_default_timeout: int = 30
     provider_default_retries: int = 3

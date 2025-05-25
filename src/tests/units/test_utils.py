@@ -1,10 +1,7 @@
 """Tests for utils."""
 
-import time
 
-import pytest
 
-from src.services.cache import InMemoryCache
 from src.utils import singleton
 
 
