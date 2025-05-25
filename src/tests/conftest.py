@@ -26,10 +26,8 @@ def mock_settings() -> AppSettings:
         api_token=SecretStr("test-token"),
         providers=[
             LLMProvider(vendor=Vendor.OPENAI, api_key=SecretStr("openai-key")),
-            LLMProvider(vendor=Vendor.ANTHROPIC, api_key=SecretStr("anthropic-key")),
+            LLMProvider(vendor=Vendor.DEEPSEEK, api_key=SecretStr("deepseek-key")),
         ],
-        models_cache_ttl=60,
-        http_proxy_url=None,
     )
 
 

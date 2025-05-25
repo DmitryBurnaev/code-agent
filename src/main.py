@@ -1,8 +1,10 @@
 import logging.config
+import sys
 
 import uvicorn
 from fastapi import FastAPI, Depends
 
+from src.exceptions import AppSettingsError
 from src.settings import get_settings, AppSettings
 from src.routers import system_router, proxy_router
 from src.dependencies.auth import verify_api_token
@@ -27,7 +29,11 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPI:
     """Forming Application instance with required settings and dependencies"""
 
     if settings is None:
-        settings = get_settings()
+        try:
+            settings = get_settings()
+        except AppSettingsError as exc:
+            logger.error("Unable to get settings from environment: %r", exc)
+            sys.exit(1)
 
     logging.config.dictConfig(settings.log_config)
     logging.captureWarnings(capture=True)
