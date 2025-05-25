@@ -42,7 +42,7 @@ def mock_proxy_service() -> Generator[AsyncMock, Any, None]:
 def mock_settings() -> AppSettings:
     """Return mock settings for testing."""
     return AppSettings(
-        auth_api_token=SecretStr("test-token"),
+        api_token=SecretStr("test-token"),
         providers=[
             LLMProvider(vendor=Vendor.OPENAI, api_key=SecretStr("test-key")),
             LLMProvider(vendor=Vendor.ANTHROPIC, api_key=SecretStr("test-key")),

@@ -25,7 +25,7 @@ async def verify_api_token(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     auth_token = auth_token.replace("Bearer ", "").strip()
-    if auth_token != settings.auth_api_token.get_secret_value():
+    if auth_token != settings.api_token.get_secret_value():
         raise HTTPException(status_code=403, detail="Invalid authentication token")
 
     return auth_token

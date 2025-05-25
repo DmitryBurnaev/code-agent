@@ -38,6 +38,7 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPI:
         description="API for retrieving system information",
         docs_url="/api/docs/" if settings.docs_enabled else None,
         redoc_url="/api/redoc/" if settings.docs_enabled else None,
+        # lifespan=,
     )
     app.set_settings(settings)
 

@@ -23,7 +23,7 @@ from pydantic import SecretStr
 def mock_settings() -> AppSettings:
     """Return mock settings."""
     return AppSettings(
-        auth_api_token=SecretStr("test-token"),
+        api_token=SecretStr("test-token"),
         providers=[
             LLMProvider(vendor=Vendor.OPENAI, api_key=SecretStr("openai-key")),
             LLMProvider(vendor=Vendor.ANTHROPIC, api_key=SecretStr("anthropic-key")),
@@ -63,7 +63,7 @@ def client(
 ) -> TestClient:
     """Create a test client with mocked settings."""
     test_settings = AppSettings(
-        auth_api_token=SecretStr(auth_test_token),
+        api_token=SecretStr(auth_test_token),
         providers=providers,
         http_proxy_url=None,
     )
