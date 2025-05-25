@@ -1,3 +1,4 @@
+import json
 import logging
 import urllib.parse
 from enum import Enum
@@ -159,11 +160,15 @@ class ProxyService:
             logger.debug("ProxyService: Requested body: '%s'", body)
 
         logger.debug(
-            "ProxyService: [%s] %s\n headers: %s\n body: %s",
-            request_data.method,
-            url,
-            headers,
-            body,
+            "ProxyService [%(vendor)s]: requested [%(method)s] %(url)s\n "
+            "headers: %(headers)s\n body: %(body)s",
+            {
+                "vendor": provider.vendor,
+                "method": request_data.method,
+                "url": url,
+                "headers": headers,
+                "body": body,
+            },
         )
         request = self._http_client.build_request(
             method=request_data.method,
@@ -174,18 +179,36 @@ class ProxyService:
 
         try:
             httpx_response = await self._http_client.send(request, stream=is_streaming)
-            completion_id = self._extract_completion_id(httpx_response, stream=is_streaming)
+            completion_id = await self._extract_completion_id(
+                httpx_response,
+                vendor=provider.vendor,
+                stream=is_streaming,
+            )
             self._cache_set_vendor(completion_id, provider.vendor)
+
+            if is_streaming:
+                log_prefix = "streaming response"
+                log_body = "---"
+            else:
+                log_prefix = "regular response"
+                log_body = f"{httpx_response.text[:128]}..."
+
+            logger.debug(
+                "ProxyService [%(vendor)s]: %(prefix) %(url)s\n "
+                "headers: %(headers)s\n body: %(body)s (%(length)i bytes)",
+                {
+                    "vendor": provider.vendor,
+                    "prefix": log_prefix,
+                    "url": url,
+                    "log_body": log_body,
+                    "headers": dict(httpx_response.headers),
+                    "length": httpx_response.headers.get("content-length"),
+                },
+            )
 
             if is_streaming:
                 return await self._handle_stream(httpx_response)
 
-            logger.debug(
-                "ProxyService: Got response from %s\n headers: %s\n body: %s",
-                request_data.method,
-                httpx_response.headers,
-                httpx_response.text,
-            )
             safe_headers = {
                 k: v
                 for k, v in httpx_response.headers.items()
@@ -209,6 +232,7 @@ class ProxyService:
         async def stream_wrapper() -> AsyncIterator[bytes]:
             try:
                 async for chunk in httpx_response.aiter_bytes():
+                    print(chunk)
                     yield chunk
             except httpx.TimeoutException as exc:
                 raise ProviderProxyError("Stream timeout") from exc
@@ -279,7 +303,7 @@ class ProxyService:
             ) from exc
 
         except KeyError as exc:
-            raise ProviderProxyError("Unable to extract provider from model name") from exc
+            raise ProviderProxyError(f"Unable to extract provider from model name {model}") from exc
 
         else:
             logger.debug(
@@ -297,11 +321,32 @@ class ProxyService:
         }
         return result_headers | provider.auth_headers
 
-    def _extract_completion_id(self, httpx_response: httpx.Response, stream: bool = False) -> str:
+    @staticmethod
+    async def _extract_completion_id(
+        httpx_response: httpx.Response,
+        vendor: Vendor,
+        stream: bool = False,
+    ) -> str:
+        content: dict[str, Any]
         if stream:
-            raise NotImplementedError("Can't process stream yet")
+            chunk: bytes = b""
+            try:
+                chunk = await anext(httpx_response.aiter_bytes())
+                logger.debug(
+                    "ProxyService[%s]: received 1st chunk (getting completion_id): %s",
+                    vendor,
+                    chunk,
+                )
+                chunk = chunk.removeprefix(b"data: ").removesuffix(b"\n\n")
+                content = json.loads(chunk)
+            except httpx.TimeoutException as exc:
+                raise ProviderProxyError("Stream timeout") from exc
+            except json.decoder.JSONDecodeError as exc:
+                raise ProviderProxyError(f"Unable to decode chunk content: '{chunk!r}'") from exc
 
-        content: dict[str, Any] = httpx_response.json()
+        else:
+            content = httpx_response.json()
+
         completion_id = content.get("id")
         if not completion_id:
             raise ProviderProxyError("Missed completion_id in response")
