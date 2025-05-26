@@ -48,7 +48,7 @@ class TestAppSettings:
         """Test providers configuration."""
         providers = [
             LLMProvider(vendor=Vendor.OPENAI, api_key=SecretStr("openai-key")),
-            LLMProvider(vendor=Vendor.ANTHROPIC, api_key=SecretStr("anthropic-key")),
+            LLMProvider(vendor=Vendor.DEEPSEEK, api_key=SecretStr("deepseek-key")),
         ]
         settings = AppSettings(
             api_token=SecretStr("test-token"),
@@ -59,7 +59,7 @@ class TestAppSettings:
         assert settings.providers == providers
         assert settings.provider_by_vendor == {
             Vendor.OPENAI: providers[0],
-            Vendor.ANTHROPIC: providers[1],
+            Vendor.DEEPSEEK: providers[1],
         }
 
     def test_log_config(self) -> None:

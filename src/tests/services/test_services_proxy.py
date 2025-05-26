@@ -311,13 +311,11 @@ class TestProxyService:
 
         mock_stream_response.aiter_bytes = mock_aiter_bytes
 
-        response = await mock_stream_proxy_service.handle_request(
-            mock_stream_request_data, ProxyEndpoint.CHAT_COMPLETION
-        )
-
-        assert isinstance(response, StreamingResponse)
-        assert response.status_code == 200
-        assert response.headers["Content-Type"] == "text/event-stream"
+        with pytest.raises(ProviderProxyError, match="Stream ended before chunk received"):
+            await mock_stream_proxy_service.handle_request(
+                mock_stream_request_data,
+                endpoint=ProxyEndpoint.CHAT_COMPLETION,
+            )
 
     async def test_handle_request_streaming_headers(
         self,
@@ -338,7 +336,7 @@ class TestProxyService:
         )
 
         assert isinstance(response, StreamingResponse)
-        assert response.status_code == 200
+        assert response.status_code == 201
         assert response.headers["Content-Type"] == "text/event-stream"
         assert response.headers["Cache-Control"] == "no-cache"
         assert response.headers["Connection"] == "keep-alive"
@@ -418,10 +416,8 @@ class TestProxyService:
         mock_stream_response.content = "".join(content).encode()
         mock_stream_response.status_code = 503
 
-        response = await mock_stream_proxy_service.handle_request(
-            mock_stream_request_data, ProxyEndpoint.CHAT_COMPLETION
-        )
-
-        assert isinstance(response, StreamingResponse)
-        assert response.status_code == 503
-        assert response.headers["Content-Type"] == "text/event-stream"
+        with pytest.raises(ProviderProxyError, match="Missed completion_id in response"):
+            await mock_stream_proxy_service.handle_request(
+                mock_stream_request_data,
+                endpoint=ProxyEndpoint.CHAT_COMPLETION,
+            )

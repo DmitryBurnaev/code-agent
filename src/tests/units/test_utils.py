@@ -1,7 +1,5 @@
 """Tests for utils."""
 
-
-
 from src.utils import singleton
 
 

@@ -20,10 +20,10 @@ type MOCK_MODELS_TYPE = dict[str, dict[str, list[dict[str, str | int]]]]
 @pytest.fixture
 def mock_models() -> MOCK_MODELS_TYPE:
     return {
-        "https://api.anthropic.com/v1/models": {
+        "https://api.deepseek.com/v1/models": {
             "data": [
                 {
-                    "id": "anthropic-model-1",
+                    "id": "deepseek-1",
                     "object": "model",
                     "created": 1698785180,
                     "owned_by": "system",
@@ -102,16 +102,12 @@ class TestProviderService:
 
         expected_model_pairs = [
             AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4"),
-            AIModel(
-                id="anthropic__anthropic-model-1",
-                vendor="anthropic",
-                vendor_id="anthropic-model-1",
-            ),
+            AIModel(id="deepseek__deepseek-1", vendor="deepseek", vendor_id="deepseek-1"),
         ]
         assert models == expected_model_pairs
 
         mock_httpx_for_models_client.get.assert_awaited_once_with(
-            "https://api.anthropic.com/v1/models", headers={"Authorization": "Bearer anthropic-key"}
+            "https://api.deepseek.com/v1/models", headers={"Authorization": "Bearer deepseek-key"}
         )
 
     async def test_get_list_models_force_refresh(
@@ -133,16 +129,12 @@ class TestProviderService:
         expected_model_pairs = [
             AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4"),
             AIModel(id="openai__open-model-e-3", vendor="openai", vendor_id="open-model-e-3"),
-            AIModel(
-                id="anthropic__anthropic-model-1",
-                vendor="anthropic",
-                vendor_id="anthropic-model-1",
-            ),
+            AIModel(id="deepseek__deepseek-1", vendor="deepseek", vendor_id="deepseek-1"),
         ]
         assert models == expected_model_pairs
 
         expected_call_urls = [
-            "https://api.anthropic.com/v1/models",
+            "https://api.deepseek.com/v1/models",
             "https://api.openai.com/v1/models",
         ]
         actual_call_urls = [

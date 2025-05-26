@@ -23,7 +23,7 @@ def mock_provider_service() -> Generator[AsyncMock, Any, None]:
     mock_service = AsyncMock(spec=ProviderService)
     mock_service.get_list_models.return_value = [
         AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4"),
-        AIModel(id="anthropic__claude-3", vendor="anthropic", vendor_id="claude-3"),
+        AIModel(id="deepseek__deepseek-1", vendor="deepseek", vendor_id="deepseek-1"),
     ]
     with patch("src.routers.proxy.ProviderService", return_value=mock_service):
         yield mock_service
@@ -45,7 +45,7 @@ def mock_settings() -> AppSettings:
         api_token=SecretStr("test-token"),
         providers=[
             LLMProvider(vendor=Vendor.OPENAI, api_key=SecretStr("test-key")),
-            LLMProvider(vendor=Vendor.ANTHROPIC, api_key=SecretStr("test-key")),
+            LLMProvider(vendor=Vendor.DEEPSEEK, api_key=SecretStr("test-key")),
         ],
         http_proxy_url=None,
     )
@@ -62,7 +62,7 @@ class TestProxyAPI:
         assert data == {
             "data": [
                 {"id": "openai__gpt-4", "vendor": "openai", "vendor_id": "gpt-4"},
-                {"id": "anthropic__claude-3", "vendor": "anthropic", "vendor_id": "claude-3"},
+                {"id": "deepseek__deepseek-1", "vendor": "deepseek", "vendor_id": "deepseek-1"},
             ]
         }
         mock_provider_service.get_list_models.assert_awaited_once()
