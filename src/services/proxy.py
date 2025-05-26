@@ -195,7 +195,7 @@ class ProxyService:
 
             logger.debug(
                 "ProxyService [%(vendor)s]: %(prefix) %(url)s\n "
-                "headers: %(headers)s\n body: %(body)s (%(length)i bytes)",
+                "headers: %(headers)s\n body: %(log_body)s (%(length)i bytes)",
                 {
                     "vendor": provider.vendor,
                     "prefix": log_prefix,
@@ -339,6 +339,8 @@ class ProxyService:
                 )
                 chunk = chunk.removeprefix(b"data: ").removesuffix(b"\n\n")
                 content = json.loads(chunk)
+            except StopAsyncIteration:
+                raise ProviderProxyError("Stream ended before chunk received")
             except httpx.TimeoutException as exc:
                 raise ProviderProxyError("Stream timeout") from exc
             except json.decoder.JSONDecodeError as exc:
