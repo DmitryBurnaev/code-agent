@@ -18,7 +18,7 @@ class TestAppSettings:
     def test_default_settings(self) -> None:
         """Test default settings values."""
         get_settings.cache_clear()
-        settings = AppSettings()  # type: ignore
+        settings = AppSettings(_env_file=None)  # type: ignore
         assert settings.docs_enabled is False
         assert settings.api_token.get_secret_value() == "test-token"
         assert settings.providers == []

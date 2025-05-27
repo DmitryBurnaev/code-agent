@@ -89,10 +89,6 @@ class ProviderClient:
         # Add more provider-specific rules as needed
         return False
 
-    # async def close(self) -> None:
-    #     """Close the HTTP client."""
-    #     await self._http_client.aclose()
-
 
 class ProviderService:
     """Service for managing AI providers and their configurations."""
@@ -108,7 +104,6 @@ class ProviderService:
             settings: Application settings containing provider configurations.
         """
         self._settings = settings
-        # TODO: think about using DI here (note: cache is singletone)
         self._cache: CacheProtocol = InMemoryCache()
         self._provider_clients: dict[Vendor, ProviderClient] = {}
         self._http_client = http_client or AIProviderHTTPClient(settings)
@@ -179,9 +174,3 @@ class ProviderService:
             return None
 
         return [AIModel.model_validate(model_data) for model_data in cached]
-
-    # TODO: think about closing
-    # async def close(self) -> None:
-    #     """Close all provider clients."""
-    #     for client in self._provider_clients.values():
-    #         await client.aclose()
