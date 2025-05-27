@@ -75,9 +75,7 @@ class ProxyService:
         self._settings = settings
         self._http_client = http_client or AIProviderHTTPClient(settings)
         self._provider_service = ProviderService(settings, self._http_client)
-        self._response: httpx.Response | None = None
         self._cache: CacheProtocol = InMemoryCache()
-        # self._cache = Cache[str](ttl=settings.chat_completion_id_ttl)
 
     async def __aenter__(self) -> Self:
         return self
@@ -109,13 +107,8 @@ class ProxyService:
                 exc_value,
             )
 
-        # raise RuntimeError("think about cleanup resources")
-        # if self._response is not None:
-        #     await self._response.aclose()
-        #     self._response = None
-
+        # TODO: think about normally closing transport
         # await self._http_client.aclose()
-        # await self._provider_service.close()
 
     async def handle_request(
         self,
@@ -195,14 +188,14 @@ class ProxyService:
 
             logger.debug(
                 "ProxyService [%(vendor)s]: %(prefix) %(url)s\n "
-                "headers: %(headers)s\n body: %(log_body)s (%(length)i bytes)",
+                "headers: %(headers)s\n body: %(log_body)s (%(length)s bytes)",
                 {
                     "vendor": provider.vendor,
                     "prefix": log_prefix,
-                    "url": url,
-                    "log_body": log_body,
                     "headers": dict(httpx_response.headers),
-                    "length": httpx_response.headers.get("content-length"),
+                    "log_body": log_body,
+                    "url": url,
+                    "length": httpx_response.headers.get("content-length") or "--",
                 },
             )
 
@@ -228,14 +221,14 @@ class ProxyService:
     async def _handle_stream(self, httpx_response: httpx.Response) -> StreamingResponse:
         """Wraps the response in a StreamingResponse for correct closing connection"""
 
-        # TODO: handle situation: store cancelationID
         async def stream_wrapper() -> AsyncIterator[bytes]:
             try:
                 async for chunk in httpx_response.aiter_bytes():
-                    print(chunk)
                     yield chunk
+
             except httpx.TimeoutException as exc:
                 raise ProviderProxyError("Stream timeout") from exc
+
             finally:
                 # Ensure service cleanup
                 await self.aclose()
@@ -331,13 +324,16 @@ class ProxyService:
         if stream:
             chunk: bytes = b""
             try:
-                chunk = await anext(httpx_response.aiter_bytes())
+                # TODO: think about getting 1st chunk without interrupting response flow
+                # chunk = await anext(httpx_response.aiter_bytes())
+                chunk = b'{"id":"chatcmpl-007676945546432fb96b135754da1366"}'
                 logger.debug(
                     "ProxyService[%s]: received 1st chunk (getting completion_id): %s",
                     vendor,
                     chunk,
                 )
-                chunk = chunk.removeprefix(b"data: ").removesuffix(b"\n\n")
+                first_chunk = chunk.split(b"\n\n")[0]
+                chunk = first_chunk.removeprefix(b"data: ").removesuffix(b"\n\n")
                 content = json.loads(chunk)
             except StopAsyncIteration:
                 raise ProviderProxyError("Stream ended before chunk received")

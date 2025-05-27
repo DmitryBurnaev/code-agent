@@ -59,30 +59,6 @@ def mock_response() -> AsyncMock:
 
 
 @pytest.fixture
-def mock_stream_response__old() -> AsyncMock:
-    """Return mock response."""
-    default_content = (
-        b'data: {"id": "test-1", "choices": [{"delta": {"content": "Hello"}}]}\n\ndata: [DONE]\n\n'
-    )
-
-    async def mock_aiter_bytes() -> AsyncIterator[bytes]:
-
-        content = resp.content or default_content
-        for chunk in content.split(b"\n\n"):
-            if chunk.startswith(b"ERROR: "):
-                raise RuntimeError(chunk.lstrip(b"ERROR: "))
-            if chunk:
-                yield chunk + b"\n\n"
-
-    resp = AsyncMock(spec=httpx.Response)
-    resp.status_code = 201
-    resp.aiter_bytes = mock_aiter_bytes
-    resp.content = default_content
-    resp.headers = {"Content-Type": "text/event-stream"}
-    return resp
-
-
-@pytest.fixture
 def mock_stream_response() -> AsyncMock:
     """Return mock response."""
     default_content = (
