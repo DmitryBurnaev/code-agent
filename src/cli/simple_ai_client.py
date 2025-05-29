@@ -9,7 +9,7 @@ import httpx
 import json
 import os
 import sys
-from typing import Any, Dict, Optional, ContextManager
+from typing import Any, Optional, ContextManager
 
 
 DEFAULT_VENDOR_URL = "https://api.deepseek.com/v1"
@@ -33,7 +33,7 @@ def call_ai_model(
     Sends a request to the AI model. In stream mode, returns a context manager for httpx.Response.
     """
     if not token:
-        print("[ERROR] Authorization token is not set (use --token or env 'AI_API_TOKEN')")
+        print("[error] Authorization token is not set (use --token or env 'AI_API_TOKEN')")
         sys.exit(1)
 
     url = vendor_url + "/chat/completions"
@@ -65,7 +65,7 @@ def call_ai_model(
         return None
 
 
-def extract_text_from_response(data: Dict[str, Any]) -> str:
+def extract_text_from_response(data: dict[str, Any]) -> str:
     """
     Extracts text content from AI model response (DeepSeek/OpenAI compatible format).
     """
@@ -86,7 +86,7 @@ def process_stream_response(response_cm: ContextManager[httpx.Response]) -> str:
     """
     result = []
     with response_cm as r:
-        for line in r.iter_lines():
+        for index, line in enumerate(r.iter_lines()):
             if not line:
                 continue
 
@@ -101,6 +101,8 @@ def process_stream_response(response_cm: ContextManager[httpx.Response]) -> str:
 
             try:
                 data = json.loads(line)
+                if index == 0:
+                    print_header(data)
                 content = extract_text_from_response(data)
                 if content:
                     print(content, end="", flush=True)  # Print chunk to CLI
@@ -119,6 +121,7 @@ def process_full_response(response: httpx.Response) -> str:
     """
     try:
         data = response.json()
+        print_header(data)
         content = extract_text_from_response(data)
         if content:
             print(content)
@@ -131,6 +134,12 @@ def process_full_response(response: httpx.Response) -> str:
     except Exception as e:
         print(f"[parse error]: {e}\n{response.text}")
         return ""
+
+
+def print_header(data: dict[str, Any]) -> None:
+    print("==== AI response ====")
+    print(f"[completion ID]: {data.get('id')}")
+    print("====")
 
 
 def main() -> None:
@@ -155,12 +164,12 @@ def main() -> None:
     vendor = args.vendor or DEFAULT_VENDOR
     if not vendor_url:
         if not vendor:
-            print("[ERROR] Either --vendor or --vendor-url must be provided")
+            print("[error] Either --vendor or --vendor-url must be provided")
             sys.exit(1)
 
         vendor_url = PROVIDER_URLS.get(vendor)
         if not vendor_url:
-            print(f"[ERROR] Unknown vendor: {vendor}")
+            print(f"[error] Unknown vendor: {vendor}")
             sys.exit(1)
 
     model_name = args.model or DEFAULT_MODEL
@@ -176,11 +185,20 @@ def main() -> None:
         print("[no response from AI model]")
         sys.exit(1)
 
-    if isinstance(response, httpx.Response):
-        process_full_response(response)
-    else:
-        process_stream_response(response)
+    try:
+        if isinstance(response, httpx.Response):
+            process_full_response(response)
+        else:
+            process_stream_response(response)
+
+    except Exception as exc:
+        print(f"[processing error]: {exc}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("[interrupted]")
+        sys.exit(1)

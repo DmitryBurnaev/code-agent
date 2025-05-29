@@ -354,44 +354,6 @@ class ProxyService:
 
         return str(completion_id)
 
-    #
-    # @staticmethod
-    # async def _extract_completion_id(
-    #     httpx_response: httpx.Response,
-    #     vendor: Vendor,
-    #     stream: bool = False,
-    # ) -> str:
-    #     content: dict[str, Any]
-    #     if stream:
-    #         chunk: bytes = b""
-    #         try:
-    #             # TODO: think about getting 1st chunk without interrupting response flow
-    #             # chunk = await anext(httpx_response.aiter_bytes())
-    #             chunk = b'{"id":"chatcmpl-007676945546432fb96b135754da1366"}'
-    #             logger.debug(
-    #                 "ProxyService[%s]: received 1st chunk (getting completion_id): %s",
-    #                 vendor,
-    #                 chunk,
-    #             )
-    #             first_chunk = chunk.split(b"\n\n")[0]
-    #             chunk = first_chunk.removeprefix(b"data: ").removesuffix(b"\n\n")
-    #             content = json.loads(chunk)
-    #         except StopAsyncIteration:
-    #             raise ProviderProxyError("Stream ended before chunk received")
-    #         except httpx.TimeoutException as exc:
-    #             raise ProviderProxyError("Stream timeout") from exc
-    #         except json.decoder.JSONDecodeError as exc:
-    #             raise ProviderProxyError(f"Unable to decode chunk content: '{chunk!r}'") from exc
-    #
-    #     else:
-    #         content = httpx_response.json()
-    #
-    #     completion_id = content.get("id")
-    #     if not completion_id:
-    #         raise ProviderProxyError("Missed completion_id in response")
-    #
-    #     return str(completion_id)
-
     def _cache_set_vendor(self, completion_id: str, vendor: Vendor) -> None:
         key = f"completion__{completion_id}"
         self._cache.set(key, vendor)
