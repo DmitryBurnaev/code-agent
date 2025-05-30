@@ -127,7 +127,9 @@ class TestProxyService:
         mock_response: AsyncMock,
     ) -> None:
         """Test handling regular (non-streaming) request."""
-        mock_response.content = b'{"response": "Hello!"}'
+        mock_response.content = (
+            b'{"id": "test-1", "choices": [{"delta": {"content": "Hello"}}]}\n\n'
+        )
 
         response = await mock_proxy_service.handle_request(
             mock_request_data, ProxyEndpoint.CHAT_COMPLETION
@@ -135,7 +137,9 @@ class TestProxyService:
 
         assert isinstance(response, Response)
         assert response.status_code == 200
-        assert response.body == b'{"response": "Hello!"}'
+        assert (
+            response.body == b'{"id": "test-1", "choices": [{"delta": {"content": "Hello"}}]}\n\n'
+        )
         assert response.headers["Content-Type"] == "application/json"
 
     async def test_handle_request_streaming(
@@ -160,7 +164,7 @@ class TestProxyService:
             '"logprobs":null,"finish_reason":null}]'
             "}\n\n"
         )
-        content = content.replace("$completion_id", completion_id)  # TODO: use Template instead
+        content = content.replace("$completion_id", completion_id)
         mock_stream_response.content = content.encode()
 
         response = await mock_stream_proxy_service.handle_request(
@@ -172,6 +176,12 @@ class TestProxyService:
         assert response.headers["Content-Type"] == "text/event-stream"
         assert response.headers["Cache-Control"] == "no-cache"
         assert response.headers["Connection"] == "keep-alive"
+
+        actual_response_chunks: list[str] = []
+        async for data in response.body_iterator:
+            actual_response_chunks.append(data.decode())  # type: ignore
+
+        assert content in actual_response_chunks
 
         vendor = mock_stream_proxy_service._cache_get_vendor(completion_id)
         assert vendor == Vendor.DEEPSEEK
