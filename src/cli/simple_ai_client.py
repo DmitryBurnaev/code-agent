@@ -103,6 +103,7 @@ def process_stream_response(response_cm: ContextManager[httpx.Response]) -> str:
                 data = json.loads(line)
                 if index == 0:
                     print_header(data)
+
                 content = extract_text_from_response(data)
                 if content:
                     print(content, end="", flush=True)  # Print chunk to CLI
