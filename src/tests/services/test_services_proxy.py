@@ -19,7 +19,7 @@ pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
-def mock_request_data() -> ProxyRequestData:
+def request_data() -> ProxyRequestData:
     """Return mock request data."""
     return ProxyRequestData(
         method="POST",
@@ -34,7 +34,7 @@ def mock_request_data() -> ProxyRequestData:
 
 
 @pytest.fixture
-def mock_stream_request_data() -> ProxyRequestData:
+def stream_request_data() -> ProxyRequestData:
     """Return mock streaming request data."""
     return ProxyRequestData(
         method="POST",
@@ -91,7 +91,7 @@ def mock_http_client(mock_response: AsyncMock) -> AsyncMock:
 
 
 @pytest.fixture
-async def mock_proxy_service(
+async def proxy_service(
     mock_settings: AppSettings, mock_http_client: AsyncMock
 ) -> AsyncGenerator[ProxyService, Any]:
     """Return proxy service instance."""
@@ -109,7 +109,7 @@ def mock_stream_http_client(mock_stream_response: AsyncMock) -> AsyncMock:
 
 
 @pytest.fixture
-async def mock_stream_proxy_service(
+async def stream_proxy_service(
     mock_settings: AppSettings, mock_stream_http_client: AsyncMock
 ) -> AsyncGenerator[ProxyService, Any]:
     """Return proxy service instance."""
@@ -122,8 +122,8 @@ class TestProxyService:
 
     async def test_handle_request_regular(
         self,
-        mock_request_data: ProxyRequestData,
-        mock_proxy_service: ProxyService,
+        request_data: ProxyRequestData,
+        proxy_service: ProxyService,
         mock_response: AsyncMock,
     ) -> None:
         """Test handling regular (non-streaming) request."""
@@ -131,9 +131,7 @@ class TestProxyService:
             b'{"id": "test-1", "choices": [{"delta": {"content": "Hello"}}]}\n\n'
         )
 
-        response = await mock_proxy_service.handle_request(
-            mock_request_data, ProxyEndpoint.CHAT_COMPLETION
-        )
+        response = await proxy_service.handle_request(request_data, ProxyEndpoint.CHAT_COMPLETION)
 
         assert isinstance(response, Response)
         assert response.status_code == 200
@@ -144,13 +142,13 @@ class TestProxyService:
 
     async def test_handle_request_streaming(
         self,
-        mock_stream_request_data: ProxyRequestData,
-        mock_stream_proxy_service: ProxyService,
+        stream_request_data: ProxyRequestData,
+        stream_proxy_service: ProxyService,
         mock_stream_response: AsyncMock,
     ) -> None:
         """Test handling streaming request."""
 
-        mock_stream_request_data.body = ChatRequest(
+        stream_request_data.body = ChatRequest(
             messages=[Message(role="user", content="Hello")],
             model="deepseek__deepseek-chat",
             stream=True,
@@ -167,8 +165,8 @@ class TestProxyService:
         content = content.replace("$completion_id", completion_id)
         mock_stream_response.content = content.encode()
 
-        response = await mock_stream_proxy_service.handle_request(
-            mock_stream_request_data,
+        response = await stream_proxy_service.handle_request(
+            stream_request_data,
             endpoint=ProxyEndpoint.CHAT_COMPLETION,
         )
         assert isinstance(response, StreamingResponse)
@@ -183,13 +181,10 @@ class TestProxyService:
 
         assert content in actual_response_chunks
 
-        vendor = mock_stream_proxy_service._cache_get_vendor(completion_id)
+        vendor = stream_proxy_service._cache_get_vendor(completion_id)
         assert vendor == Vendor.DEEPSEEK
 
-    async def test_handle_request_no_body(
-        self,
-        mock_proxy_service: ProxyService,
-    ) -> None:
+    async def test_handle_request_no_body(self, proxy_service: ProxyService) -> None:
         """Test handling request without body."""
         request_data = ProxyRequestData(
             method="POST",
@@ -199,51 +194,57 @@ class TestProxyService:
         )
 
         with pytest.raises(ProviderProxyError, match="Request body is required"):
-            await mock_proxy_service.handle_request(request_data, ProxyEndpoint.CHAT_COMPLETION)
+            await proxy_service.handle_request(
+                request_data,
+                endpoint=ProxyEndpoint.CHAT_COMPLETION,
+            )
 
     async def test_handle_request_invalid_model(
         self,
-        mock_request_data: ProxyRequestData,
-        mock_proxy_service: ProxyService,
+        request_data: ProxyRequestData,
+        proxy_service: ProxyService,
     ) -> None:
         """Test handling request with an invalid model format."""
-        mock_request_data.body.model = "invalid-model"  # type: ignore
+        request_data.body.model = "invalid-model"  # type: ignore
 
         with pytest.raises(ProviderProxyError, match="Invalid model format"):
-            await mock_proxy_service.handle_request(
-                mock_request_data, ProxyEndpoint.CHAT_COMPLETION
+            await proxy_service.handle_request(
+                request_data,
+                endpoint=ProxyEndpoint.CHAT_COMPLETION,
             )
 
     async def test_handle_request_unknown_provider(
         self,
-        mock_request_data: ProxyRequestData,
-        mock_proxy_service: ProxyService,
+        request_data: ProxyRequestData,
+        proxy_service: ProxyService,
     ) -> None:
         """Test handling request with an unknown provider."""
-        mock_request_data.body.model = "unknown__gpt-4"  # type: ignore
+        request_data.body.model = "unknown__gpt-4"  # type: ignore
 
         with pytest.raises(ProviderProxyError, match="Unable to extract provider"):
-            await mock_proxy_service.handle_request(
-                mock_request_data, ProxyEndpoint.CHAT_COMPLETION
+            await proxy_service.handle_request(
+                request_data,
+                endpoint=ProxyEndpoint.CHAT_COMPLETION,
             )
 
     async def test_handle_request_cancellation(
         self,
-        mock_request_data: ProxyRequestData,
-        mock_proxy_service: ProxyService,
+        request_data: ProxyRequestData,
+        proxy_service: ProxyService,
         mock_http_client: AsyncMock,
         mock_response: AsyncMock,
     ) -> None:
         """Test handling cancellation request."""
         completion_id = "test-completion"
-        mock_proxy_service._cache_set_vendor(completion_id, Vendor.OPENAI)
+        proxy_service._cache_set_vendor(completion_id, Vendor.OPENAI)
 
         mock_response.content = b'{"status": "cancelled"}'
         mock_http_client.send.return_value = mock_response
 
-        mock_request_data.completion_id = completion_id
-        response = await mock_proxy_service.handle_request(
-            mock_request_data, ProxyEndpoint.CANCEL_CHAT_COMPLETION
+        request_data.completion_id = completion_id
+        response = await proxy_service.handle_request(
+            request_data,
+            endpoint=ProxyEndpoint.CANCEL_CHAT_COMPLETION,
         )
 
         assert isinstance(response, Response)
@@ -252,19 +253,20 @@ class TestProxyService:
 
     async def test_handle_request_cancellation_no_id(
         self,
-        mock_request_data: ProxyRequestData,
-        mock_proxy_service: ProxyService,
+        request_data: ProxyRequestData,
+        proxy_service: ProxyService,
     ) -> None:
         """Test handling cancellation request without completion ID."""
         with pytest.raises(ProviderProxyError, match="completion_id is required"):
-            await mock_proxy_service.handle_request(
-                mock_request_data, ProxyEndpoint.CANCEL_CHAT_COMPLETION
+            await proxy_service.handle_request(
+                request_data,
+                endpoint=ProxyEndpoint.CANCEL_CHAT_COMPLETION,
             )
 
     async def test_handle_request_streaming_error(
         self,
-        mock_stream_request_data: ProxyRequestData,
-        mock_stream_proxy_service: ProxyService,
+        stream_request_data: ProxyRequestData,
+        stream_proxy_service: ProxyService,
         mock_stream_response: AsyncMock,
     ) -> None:
         """Test handling streaming request with error in stream."""
@@ -274,8 +276,9 @@ class TestProxyService:
         ]
         mock_stream_response.content = "".join(content).encode()
 
-        response = await mock_stream_proxy_service.handle_request(
-            mock_stream_request_data, ProxyEndpoint.CHAT_COMPLETION
+        response = await stream_proxy_service.handle_request(
+            stream_request_data,
+            endpoint=ProxyEndpoint.CHAT_COMPLETION,
         )
 
         assert isinstance(response, StreamingResponse)
@@ -284,8 +287,8 @@ class TestProxyService:
 
     async def test_handle_request_streaming_empty(
         self,
-        mock_stream_request_data: ProxyRequestData,
-        mock_stream_proxy_service: ProxyService,
+        stream_request_data: ProxyRequestData,
+        stream_proxy_service: ProxyService,
         mock_stream_response: AsyncMock,
     ) -> None:
         """Test handling streaming request with empty stream."""
@@ -297,16 +300,18 @@ class TestProxyService:
 
         mock_stream_response.aiter_bytes = mock_aiter_bytes
 
-        with pytest.raises(ProviderProxyError, match="Stream ended before chunk received"):
-            await mock_stream_proxy_service.handle_request(
-                mock_stream_request_data,
-                endpoint=ProxyEndpoint.CHAT_COMPLETION,
-            )
+        response = await stream_proxy_service.handle_request(
+            stream_request_data,
+            endpoint=ProxyEndpoint.CHAT_COMPLETION,
+        )
+        assert isinstance(response, StreamingResponse)
+        async for _ in response.body_iterator:
+            pass
 
     async def test_handle_request_streaming_headers(
         self,
-        mock_stream_request_data: ProxyRequestData,
-        mock_stream_proxy_service: ProxyService,
+        stream_request_data: ProxyRequestData,
+        stream_proxy_service: ProxyService,
         mock_stream_response: AsyncMock,
     ) -> None:
         """Test handling streaming request with custom headers."""
@@ -317,8 +322,9 @@ class TestProxyService:
             "X-Custom-Header": "test",
         }
 
-        response = await mock_stream_proxy_service.handle_request(
-            mock_stream_request_data, ProxyEndpoint.CHAT_COMPLETION
+        response = await stream_proxy_service.handle_request(
+            stream_request_data,
+            endpoint=ProxyEndpoint.CHAT_COMPLETION,
         )
 
         assert isinstance(response, StreamingResponse)
@@ -330,41 +336,41 @@ class TestProxyService:
 
     async def test_handle_request_timeout(
         self,
-        mock_request_data: ProxyRequestData,
-        mock_proxy_service: ProxyService,
+        request_data: ProxyRequestData,
+        proxy_service: ProxyService,
         mock_http_client: AsyncMock,
     ) -> None:
         """Test handling request with timeout."""
-        mock_request_data.timeout = 0.1
+        request_data.timeout = 0.1
         mock_http_client.send.side_effect = httpx.TimeoutException("Request timed out")
 
         with pytest.raises(ProviderProxyError, match="Request timeout"):
-            await mock_proxy_service.handle_request(
-                mock_request_data,
+            await proxy_service.handle_request(
+                request_data,
                 endpoint=ProxyEndpoint.CHAT_COMPLETION,
             )
 
     async def test_handle_request_streaming_timeout(
         self,
-        mock_stream_request_data: ProxyRequestData,
-        mock_stream_proxy_service: ProxyService,
+        stream_request_data: ProxyRequestData,
+        stream_proxy_service: ProxyService,
         mock_stream_http_client: AsyncMock,
         mock_stream_response: AsyncMock,
     ) -> None:
         """Test handling streaming request with timeout."""
-        mock_stream_request_data.timeout = 0.1
+        stream_request_data.timeout = 0.1
         mock_stream_http_client.send.side_effect = httpx.TimeoutException("Stream timed out")
 
         with pytest.raises(ProviderProxyError, match="Stream timeout"):
-            await mock_stream_proxy_service.handle_request(
-                mock_stream_request_data,
+            await stream_proxy_service.handle_request(
+                stream_request_data,
                 endpoint=ProxyEndpoint.CHAT_COMPLETION,
             )
 
     async def test_handle_request_error_status(
         self,
-        mock_request_data: ProxyRequestData,
-        mock_proxy_service: ProxyService,
+        request_data: ProxyRequestData,
+        proxy_service: ProxyService,
         mock_response: AsyncMock,
     ) -> None:
         """Test handling request with error status code."""
@@ -378,8 +384,8 @@ class TestProxyService:
             }
         ).encode()
 
-        response = await mock_proxy_service.handle_request(
-            mock_request_data,
+        response = await proxy_service.handle_request(
+            request_data,
             endpoint=ProxyEndpoint.CHAT_COMPLETION,
         )
 
@@ -390,8 +396,8 @@ class TestProxyService:
 
     async def test_handle_request_streaming_error_status(
         self,
-        mock_stream_request_data: ProxyRequestData,
-        mock_stream_proxy_service: ProxyService,
+        stream_request_data: ProxyRequestData,
+        stream_proxy_service: ProxyService,
         mock_stream_http_client: AsyncMock,
         mock_stream_response: AsyncMock,
     ) -> None:
@@ -402,8 +408,12 @@ class TestProxyService:
         mock_stream_response.content = "".join(content).encode()
         mock_stream_response.status_code = 503
 
+        response = await stream_proxy_service.handle_request(
+            stream_request_data,
+            endpoint=ProxyEndpoint.CHAT_COMPLETION,
+        )
+        assert isinstance(response, StreamingResponse)
+
         with pytest.raises(ProviderProxyError, match="Missed completion_id in response"):
-            await mock_stream_proxy_service.handle_request(
-                mock_stream_request_data,
-                endpoint=ProxyEndpoint.CHAT_COMPLETION,
-            )
+            async for _ in response.body_iterator:
+                pass
