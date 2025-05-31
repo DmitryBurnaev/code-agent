@@ -168,12 +168,6 @@ class ProxyService:
 
         try:
             httpx_response = await self._http_client.send(request, stream=is_streaming)
-            # completion_id = await self._extract_completion_id(
-            #     httpx_response,
-            #     vendor=provider.vendor,
-            #     stream=is_streaming,
-            # )
-            # self._cache_set_vendor(completion_id, provider.vendor)
 
             if is_streaming:
                 log_prefix = "streaming response"
@@ -197,9 +191,15 @@ class ProxyService:
                 )
 
             if is_streaming:
-                return await self._handle_stream(httpx_response, vendor=provider.vendor)
+                return await self._handle_stream(
+                    httpx_response,
+                    vendor=provider.vendor,
+                    endpoint=endpoint,
+                )
 
-            self._save_vendor(httpx_response.content, vendor=provider.vendor)
+            if endpoint == ProxyEndpoint.CANCEL_CHAT_COMPLETION:
+                self._save_vendor(httpx_response.content, vendor=provider.vendor, endpoint=endpoint)
+
             safe_headers = {
                 k: v
                 for k, v in httpx_response.headers.items()
@@ -217,7 +217,10 @@ class ProxyService:
             raise ProviderProxyError(error_msg) from exc
 
     async def _handle_stream(
-        self, httpx_response: httpx.Response, vendor: Vendor
+        self,
+        httpx_response: httpx.Response,
+        vendor: Vendor,
+        endpoint: ProxyEndpoint,
     ) -> StreamingResponse:
         """Wraps the response in a StreamingResponse for correct closing connection"""
 
@@ -228,7 +231,7 @@ class ProxyService:
                 vendor_saved = False
                 async for chunk in httpx_response.aiter_bytes():
                     if not vendor_saved:
-                        self._save_vendor(chunk, vendor=vendor)
+                        self._save_vendor(chunk, vendor=vendor, endpoint=endpoint)
                         vendor_saved = True
 
                     yield chunk
@@ -324,9 +327,26 @@ class ProxyService:
         }
         return result_headers | provider.auth_headers
 
-    def _save_vendor(self, resp_content: bytes | str, vendor: Vendor) -> None:
+    def _save_vendor(
+        self,
+        resp_content: bytes | str,
+        vendor: Vendor,
+        endpoint: ProxyEndpoint,
+    ) -> None:
+        if endpoint != ProxyEndpoint.CHAT_COMPLETION:
+            logger.debug(
+                "ProxyService[%s]: Skip saving vendor for non-completion request",
+                vendor,
+            )
+            return
+
         completion_id = self._extract_completion_id(chunk_data=resp_content, vendor=vendor)
         self._cache_set_vendor(completion_id, vendor)
+        logger.debug(
+            "ProxyService[%s]: saved for completion_id %s for response",
+            vendor,
+            completion_id,
+        )
 
     @staticmethod
     def _extract_completion_id(chunk_data: bytes | str, vendor: Vendor) -> str:
