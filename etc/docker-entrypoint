@@ -16,7 +16,6 @@ elif [ "${APP_SERVICE}" = "test" ]
     echo "=== ruff ==="
     export RUFF_CACHE_DIR=/tmp/.ruff
     ruff check
-    echo "=== pytest ==="
     export COVERAGE_FILE=/tmp/.coverage
     coverage run -m pytest -o cache_dir=/tmp && \
     coverage report --omit="src/tests/*"
