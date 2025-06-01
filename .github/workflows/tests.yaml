@@ -6,7 +6,6 @@ on:
   push:
     branches:
       - 'main'
-      - 'feature/2-implement-ci-cd-process'
 
 jobs:
   test:
@@ -24,13 +23,12 @@ jobs:
       - name: Build images
         run: |
           docker compose build test
-          docker compose build lint
-
-      - name: Run tests
-        run: docker compose up --exit-code-from test test
 
       - name: Run linters
         run: docker compose up --exit-code-from lint lint
+
+      - name: Run tests
+        run: docker compose up --exit-code-from test test
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

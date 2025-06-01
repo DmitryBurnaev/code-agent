@@ -13,11 +13,23 @@ if [ "${APP_SERVICE}" = "web" ]
 
 elif [ "${APP_SERVICE}" = "test" ]
   then
-    export COVERAGE_FILE=/tmp/.coverage
+    echo "=== ruff ==="
     export RUFF_CACHE_DIR=/tmp/.ruff
-    ruff check && \
+    ruff check
+    echo "=== pytest ==="
+    export COVERAGE_FILE=/tmp/.coverage
     coverage run -m pytest -o cache_dir=/tmp && \
-    coverage report
+    coverage report --omit="src/tests/*"
+
+elif [ "${APP_SERVICE}" = "lint" ]
+  then
+    echo "=== black ==="
+    black --check .
+    echo "=== ruff ==="
+    export RUFF_CACHE_DIR=/tmp/.ruff
+    ruff check .
+    echo "=== mypy ==="
+    mypy .
 
 else
   echo "APP_SERVICE environment variable is unexpected or was not provided (APP_SERVICE='${APP_SERVICE}')" >&2

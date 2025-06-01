@@ -48,6 +48,11 @@ test: ## Run tests with coverage report
 	rm .coverage
 
 .PHONY: run
-test-in-docker: ## Run app
+test-in-docker: ## Run tests inside docker container
 	@echo Run project in container...
 	docker compose up test --build
+
+.PHONY: run
+lint-in-docker: ## Run linting inside docker container
+	@echo Run project in container...
+	docker compose up lint --build

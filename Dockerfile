@@ -22,7 +22,7 @@ RUN pip install uv==${UV_VERSION} && \
     fi
 
 
-FROM python:3.13-alpine AS service
+FROM python:3.13-alpine AS base
 ARG PIP_DEFAULT_TIMEOUT=300
 WORKDIR /app
 
@@ -44,6 +44,14 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 ENV APP_PORT=8000
 
+FROM base AS service
+
 EXPOSE 8000
+
+ENTRYPOINT ["/bin/sh", "/app/docker-entrypoint"]
+
+FROM base AS tests
+
+COPY pyproject.toml .
 
 ENTRYPOINT ["/bin/sh", "/app/docker-entrypoint"]

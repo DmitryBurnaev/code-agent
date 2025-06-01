@@ -1,6 +1,8 @@
 services:
   api:
-    build: .
+    build:
+      context: .
+      target: "service"
     ports:
       - "127.0.0.1:8003:8000"
     env_file:
@@ -18,10 +20,9 @@ services:
       code-agent:test
     build:
       context: .
+      target: "tests"
       args:
         DEV_DEPS: "true"
-    env_file:
-      - .env
     environment:
       - APP_SERVICE=test
     volumes:
@@ -32,17 +33,8 @@ services:
       code-agent:test
     build:
       context: .
+      target: "tests"
       args:
         DEV_DEPS: "true"
-    env_file:
-      - .env
     environment:
       - APP_SERVICE=lint
-    volumes:
-      - ${PWD}/src:/src/src
-      - ${PWD}/.local:/app/.local
-    command: >
-      sh -c "black --check src/ &&
-             isort --check-only src/ &&
-             mypy src/ &&
-             ruff check src/"
