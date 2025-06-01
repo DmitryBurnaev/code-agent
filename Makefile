@@ -1,5 +1,7 @@
 .DEFAULT_GOAL := help
 
+MAKEFILE_TARGET := $(filter-out ai-client --help Makefile,$(MAKECMDGOALS))
+
 .PHONY: help
 help: ## This help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*? / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -33,9 +35,19 @@ run: ## Run app
 	@echo Run project...
 	uv run python -m src.main
 
+.PHONY: run
+run-in-docker: ## Run app
+	@echo Run project in container...
+	docker compose up api --build
+
 .PHONY: test
 test: ## Run tests with coverage report
 	@echo Test project with coverage...
 	uv run coverage run -m pytest -v
 	uv run coverage report
 	rm .coverage
+
+.PHONY: run
+test-in-docker: ## Run app
+	@echo Run project in container...
+	docker compose up test --build

@@ -42,5 +42,8 @@ COPY --from=code-layer --chown=code-agent:code-agent /usr/src .
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
+ENV APP_PORT=8000
+
+EXPOSE 8000
 
 ENTRYPOINT ["/bin/sh", "/app/docker-entrypoint"]
