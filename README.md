@@ -151,6 +151,13 @@ When enabled, the Swagger documentation is available at `/docs` and ReDoc at `/r
 ## In the Future
 1. Use DB storage for
    1. AI credentials (encrypted) and user settings
+      - [ ] Create SQLAlchemy models for vendors and their settings
+      - [ ] Implement asymmetric encryption for sensitive data (tokens)
+      - [ ] Create repository pattern for vendor data access
+      - [ ] Add migration system for database schema
+      - [ ] Implement vendor settings management API
+      - [ ] Add validation for vendor settings
+      - [ ] Create backup/restore mechanism for vendor data
    2. request-response history (by completion-id)
    3. models usages 
 2. Use redis-based cache instead of in-memory one
