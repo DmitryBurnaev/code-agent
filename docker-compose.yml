@@ -13,7 +13,21 @@ services:
       APP_PORT: "8000"
     volumes:
       - ./src:/src/src
+    depends_on:
+      - postgres
     restart: unless-stopped 
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: code_agent
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
 
   test:
     image:
@@ -38,3 +52,6 @@ services:
         DEV_DEPS: "true"
     environment:
       - APP_SERVICE=lint
+
+volumes:
+  postgres_data:

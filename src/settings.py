@@ -35,6 +35,15 @@ class AppSettings(BaseSettings):
         default_factory=lambda: None, description="API URL for 'custom' vendor"
     )
 
+    # Database settings
+    database_url: str = Field(
+        default="postgresql+asyncpg://postgres:postgres@localhost:5432/code_agent",
+        description="Database URL",
+    )
+    database_pool_size: int = Field(default=5, description="Database connection pool size")
+    database_max_overflow: int = Field(default=10, description="Database max overflow")
+    database_echo: bool = Field(default=False, description="Database echo mode")
+
     @cached_property
     def provider_by_vendor(self) -> dict[str, LLMProvider]:
         return {provider.vendor: provider for provider in self.providers}
