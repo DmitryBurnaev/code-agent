@@ -4,7 +4,7 @@ from enum import StrEnum
 __all__ = (
     "Vendor",
     "PROVIDER_URLS",
-    "DEFAULT_PROVIDER_TIMEOUT",
+    "VENDOR_DEFAULT_TIMEOUT",
     "LOG_LEVELS",
 )
 
@@ -28,6 +28,10 @@ class Vendor(StingEnum):
     LOCAL = "local"
 
 
+class VendorAuthType(StingEnum):
+    BEARER = "Bearer"
+
+
 # Mapping of provider to their base URLs
 PROVIDER_URLS: dict[Vendor, str] = {
     Vendor.OPENAI: "https://api.openai.com/v1",
@@ -37,5 +41,5 @@ PROVIDER_URLS: dict[Vendor, str] = {
     Vendor.CUSTOM: "https://custom-provider/v1",
     Vendor.LOCAL: "http://localhost:1234/v1",
 }
-DEFAULT_PROVIDER_TIMEOUT = 30
+VENDOR_DEFAULT_TIMEOUT = 30
 LOG_LEVELS = "DEBUG|INFO|WARNING|ERROR|CRITICAL"

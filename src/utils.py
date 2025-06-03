@@ -1,5 +1,6 @@
+import datetime
 import logging
-from typing import TypeVar, Callable, ParamSpec
+from typing import TypeVar, Callable, ParamSpec, Any
 
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
@@ -68,3 +69,15 @@ async def universal_exception_handler(request: Request, exc: Exception) -> JSONR
         status_code=status_code,
         content=ErrorResponse.model_validate(log_data).model_dump(),
     )
+
+
+def utcnow() -> datetime.datetime:
+    """Just a simple wrapper for deprecated datetime.utcnow"""
+    return datetime.datetime.now(datetime.UTC)
+
+
+def decohints(decorator: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Small helper which helps to say IDE: "decorated method has the same params and return types"
+    """
+    return decorator
