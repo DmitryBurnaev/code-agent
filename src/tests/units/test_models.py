@@ -11,7 +11,7 @@ from src.models import (
     ChatRequest,
     LLMProvider,
 )
-from src.constants import DEFAULT_PROVIDER_TIMEOUT, Vendor
+from src.constants import VENDOR_DEFAULT_TIMEOUT, Vendor
 
 
 class TestSystemInfo:
@@ -88,7 +88,7 @@ class TestLLMProvider:
         provider = LLMProvider(vendor=Vendor.OPENAI, api_key=SecretStr("test-key"))
         assert provider.vendor == Vendor.OPENAI
         assert provider.api_key.get_secret_value() == "test-key"
-        assert provider.timeout == DEFAULT_PROVIDER_TIMEOUT
+        assert provider.timeout == VENDOR_DEFAULT_TIMEOUT
 
     def test_llm_provider_auth_headers(self) -> None:
         """Test LLMProvider auth headers."""

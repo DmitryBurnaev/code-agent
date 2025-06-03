@@ -2,7 +2,7 @@ from typing import Any, Optional, Literal
 from datetime import datetime
 from pydantic import BaseModel, Field, SecretStr
 
-from src.constants import Vendor, DEFAULT_PROVIDER_TIMEOUT, PROVIDER_URLS
+from src.constants import Vendor, VENDOR_DEFAULT_TIMEOUT, PROVIDER_URLS
 
 __all__ = (
     "SystemInfo",
@@ -76,7 +76,7 @@ class LLMProvider(BaseModel):
     api_key: SecretStr
     url: str | None = None
     auth_type: str = "Bearer"
-    timeout: int = DEFAULT_PROVIDER_TIMEOUT
+    timeout: int = VENDOR_DEFAULT_TIMEOUT
 
     @property
     def base_url(self) -> str:
