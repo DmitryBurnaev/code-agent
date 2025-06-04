@@ -22,7 +22,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.utils import decohints
 from src.db.models import BaseModel, Vendor
-from src.db.session import make_sa_session
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 logger = logging.getLogger(__name__)
@@ -77,17 +76,13 @@ class BaseRepository(Generic[ModelT]):
 
     def __init__(
         self,
-        session: AsyncSession | None = None,
-        auto_commit: bool = True,
+        session: AsyncSession,
         auto_flush: bool = True,
     ) -> None:
         self.auto_flush: bool = auto_flush
-        self.auto_commit: bool = auto_commit
-        self.__session: AsyncSession | None = session
+        self.session: AsyncSession = session
 
     async def __aenter__(self) -> Self:
-        if not self.__session:
-            self.__session = make_sa_session()
         return self
 
     async def __aexit__(
@@ -96,49 +91,21 @@ class BaseRepository(Generic[ModelT]):
         exc_val: Exception,
         exc_tb: TracebackType | None,
     ) -> None:
-        if not self.__session:
+        if not self.session:
             logger.debug("Session already closed")
             return
 
-        await self.__session.close()
+        await self.session.close()
         self.__session = None
 
     async def close(self) -> None:
         """Closing the current session"""
-        if self.__session:
+        if self.session:
             logger.debug("Closing session")
-            await self.__session.close()
-            self.__session = None
+            await self.session.close()
+
         else:
             logger.debug("Session already closed")
-
-    @property
-    def session(self) -> AsyncSession:
-        """Provide a current session (open if it isn't created yet)"""
-        if not self.__session:
-            self.__session = make_sa_session()
-
-        return self.__session
-
-    async def flush_and_commit(self) -> None:
-        """Sending changes to the database."""
-        if not self.session:
-            raise RuntimeError("No active session")
-
-        if self.auto_flush:
-            assert self.session.flush()
-
-        if not self.auto_commit:
-            logger.debug("Skipping commit")
-            return
-
-        try:
-            logger.debug("Committing changes")
-            await self.session.commit()
-        except Exception as exc:
-            logger.error("Failed to commit changes", exc_info=exc)
-            await self.session.rollback()
-            raise exc
 
     async def get(self, instance_id: int) -> ModelT:
         """Selects instance by provided ID"""
