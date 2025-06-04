@@ -23,6 +23,7 @@ class Vendor(BaseModel):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(sa.String(255))
+    slug: Mapped[str] = mapped_column(sa.String(255))
     url: Mapped[Optional[str]] = mapped_column(sa.String(255), nullable=True)
     auth_type: Mapped[str] = mapped_column(sa.String(50), default=VendorAuthType.BEARER)
     timeout: Mapped[int] = mapped_column(sa.Integer, default=VENDOR_DEFAULT_TIMEOUT)
@@ -49,8 +50,8 @@ class VendorSettings(BaseModel):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     vendor_id: Mapped[int] = mapped_column(sa.ForeignKey("vendors.id", ondelete="CASCADE"))
+    model_prefix: Mapped[str] = mapped_column(sa.String(255), nullable=True)
     api_key: Mapped[str] = mapped_column(sa.String(1024))  # Store an encrypted API key
-    public_key: Mapped[str] = mapped_column(sa.String(1024))  # Store a public key for encryption
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(sa.DateTime, onupdate=utcnow)
 
