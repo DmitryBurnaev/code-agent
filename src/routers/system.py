@@ -2,7 +2,8 @@ from datetime import datetime
 
 from fastapi import APIRouter
 
-from src.dependencies import SettingsDep
+from src.db.repositories import VendorRepository
+from src.db.services import SASessionUOW
 from src.models import SystemInfo, HealthCheck
 from src.routers import ErrorHandlingBaseRoute
 
@@ -18,11 +19,16 @@ router = APIRouter(
 
 
 @router.get("/info/", response_model=SystemInfo)
-async def get_system_info(settings: SettingsDep) -> SystemInfo:
+async def get_system_info() -> SystemInfo:
     """Get current system information."""
+
+    async with SASessionUOW() as uow:
+        vendor_repository = VendorRepository(session=uow.session)
+        vendors = await vendor_repository.all()
+
     return SystemInfo(
         status="ok",
-        providers=[provider.vendor for provider in settings.providers],
+        providers=[vendor.name for vendor in vendors],
     )
 
 
