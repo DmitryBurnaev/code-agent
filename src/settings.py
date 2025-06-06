@@ -36,6 +36,7 @@ class AppSettings(BaseSettings):
     )
 
     # Database settings
+    # TODO: replace with separately: pg-host, pg-port, pg-user, pg-pass
     database_url: str = Field(
         default="postgresql+asyncpg://postgres:postgres@localhost:5432/code_agent",
         description="Database URL",

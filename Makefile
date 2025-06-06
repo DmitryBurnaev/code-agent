@@ -56,3 +56,18 @@ test-in-docker: ## Run tests inside docker container
 lint-in-docker: ## Run linting inside docker container
 	@echo Run project in container...
 	docker compose up lint --build
+
+.PHONY: migration
+migration: ## Make DB migrations
+	@read -p "Revision: " db_revision; \
+	uv run alembic revision --autogenerate -m "$$db_revision"
+
+.PHONY: migrations-upgrade
+migrate: ## Apply DB migrations
+	@echo Migrations: apply revisions...
+	uv run alembic upgrade head
+
+.PHONY: migrations
+downgrade: ## Downgrade (unapply) DB migration (last revision)
+	@echo Migrations: downgrade last revisions...
+	uv run alembic downgrade -1
