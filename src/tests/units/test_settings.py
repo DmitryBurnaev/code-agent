@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import SecretStr
 
-from src.settings import AppSettings, get_settings
+from src.settings import AppSettings, get_app_settings
 from src.models import LLMProvider
 from src.constants import Vendor, LOG_LEVELS
 
@@ -17,7 +17,7 @@ class TestAppSettings:
     @patch.dict(os.environ, {"PROVIDERS": "[]", "API_TOKEN": "test-token"})
     def test_default_settings(self) -> None:
         """Test default settings values."""
-        get_settings.cache_clear()
+        get_app_settings.cache_clear()
         settings = AppSettings(_env_file=None)  # type: ignore
         assert settings.docs_enabled is False
         assert settings.api_token.get_secret_value() == "test-token"
@@ -85,7 +85,7 @@ class TestAppSettings:
 
 
 class TestGetSettings:
-    """Tests for get_settings function."""
+    """Tests for get_app_settings function."""
 
     @patch.dict(
         os.environ,
@@ -98,10 +98,10 @@ class TestGetSettings:
             "PROVIDERS": '[{"vendor":"openai","api_key":"openai-key"}]',
         },
     )
-    def test_get_settings_from_env(self) -> None:
+    def test_get_app_settings_from_env(self) -> None:
         """Test getting settings from environment variables."""
-        get_settings.cache_clear()
-        settings = get_settings()
+        get_app_settings.cache_clear()
+        settings = get_app_settings()
         assert settings.api_token.get_secret_value() == "test-token"
         assert settings.log_level == "DEBUG"
         assert settings.app_host == "localhost"
@@ -112,16 +112,16 @@ class TestGetSettings:
         ]
 
     @patch.dict(os.environ, {"AUTH_API_TOKEN": "test-token", "LOG_LEVEL": "INVALID"})
-    def test_get_settings_validation_error(self) -> None:
+    def test_get_app_settings_validation_error(self) -> None:
         """Test validation error when getting settings."""
-        get_settings.cache_clear()
+        get_app_settings.cache_clear()
         with pytest.raises(Exception):
-            get_settings()
+            get_app_settings()
 
     @patch.dict(os.environ, {"API_TOKEN": "test-token"})
-    def test_get_settings_caching(self) -> None:
+    def test_get_app_settings_caching(self) -> None:
         """Test settings caching."""
-        get_settings.cache_clear()
-        settings1 = get_settings()
-        settings2 = get_settings()
+        get_app_settings.cache_clear()
+        settings1 = get_app_settings()
+        settings2 = get_app_settings()
         assert settings1 is settings2  # Same object due to caching

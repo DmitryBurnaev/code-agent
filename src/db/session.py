@@ -4,7 +4,7 @@ from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from src.settings import get_settings
+from src.settings import get_app_settings
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ def make_sa_session() -> AsyncSession:
     Create a new SQLAlchemy session for connection to SQLite database.
     """
     logger.debug("Creating new async SQLAlchemy session")
-    settings = get_settings()
+    settings = get_app_settings()
 
     try:
         engine = create_async_engine(

@@ -6,7 +6,8 @@ from sqlalchemy import engine_from_config
 from alembic import context
 from alembic.script import ScriptDirectory
 
-from src.settings import get_settings
+from src.settings import get_app_settings
+from src.settings import get_db_settings
 from src.db.models import BaseModel
 
 # this is the Alembic Config object, which provides
@@ -19,10 +20,10 @@ logger = logging.getLogger("alembic.env")
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-settings = get_settings()
+db_settings = get_db_settings()
 
 target_metadata = BaseModel.metadata
-config.set_main_option("sqlalchemy.url", settings.database_url)
+config.set_main_option("sqlalchemy.url", db_settings.alembic_dsn)
 
 
 def run_migrations_offline() -> None:
