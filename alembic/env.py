@@ -1,12 +1,13 @@
+import asyncio
 import logging
 from logging.config import fileConfig
 
 from sqlalchemy import pool
-from sqlalchemy import engine_from_config
+from sqlalchemy.engine import Connection
+from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 from alembic.script import ScriptDirectory
 
-from src.settings import get_app_settings
 from src.settings import get_db_settings
 from src.db.models import BaseModel
 
@@ -23,7 +24,7 @@ if config.config_file_name is not None:
 db_settings = get_db_settings()
 
 target_metadata = BaseModel.metadata
-config.set_main_option("sqlalchemy.url", db_settings.alembic_dsn)
+config.set_main_option("sqlalchemy.url", db_settings.database_dsn)
 
 
 def run_migrations_offline() -> None:
@@ -43,9 +44,19 @@ def run_migrations_offline() -> None:
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+def do_run_migrations(connection: Connection) -> None:
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
         compare_type=True,
         compare_server_default=True,
-        dialect_opts={"paramstyle": "named"},
         process_revision_directives=process_revision_directives,
     )
 
@@ -53,31 +64,28 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def run_migrations_online() -> None:
-    """
-    Run migrations in 'online' mode.
-
-    In this scenario we need to create an Engine
+async def run_async_migrations() -> None:
+    """In this scenario we need to create an Engine
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
+
+    connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
 
-    with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            compare_type=True,
-            compare_server_default=True,
-            process_revision_directives=process_revision_directives,
-        )
+    async with connectable.connect() as connection:
+        await connection.run_sync(do_run_migrations)
 
-        with context.begin_transaction():
-            context.run_migrations()
+    await connectable.dispose()
+
+
+def run_migrations_online() -> None:
+    """Run migrations in 'online' mode."""
+
+    asyncio.run(run_async_migrations())
 
 
 def process_revision_directives(context, revision, directives):  # type: ignore # noqa
