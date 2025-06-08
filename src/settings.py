@@ -15,6 +15,7 @@ __all__ = (
     "AppSettings",
 )
 LogLevelString = Annotated[str, StringConstraints(to_upper=True, pattern=rf"^(?i:{LOG_LEVELS})$")]
+TypeSettings = TypeVar("TypeSettings", bound=BaseSettings)
 
 
 class AppSettings(BaseSettings):
@@ -34,16 +35,6 @@ class AppSettings(BaseSettings):
     provider_custom_url: str | None = Field(
         default_factory=lambda: None, description="API URL for 'custom' vendor"
     )
-
-    # Database settings
-    # TODO: replace with separately: pg-host, pg-port, pg-user, pg-pass
-    database_url: str = Field(
-        default="postgresql+asyncpg://postgres:postgres@localhost:5432/code_agent",
-        description="Database URL",
-    )
-    database_pool_size: int = Field(default=5, description="Database connection pool size")
-    database_max_overflow: int = Field(default=10, description="Database max overflow")
-    database_echo: bool = Field(default=False, description="Database echo mode")
 
     @cached_property
     def provider_by_vendor(self) -> dict[str, LLMProvider]:
@@ -72,53 +63,18 @@ class AppSettings(BaseSettings):
 
 
 class DBSettings(BaseSettings):
-    """
+    """Implements settings which are loaded from environment variables"""
 
-        Implements
-        DATABASE = {
-        "driver": "postgresql+asyncpg",
-        "host": config("DB_HOST", default=None),
-        "port": config("DB_PORT", cast=int, default=None),
-        "username": config("DB_USERNAME", default=None),
-        "password": config("DB_PASSWORD", cast=Secret, default=None),
-        "database": DB_NAME,
-        "pool_min_size": config("DB_POOL_MIN_SIZE", cast=int, default=1),
-        "pool_max_size": config("DB_POOL_MAX_SIZE", cast=int, default=16),
-        "ssl": config("DB_SSL", default=None),
-        "use_connection_for_request": config("DB_USE_CONNECTION_FOR_REQUEST", cast=bool, default=True),
-        "retry_limit": config("DB_RETRY_LIMIT", cast=int, default=1),
-        "retry_interval": config("DB_RETRY_INTERVAL", cast=int, default=1),
-    }
-    DATABASE_DSN = config(
-        "DB_DSN",
-        cast=str,
-        default="{driver}://{username}:{password}@{host}:{port}/{database}".format(**DATABASE),
-    )
-
-    """
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_prefix="DB_")
 
     driver: str = "postgresql+asyncpg"
-    host: str = Field(None, description="Database Host", env="DB_HOST")
-    port: int = Field(default=None, description="Database Port", env="DB_PORT")
-    username: str = Field(default=None, description="Database Username", env="DB_USERNAME")
-    password: str = Field(default=None, description="Database Password", env="DB_PASSWORD")
-    database: str = Field(default=None, description="Database Name", env="DB_NAME")
-    pool_min_size: int = Field(
-        default=None, description="Database Pool Min Size", env="DB_POOL_MIN_SIZE"
-    )
-    pool_max_size: int = Field(
-        default=None, description="Database Pool Max Size", env="DB_POOL_MAX_SIZE"
-    )
-    ssl: bool = Field(default=None, description="Database SSL", env="DB_SSL")
-    use_connection_for_request: bool = Field(
-        default=None,
-        description="Database Use Connection For Request",
-        env="DB_USE_CONNECTION_FOR_REQUEST",
-    )
-    retry_limit: int = Field(default=None, description="Database Retry Limit", env="DB_RETRY_LIMIT")
-    retry_interval: int = Field(
-        default=None, description="Database Retry Interval", env="DB_RETRY_INTERVAL"
-    )
+    host: str = "localhost"
+    port: int = 5432
+    username: str = "postgres"
+    password: str = "postgres"
+    database: str = "code_agent"
+    pool_min_size: int | None = Field(default_factory=lambda: None, description="Pool Min Size")
+    pool_max_size: int | None = Field(default_factory=lambda: None, description="Pool Max Size")
 
     @cached_property
     def database_dsn(self) -> str:
@@ -131,14 +87,10 @@ class DBSettings(BaseSettings):
         )
 
 
-TypeSettings = TypeVar("TypeSettings", bound=BaseSettings)
-
-
-@lru_cache
 def _get_settings(settings_class: type[TypeSettings]) -> TypeSettings:
     """Prepares settings from environment variables"""
     try:
-        settings: BaseSettings = settings_class()  # type: ignore
+        settings: TypeSettings = settings_class()
     except ValidationError as exc:
         message = str(exc.errors(include_url=False, include_input=False))
         logging.debug("Unable to validate settings (caught Validation Error): \n %s", message)
@@ -154,11 +106,13 @@ def _get_settings(settings_class: type[TypeSettings]) -> TypeSettings:
     return settings
 
 
+@lru_cache
 def get_app_settings() -> AppSettings:
     """Prepares application settings from environment variables"""
     return _get_settings(AppSettings)
 
 
+@lru_cache
 def get_db_settings() -> DBSettings:
     """Prepares database settings from environment variables"""
     return _get_settings(DBSettings)

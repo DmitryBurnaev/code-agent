@@ -12,7 +12,7 @@ dependencies = [
     "sqlalchemy==2.0.41",
     "alembic==1.16.1",
     "asyncpg==0.30.0",
-    "psycopg[binary]==3.2.9", # for alembic only
+    "greenlet==3.2.3", # for alembic only
 ]
 
 [tool.uv]
