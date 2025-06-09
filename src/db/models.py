@@ -16,6 +16,31 @@ class BaseModel(AsyncAttrs, DeclarativeBase):
     id: Mapped[int]
 
 
+class User(BaseModel):
+    """Users table for an authorization process"""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    login: Mapped[str] = mapped_column(sa.String(128))
+    password: Mapped[str] = mapped_column(sa.String(128))
+    first_name: Mapped[str] = mapped_column(sa.String(128))
+    last_name: Mapped[str] = mapped_column(sa.String(128))
+    email: Mapped[str] = mapped_column(sa.String(128))
+
+    def __str__(self) -> str:
+        return f"User '{self.login}'"
+
+    def __repr__(self) -> str:
+        return (
+            f"User("
+            f"login='{self.login}', "
+            f"first_name='{self.first_name}', "
+            f"last_name='{self.last_name}', "
+            f"email='{self.email}')"
+        )
+
+
 class Vendor(BaseModel):
     """User model representing a Telegram user in the system."""
 
