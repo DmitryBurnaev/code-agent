@@ -35,6 +35,8 @@ class AppSettings(BaseSettings):
     provider_custom_url: str | None = Field(
         default_factory=lambda: None, description="API URL for 'custom' vendor"
     )
+    admin_login: str = "admin"
+    admin_password: str = "code-agent-password-WANEWEQFhUs"
 
     @cached_property
     def provider_by_vendor(self) -> dict[str, LLMProvider]:
