@@ -8,8 +8,9 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 
-from src.constants import VendorAuthType, VENDOR_DEFAULT_TIMEOUT
 from src.utils import utcnow
+from src.services.auth_hasher import PBKDF2PasswordHasher
+from src.constants import VendorAuthType, VENDOR_DEFAULT_TIMEOUT
 
 
 class BaseModel(AsyncAttrs, DeclarativeBase):
@@ -24,9 +25,27 @@ class User(BaseModel):
     id: Mapped[int] = mapped_column(primary_key=True)
     login: Mapped[str] = mapped_column(sa.String(128))
     password: Mapped[str] = mapped_column(sa.String(128))
-    first_name: Mapped[str] = mapped_column(sa.String(128))
-    last_name: Mapped[str] = mapped_column(sa.String(128))
-    email: Mapped[str] = mapped_column(sa.String(128))
+    first_name: Mapped[str] = mapped_column(sa.String(128), nullable=True)
+    last_name: Mapped[str] = mapped_column(sa.String(128), nullable=True)
+    email: Mapped[str] = mapped_column(sa.String(128), nullable=True)
+
+    @classmethod
+    def make_password(cls, raw_password: str) -> str:
+        hasher = PBKDF2PasswordHasher()
+        return hasher.encode(raw_password)
+
+    def verify_password(self, raw_password: str) -> bool:
+        hasher = PBKDF2PasswordHasher()
+        verified, _ = hasher.verify(raw_password, encoded=str(self.password))
+        return verified
+
+    @property
+    def is_authenticated(self) -> bool:
+        return True
+
+    @property
+    def display_name(self) -> str:
+        return self.email
 
     def __str__(self) -> str:
         return f"User '{self.login}'"
