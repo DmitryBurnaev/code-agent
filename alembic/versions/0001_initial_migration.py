@@ -1,8 +1,8 @@
-"""Initial Migration
+"""Initial: Users added
 
 Revision ID: 0001
 Revises:
-Create Date: 2025-06-08 18:19:05.979549
+Create Date: 2025-06-10 10:19:38.627169
 
 """
 
@@ -22,32 +22,17 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Upgrade schema."""
     op.create_table(
-        "vendors",
+        "users",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("name", sa.String(length=255), nullable=False),
-        sa.Column("slug", sa.String(length=255), nullable=False),
-        sa.Column("url", sa.String(length=255), nullable=True),
-        sa.Column("auth_type", sa.String(length=50), nullable=False),
-        sa.Column("timeout", sa.Integer(), nullable=False),
-        sa.Column("is_active", sa.Boolean(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), nullable=False),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_table(
-        "vendor_settings",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("vendor_id", sa.Integer(), nullable=False),
-        sa.Column("model_prefix", sa.String(length=255), nullable=True),
-        sa.Column("api_key", sa.String(length=1024), nullable=False),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), nullable=False),
-        sa.ForeignKeyConstraint(["vendor_id"], ["vendors.id"], ondelete="CASCADE"),
+        sa.Column("login", sa.String(length=128), nullable=False),
+        sa.Column("password", sa.String(length=128), nullable=False),
+        sa.Column("first_name", sa.String(length=128), nullable=False),
+        sa.Column("last_name", sa.String(length=128), nullable=False),
+        sa.Column("email", sa.String(length=128), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_table("vendor_settings")
-    op.drop_table("vendors")
+    op.drop_table("users")
