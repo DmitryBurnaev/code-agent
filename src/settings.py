@@ -77,6 +77,7 @@ class DBSettings(BaseSettings):
     database: str = "code_agent"
     pool_min_size: int | None = Field(default_factory=lambda: None, description="Pool Min Size")
     pool_max_size: int | None = Field(default_factory=lambda: None, description="Pool Max Size")
+    echo: bool = False
 
     @cached_property
     def database_dsn(self) -> str:

@@ -3,10 +3,19 @@ import contextlib
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm.session import sessionmaker, Session
 
-from src.settings import get_app_settings
+from src.settings import get_db_settings
 
 logger = logging.getLogger(__name__)
+
+
+def get_async_sessionmaker() -> sessionmaker[Session]:
+    """Create async session to database from SQLALCHEMY_DATABASE_URI"""
+    db_settings = get_db_settings()
+    engine = create_async_engine(db_settings.database_dsn)
+
+    return sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)  # type: ignore
 
 
 def make_sa_session() -> AsyncSession:
@@ -14,14 +23,13 @@ def make_sa_session() -> AsyncSession:
     Create a new SQLAlchemy session for connection to SQLite database.
     """
     logger.debug("Creating new async SQLAlchemy session")
-    settings = get_app_settings()
+    db_settings = get_db_settings()
 
     try:
         engine = create_async_engine(
-            settings.database_url,
-            pool_size=settings.database_pool_size,
-            max_overflow=settings.database_max_overflow,
-            echo=settings.database_echo,
+            db_settings.database_dsn,
+            pool_size=db_settings.pool_min_size,
+            echo=db_settings.echo,
         )
         logger.debug("Successfully created async engine")
         return AsyncSession(engine)

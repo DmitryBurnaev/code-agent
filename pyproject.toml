@@ -10,6 +10,7 @@ dependencies = [
     "pydantic-settings==2.8.1",
     "httpx[socks]==0.28.1",
     "sqlalchemy==2.0.41",
+    "sqladmin==0.20.1",
     "alembic==1.16.1",
     "asyncpg==0.30.0",
     "greenlet==3.2.3", # for alembic only
