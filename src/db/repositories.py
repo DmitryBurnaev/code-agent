@@ -15,7 +15,7 @@ from sqlalchemy import select, BinaryExpression, delete
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db.models import BaseModel, Vendor
+from src.db.models import BaseModel, Vendor, VendorSettings
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 logger = logging.getLogger(__name__)
@@ -109,7 +109,15 @@ class VendorRepository(BaseRepository[Vendor]):
     model = Vendor
 
     async def filter(self, **filters: Unpack[VendorsFilter]) -> list[Vendor]:
-        """Extra filtering users by some parameters."""
+        """Extra filtering vendors by some parameters."""
+        return await self.all(**filters)
+
+
+class VendorSettingsRepository(BaseRepository[VendorSettings]):
+    model = VendorSettings
+
+    async def filter(self, **filters: Unpack[VendorsFilter]) -> list[VendorSettings]:
+        """Extra filtering ve by some parameters."""
         return await self.all(**filters)
 
 
