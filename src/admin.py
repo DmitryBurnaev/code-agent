@@ -15,6 +15,7 @@ class UserAdmin(BaseModelView, model=User):
 
 class VendorAdmin(BaseModelView, model=Vendor):
     column_list = [Vendor.id, Vendor.name, Vendor.slug, Vendor.is_active]
+    column_exclude_list = [Vendor.settings]
 
 
 class VendorSettingsAdmin(BaseModelView, model=VendorSettings):
