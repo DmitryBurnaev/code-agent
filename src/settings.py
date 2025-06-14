@@ -14,6 +14,7 @@ __all__ = (
     "get_app_settings",
     "AppSettings",
 )
+
 LogLevelString = Annotated[str, StringConstraints(to_upper=True, pattern=rf"^(?i:{LOG_LEVELS})$")]
 TypeSettings = TypeVar("TypeSettings", bound=BaseSettings)
 
@@ -35,7 +36,7 @@ class AppSettings(BaseSettings):
     provider_custom_url: str | None = Field(
         default_factory=lambda: None, description="API URL for 'custom' vendor"
     )
-    admin_login: str = "admin"
+    admin_username: str = "admin"
     admin_password: str = "code-agent-password-WANEWEQFhUs"
 
     @cached_property
@@ -82,12 +83,6 @@ class DBSettings(BaseSettings):
     @cached_property
     def database_dsn(self) -> str:
         return f"{self.driver}://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
-
-    @cached_property
-    def alembic_dsn(self) -> str:
-        return (
-            f"postgresql://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
-        )
 
 
 def _get_settings(settings_class: type[TypeSettings]) -> TypeSettings:

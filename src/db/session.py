@@ -26,10 +26,14 @@ def make_sa_session() -> AsyncSession:
     db_settings = get_db_settings()
 
     try:
+        extra_kwargs = {}
+        if db_settings.pool_min_size:
+            extra_kwargs["pool_size"] = db_settings.pool_min_size
+
         engine = create_async_engine(
             db_settings.database_dsn,
-            pool_size=db_settings.pool_min_size,
             echo=db_settings.echo,
+            **extra_kwargs,
         )
         logger.debug("Successfully created async engine")
         return AsyncSession(engine)

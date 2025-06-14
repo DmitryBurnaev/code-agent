@@ -11,7 +11,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-from src.services.auth_hasher import PBKDF2PasswordHasher
+from src.services.auth import PBKDF2PasswordHasher
 from src.settings import get_app_settings
 
 
@@ -27,13 +27,14 @@ def upgrade() -> None:
     op.create_table(
         "users",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("login", sa.String(length=128), nullable=False),
+        sa.Column("username", sa.String(length=128), nullable=False),
         sa.Column("password", sa.String(length=128), nullable=False),
-        sa.Column("first_name", sa.String(length=128), nullable=True),
-        sa.Column("last_name", sa.String(length=128), nullable=True),
         sa.Column("email", sa.String(length=128), nullable=True),
+        sa.Column("is_admin", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.create_unique_constraint("users_username_uq", "users", ["username"])
     _add_initial_admin(connection=op.get_bind())
 
 
@@ -45,12 +46,13 @@ def downgrade() -> None:
 def _add_initial_admin(connection: sa.Connection) -> None:
     app_settings = get_app_settings()
     query = """
-        INSERT INTO users (first_name, login, password)
-        VALUES (:first_name, :login, :password)            
+        INSERT INTO users (username, password, is_admin, is_active)
+        VALUES (:username, :password, :is_admin, :is_active)            
     """
     users_data = {
-        "first_name": app_settings.admin_login,
-        "login": app_settings.admin_login,
+        "username": app_settings.admin_username,
         "password": PBKDF2PasswordHasher().encode(app_settings.admin_password),
+        "is_admin": True,
+        "is_active": False,
     }
     connection.execute(sa.text(query), users_data)

@@ -8,6 +8,8 @@ __all__ = (
     "LOG_LEVELS",
 )
 
+from pathlib import Path
+
 from typing import Self
 
 
@@ -43,3 +45,5 @@ PROVIDER_URLS: dict[Vendor, str] = {
 }
 VENDOR_DEFAULT_TIMEOUT = 30
 LOG_LEVELS = "DEBUG|INFO|WARNING|ERROR|CRITICAL"
+APP_DIR = Path(__file__).parent
+RENDER_KW = {"class": "form-control", "required": True}
