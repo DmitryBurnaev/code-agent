@@ -1,16 +1,13 @@
 from datetime import datetime
-from typing import Optional
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import relationship
 
 from src.utils import utcnow
-from src.services.auth_hasher import PBKDF2PasswordHasher
-from src.constants import VendorAuthType, VENDOR_DEFAULT_TIMEOUT
+from src.services.auth import PBKDF2PasswordHasher
 
 
 class BaseModel(AsyncAttrs, DeclarativeBase):
@@ -23,11 +20,11 @@ class User(BaseModel):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    login: Mapped[str] = mapped_column(sa.String(128))
+    username: Mapped[str] = mapped_column(sa.String(128), unique=True)
     password: Mapped[str] = mapped_column(sa.String(128))
-    first_name: Mapped[str] = mapped_column(sa.String(128), nullable=True)
-    last_name: Mapped[str] = mapped_column(sa.String(128), nullable=True)
     email: Mapped[str] = mapped_column(sa.String(128), nullable=True)
+    is_admin: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
+    is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
 
     @classmethod
     def make_password(cls, raw_password: str) -> str:
@@ -45,18 +42,18 @@ class User(BaseModel):
 
     @property
     def display_name(self) -> str:
-        return self.email
+        return self.username
 
     def __str__(self) -> str:
-        return f"User '{self.login}'"
+        return f"User '{self.username}'"
 
     def __repr__(self) -> str:
         return (
             f"User("
-            f"login='{self.login}', "
-            f"first_name='{self.first_name}', "
-            f"last_name='{self.last_name}', "
-            f"email='{self.email}')"
+            f"login='{self.username}', "
+            f"email='{self.email}'"
+            f"is_active='{self.is_active}'"
+            f"is_admin='{self.is_admin}')"
         )
 
 
@@ -66,14 +63,13 @@ class Vendor(BaseModel):
     __tablename__ = "vendors"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(sa.String(255))
-    slug: Mapped[str] = mapped_column(sa.String(255))
-    url: Mapped[Optional[str]] = mapped_column(sa.String(255), nullable=True)
-    auth_type: Mapped[str] = mapped_column(sa.String(50), default=VendorAuthType.BEARER)
-    timeout: Mapped[int] = mapped_column(sa.Integer, default=VENDOR_DEFAULT_TIMEOUT)
-    is_active: Mapped[bool] = mapped_column(sa.Boolean, default=True)
+    slug: Mapped[str] = mapped_column(sa.String(255), nullable=False, unique=True)
+    url: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    timeout: Mapped[int] = mapped_column(sa.Integer, nullable=True)
+    is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
+    api_key: Mapped[str] = mapped_column(sa.String(1024))  # Store an encrypted API key
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=True, onupdate=utcnow)
 
     # Relationships
     settings: Mapped[list["VendorSettings"]] = relationship(
@@ -81,10 +77,10 @@ class Vendor(BaseModel):
     )
 
     def __str__(self) -> str:
-        return f"Vendor #{self.id} {self.name} "
+        return f"Vendor '{self.slug}'"
 
     def __repr__(self) -> str:
-        return f"Vendor(id={self.id!r}, name={self.name!r}, url={self.url!r})"
+        return f"Vendor(id={self.id!r}, slug={self.slug!r}, url={self.url!r})"
 
 
 class VendorSettings(BaseModel):
@@ -94,13 +90,15 @@ class VendorSettings(BaseModel):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     vendor_id: Mapped[int] = mapped_column(sa.ForeignKey("vendors.id", ondelete="CASCADE"))
-    model_prefix: Mapped[str] = mapped_column(sa.String(255), nullable=True)
     api_key: Mapped[str] = mapped_column(sa.String(1024))  # Store an encrypted API key
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(sa.DateTime, onupdate=utcnow)
 
     # Relationships
-    vendor: Mapped["Vendor"] = relationship(back_populates="settings")
+    vendor: Mapped["Vendor"] = relationship(back_populates="settings", lazy="joined")
+
+    def __str__(self) -> str:
+        return f"VendorSettings for '{self.vendor.slug}'"
 
     def __repr__(self) -> str:
-        return f"VendorSettings(id={self.id!r})"
+        return f"VendorSettings(id={self.id!r}, vendor_id={self.vendor_id!r})"

@@ -1,7 +1,8 @@
 import datetime
 import logging
-from typing import TypeVar, Callable, ParamSpec, Any
+from typing import TypeVar, Callable, ParamSpec, Any, TYPE_CHECKING
 
+import markupsafe
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -9,6 +10,9 @@ from pydantic import ValidationError
 
 from src.exceptions import BaseApplicationError
 from src.models import ErrorResponse
+
+if TYPE_CHECKING:
+    from src.db.models import BaseModel
 
 __all__ = ("singleton", "universal_exception_handler")
 logger = logging.getLogger(__name__)
@@ -71,9 +75,12 @@ async def universal_exception_handler(request: Request, exc: Exception) -> JSONR
     )
 
 
-def utcnow() -> datetime.datetime:
+def utcnow(skip_tz: bool = True) -> datetime.datetime:
     """Just a simple wrapper for deprecated datetime.utcnow"""
-    return datetime.datetime.now(datetime.UTC)
+    dt = datetime.datetime.now(datetime.UTC)
+    if skip_tz:
+        dt = dt.replace(tzinfo=None)
+    return dt
 
 
 def decohints(decorator: Callable[..., Any]) -> Callable[..., Any]:
@@ -81,3 +88,25 @@ def decohints(decorator: Callable[..., Any]) -> Callable[..., Any]:
     Small helper which helps to say IDE: "decorated method has the same params and return types"
     """
     return decorator
+
+
+def admin_get_link(instance: "BaseModel", url_name: str | None = None) -> str:
+    """
+    Simple helper function to generate a link to an instance
+    (required for building items in admin's list view)
+
+    :param instance: Some model's instance for link's building
+    :param url_name: Part of url (admin path)
+    :return: HTML-safe tag with a generated link
+    """
+    name = url_name or instance.__class__.__name__.lower()
+    return markupsafe.Markup(
+        f'<a href="/admin/{name}/edit/{instance.id}">[#{instance.id}] {instance}</a>'
+    )
+
+
+def simple_slugify(value: str) -> str:
+    """
+    Simple helper function to generate a slugified version of a string
+    """
+    return value.lower().strip().replace(" ", "-")

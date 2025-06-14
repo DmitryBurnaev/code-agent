@@ -7,7 +7,7 @@ from typing import (
     Any,
     TypedDict,
     Sequence,
-    Unpack,
+    # Unpack,
     ParamSpec,
 )
 
@@ -15,7 +15,7 @@ from sqlalchemy import select, BinaryExpression, delete
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db.models import BaseModel, Vendor, VendorSettings
+from src.db.models import BaseModel, Vendor
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 logger = logging.getLogger(__name__)
@@ -27,6 +27,7 @@ class VendorsFilter(TypedDict):
     """Simple structure to filter users by specific params"""
 
     ids: list[int] | None
+    slug: str | None
 
 
 class BaseRepository(Generic[ModelT]):
@@ -108,17 +109,27 @@ class VendorRepository(BaseRepository[Vendor]):
 
     model = Vendor
 
-    async def filter(self, **filters: Unpack[VendorsFilter]) -> list[Vendor]:
+    async def filter(
+        self,
+        ids: Sequence[int] | None = None,
+        slug: str | None = None,
+    ) -> list[Vendor]:
         """Extra filtering vendors by some parameters."""
+        filters: dict[str, Any] = {}
+        if slug:
+            filters["slug"] = slug
+        if ids:
+            filters["ids"] = ids
+
         return await self.all(**filters)
 
 
-class VendorSettingsRepository(BaseRepository[VendorSettings]):
-    model = VendorSettings
-
-    async def filter(self, **filters: Unpack[VendorsFilter]) -> list[VendorSettings]:
-        """Extra filtering ve by some parameters."""
-        return await self.all(**filters)
+# class VendorSettingsRepository(BaseRepository[VendorSettings]):
+#     model = VendorSettings
+#
+#     async def filter(self, **filters: Unpack[VendorsFilter]) -> list[VendorSettings]:
+#         """Extra filtering ve by some parameters."""
+#         return await self.all(**filters)
 
 
 # class VendorRepository:
