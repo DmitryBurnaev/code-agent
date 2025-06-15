@@ -61,10 +61,7 @@ class ProviderClient:
 
             models_data = ProviderAIModelsResponse.model_validate(response_data)
             vendor = self._provider.vendor
-            return [
-                AIModel(id=f"{vendor}__{model.id}", vendor=vendor, vendor_id=model.id)
-                for model in models_data.data
-            ]
+            return [AIModel.from_vendor(vendor, model_id=model.id) for model in models_data.data]
 
         models: list[AIModel] = []
         try:
@@ -124,6 +121,9 @@ class ProviderService:
         Results are cached per provider with TTL defined in settings.
         If a provider fails, other providers' cached data remains valid.
         """
+        if self._settings.offline_test_mode:
+            return self._mocked_models(vendors=[Vendor.OPENAI, Vendor.DEEPSEEK, Vendor.CUSTOM])
+
         all_models = []
         tasks = []
         providers = []
@@ -174,3 +174,17 @@ class ProviderService:
             return None
 
         return [AIModel.model_validate(model_data) for model_data in cached]
+
+    @staticmethod
+    def _mocked_models(vendors: list[Vendor]) -> list[AIModel]:
+        mocked_models = {
+            Vendor.OPENAI: ["openai-chat", "o12-macro"],
+            Vendor.DEEPSEEK: ["deepseek-chat", "deepseek-think"],
+            Vendor.ANTHROPIC: ["anthropic-123"],
+        }
+        result = []
+        for vendor in vendors:
+            for model in mocked_models.get(vendor, []):
+                result.append(AIModel.from_vendor(vendor, model))
+
+        return result

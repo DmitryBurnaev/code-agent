@@ -7,7 +7,7 @@ from starlette.requests import Request
 from wtforms import Form, StringField, EmailField, PasswordField, BooleanField
 
 from src.constants import RENDER_KW
-from src.db.models import BaseModel, User, Vendor, VendorSettings
+from src.db.models import BaseModel, User, Vendor
 from src.db.repositories import VendorRepository
 from src.db.services import SASessionUOW
 from src.utils import admin_get_link, simple_slugify
@@ -71,20 +71,19 @@ class UserAdmin(BaseModelView, model=User):
 
 class VendorAdmin(BaseModelView, model=Vendor):
     icon = "fa-solid fa-box-archive"
-    # name = "Vendor"
-    # name_plural = name
-    column_list = (Vendor.id, Vendor.is_active)
+    column_list = (Vendor.id, Vendor.api_url, Vendor.is_active)
     column_formatters = {Vendor.id: lambda model, a: admin_get_link(cast(BaseModel, model))}
     form_columns = (
         Vendor.slug,
-        Vendor.url,
+        Vendor.api_url,
+        Vendor.api_key,
         Vendor.timeout,
         Vendor.is_active,
     )
     column_details_list = (
         Vendor.id,
         Vendor.slug,
-        Vendor.url,
+        Vendor.api_url,
         Vendor.timeout,
         Vendor.is_active,
         Vendor.created_at,
@@ -92,7 +91,8 @@ class VendorAdmin(BaseModelView, model=Vendor):
     )
     column_labels = {
         Vendor.slug: "Slug",
-        Vendor.url: "Base URL",
+        Vendor.api_url: "API URL",
+        Vendor.api_key: "API Key",
         Vendor.timeout: "Timeout",
         Vendor.is_active: "Is Active",
     }
@@ -148,17 +148,18 @@ class VendorAdmin(BaseModelView, model=Vendor):
         return slug
 
 
-class VendorSettingsAdmin(BaseModelView, model=VendorSettings):
-    name = "Vendor Access"
-    name_plural = name
-    column_list = (VendorSettings.id,)
-    icon = "fa-solid fa-list-squares"
-    form_columns = (
-        VendorSettings.vendor,
-        VendorSettings.api_key,
-    )
-    column_formatters = {
-        VendorSettings.id: lambda model, a: admin_get_link(
-            cast(BaseModel, model), url_name="vendor-settings"
-        )
-    }
+#
+# class VendorSettingsAdmin(BaseModelView, model=VendorSettings):
+#     name = "Vendor Access"
+#     name_plural = name
+#     column_list = (VendorSettings.id,)
+#     icon = "fa-solid fa-list-squares"
+#     form_columns = (
+#         VendorSettings.vendor,
+#         VendorSettings.api_key,
+#     )
+#     column_formatters = {
+#         VendorSettings.id: lambda model, a: admin_get_link(
+#             cast(BaseModel, model), url_name="vendor-settings"
+#         )
+#     }

@@ -38,6 +38,7 @@ class AppSettings(BaseSettings):
     )
     admin_username: str = "admin"
     admin_password: str = "code-agent-password-WANEWEQFhUs"
+    offline_test_mode: bool = False
 
     @cached_property
     def provider_by_vendor(self) -> dict[str, LLMProvider]:

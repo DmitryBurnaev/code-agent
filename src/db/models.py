@@ -2,7 +2,7 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 
@@ -64,17 +64,17 @@ class Vendor(BaseModel):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     slug: Mapped[str] = mapped_column(sa.String(255), nullable=False, unique=True)
-    url: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    api_url: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    api_key: Mapped[str] = mapped_column(sa.String(1024), nullable=False)  # Encrypted API key
     timeout: Mapped[int] = mapped_column(sa.Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
-    api_key: Mapped[str] = mapped_column(sa.String(1024))  # Store an encrypted API key
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=True, onupdate=utcnow)
 
     # Relationships
-    settings: Mapped[list["VendorSettings"]] = relationship(
-        back_populates="vendor", cascade="all, delete-orphan"
-    )
+    # settings: Mapped[list["VendorSettings"]] = relationship(
+    #     back_populates="vendor", cascade="all, delete-orphan"
+    # )
 
     def __str__(self) -> str:
         return f"Vendor '{self.slug}'"
@@ -83,22 +83,22 @@ class Vendor(BaseModel):
         return f"Vendor(id={self.id!r}, slug={self.slug!r}, url={self.url!r})"
 
 
-class VendorSettings(BaseModel):
-    """Vendor settings model for storing encrypted API keys and other sensitive data."""
-
-    __tablename__ = "vendor_settings"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    vendor_id: Mapped[int] = mapped_column(sa.ForeignKey("vendors.id", ondelete="CASCADE"))
-    api_key: Mapped[str] = mapped_column(sa.String(1024))  # Store an encrypted API key
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, onupdate=utcnow)
-
-    # Relationships
-    vendor: Mapped["Vendor"] = relationship(back_populates="settings", lazy="joined")
-
-    def __str__(self) -> str:
-        return f"VendorSettings for '{self.vendor.slug}'"
-
-    def __repr__(self) -> str:
-        return f"VendorSettings(id={self.id!r}, vendor_id={self.vendor_id!r})"
+# class VendorSettings(BaseModel):
+#     """Vendor settings model for storing encrypted API keys and other sensitive data."""
+#
+#     __tablename__ = "vendor_settings"
+#
+#     id: Mapped[int] = mapped_column(primary_key=True)
+#     vendor_id: Mapped[int] = mapped_column(sa.ForeignKey("vendors.id", ondelete="CASCADE"))
+#     api_key: Mapped[str] = mapped_column(sa.String(1024))  # Store an encrypted API key
+#     created_at: Mapped[datetime] = mapped_column(sa.DateTime, default=utcnow)
+#     updated_at: Mapped[datetime] = mapped_column(sa.DateTime, onupdate=utcnow)
+#
+#     # Relationships
+#     vendor: Mapped["Vendor"] = relationship(back_populates="settings", lazy="joined")
+#
+#     def __str__(self) -> str:
+#         return f"VendorSettings for '{self.vendor.slug}'"
+#
+#     def __repr__(self) -> str:
+#         return f"VendorSettings(id={self.id!r}, vendor_id={self.vendor_id!r})"
