@@ -27,7 +27,8 @@ def upgrade() -> None:
         "vendors",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("slug", sa.String(length=255), nullable=False),
-        sa.Column("url", sa.String(length=255), nullable=True),
+        sa.Column("api_url", sa.String(length=255), nullable=False),
+        sa.Column("api_key", sa.String(length=1024), nullable=False),
         sa.Column("timeout", sa.Integer(), nullable=True),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column("created_at", sa.DateTime(), nullable=False),
@@ -35,36 +36,36 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_unique_constraint("vendors_slug_uq", "vendors", ["slug"])
-    op.create_table(
-        "vendor_settings",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("vendor_id", sa.Integer(), nullable=False),
-        sa.Column("api_key", sa.String(length=1024), nullable=False),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), nullable=False),
-        sa.ForeignKeyConstraint(["vendor_id"], ["vendors.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-    )
+    # op.create_table(
+    #     "vendor_settings",
+    #     sa.Column("id", sa.Integer(), nullable=False),
+    #     sa.Column("vendor_id", sa.Integer(), nullable=False),
+    #     sa.Column("api_key", sa.String(length=1024), nullable=False),
+    #     sa.Column("created_at", sa.DateTime(), nullable=False),
+    #     sa.Column("updated_at", sa.DateTime(), nullable=False),
+    #     sa.ForeignKeyConstraint(["vendor_id"], ["vendors.id"], ondelete="CASCADE"),
+    #     sa.PrimaryKeyConstraint("id"),
+    # )
     _add_initial_vendors(op.get_bind())
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_table("vendor_settings")
     op.drop_table("vendors")
 
 
 def _add_initial_vendors(connection: sa.Connection) -> None:
     query = """
-        INSERT INTO vendors (slug, url, is_active, created_at)
-        VALUES (:slug, :url, :is_active, :created_at)            
+        INSERT INTO vendors (slug, api_url, api_key, is_active, created_at)
+        VALUES (:slug, :api_url, :api_key, :is_active, :created_at)            
     """
     now_time = utcnow()
     vendors_data = [
         {
             "slug": vendor_slug,
-            "url": vendor_url,
-            "is_active": True,
+            "api_url": vendor_url,
+            "api_key": "",
+            "is_active": False,
             "created_at": now_time,
         }
         for vendor_slug, vendor_url in PROVIDER_URLS.items()

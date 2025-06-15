@@ -1,19 +1,21 @@
 """DB-specific module that provides specific operations on the database."""
 
 import logging
+from threading import active_count
 from typing import (
     Generic,
     TypeVar,
     Any,
     TypedDict,
     Sequence,
-    # Unpack,
     ParamSpec,
 )
 
-from sqlalchemy import select, BinaryExpression, delete
+from sqlalchemy import select, BinaryExpression, delete, Select, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import SQLCoreOperations
+from sqlalchemy.sql.roles import ColumnsClauseRole
 
 from src.db.models import BaseModel, Vendor
 
@@ -21,6 +23,7 @@ ModelT = TypeVar("ModelT", bound=BaseModel)
 logger = logging.getLogger(__name__)
 P = ParamSpec("P")
 RT = TypeVar("RT")
+type FilterT = int | str | list[int] | None
 
 
 class VendorsFilter(TypedDict):
@@ -28,6 +31,11 @@ class VendorsFilter(TypedDict):
 
     ids: list[int] | None
     slug: str | None
+
+
+class ActiveVendorsStat(TypedDict):
+    active: int
+    inactive: int
 
 
 class BaseRepository(Generic[ModelT]):
@@ -58,16 +66,9 @@ class BaseRepository(Generic[ModelT]):
 
         return row[0]
 
-    async def all(self, **filters: int | str | list[int] | None) -> list[ModelT]:
+    async def all(self, **filters: FilterT) -> list[ModelT]:
         """Selects instances from DB"""
-        filters_stmts: list[BinaryExpression[bool]] = []
-        if (ids := filters.pop("ids", None)) and isinstance(ids, list):
-            filters_stmts.append(self.model.id.in_(ids))
-
-        statement = select(self.model).filter_by(**filters)
-        if filters_stmts:
-            statement = statement.filter(*filters_stmts)
-
+        statement = self._prepare_statement(filters=filters)
         result = await self.session.execute(statement)
         return [row[0] for row in result.fetchall()]
 
@@ -103,6 +104,22 @@ class BaseRepository(Generic[ModelT]):
         statement = delete(self.model).filter(self.model.id.in_(removing_ids))
         await self.session.execute(statement)
 
+    def _prepare_statement(
+        self,
+        filters: dict[str, FilterT],
+        entities: list[ColumnsClauseRole | SQLCoreOperations[Any]] | None = None,
+    ) -> Select[tuple[ModelT]]:
+        filters_stmts: list[BinaryExpression[bool]] = []
+        if (ids := filters.pop("ids", None)) and isinstance(ids, list):
+            filters_stmts.append(self.model.id.in_(ids))
+
+        statement = select(*entities) if entities is not None else select(self.model)
+        statement = statement.filter_by(**filters)
+        if filters_stmts:
+            statement = statement.filter(*filters_stmts)
+
+        return statement
+
 
 class VendorRepository(BaseRepository[Vendor]):
     """User's repository."""
@@ -123,92 +140,22 @@ class VendorRepository(BaseRepository[Vendor]):
 
         return await self.all(**filters)
 
+    async def group_by_active(self, **filters: FilterT) -> ActiveVendorsStat:
+        """Selects instances from DB"""
+        statement = self._prepare_statement(
+            filters=filters,
+            entities=[
+                self.model.is_active,
+                func.count("*"),
+            ],
+        ).group_by(self.model.is_active)
 
-# class VendorSettingsRepository(BaseRepository[VendorSettings]):
-#     model = VendorSettings
-#
-#     async def filter(self, **filters: Unpack[VendorsFilter]) -> list[VendorSettings]:
-#         """Extra filtering ve by some parameters."""
-#         return await self.all(**filters)
+        active_count: ActiveVendorsStat = {"active": 0, "inactive": 0}
+        for r in await self.session.execute(statement):
+            is_active, count = r
+            if is_active:
+                active_count["active"] = count
+            else:
+                active_count["inactive"] = count
 
-
-# class VendorRepository:
-#     """Repository for vendor operations."""
-#
-#     def __init__(self, session: AsyncSession):
-#         self.session = session
-#
-#     async def create_vendor(
-#         self,
-#         name: str,
-#         encrypted_api_key: str,
-#         public_key: str,
-#         url: Optional[str] = None,
-#         auth_type: str = "Bearer",
-#         timeout: int = 30,
-#     ) -> Vendor:
-#         """Create a new vendor with settings."""
-#         vendor = Vendor(
-#             name=name,
-#             url=url,
-#             auth_type=auth_type,
-#             timeout=timeout,
-#         )
-#         self.session.add(vendor)
-#         await self.session.flush()
-#
-#         settings = VendorSettings(
-#             vendor_id=vendor.id,
-#             encrypted_api_key=encrypted_api_key,
-#             public_key=public_key,
-#         )
-#         self.session.add(settings)
-#         await self.session.commit()
-#
-#         return vendor
-#
-#     async def get_vendor_by_name(self, name: str) -> Optional[Vendor]:
-#         """Get vendor by name."""
-#         query = select(Vendor).where(Vendor.name == name)
-#         result = await self.session.execute(query)
-#         return result.scalar_one_or_none()
-#
-#     async def get_vendor_with_settings(self, vendor_id: int) -> Optional[Vendor]:
-#         """Get vendor with its settings."""
-#         query = select(Vendor).where(Vendor.id == vendor_id)
-#         result = await self.session.execute(query)
-#         return result.scalar_one_or_none()
-#
-#     async def get_all_vendors(self) -> List[Vendor]:
-#         """Get all active vendors."""
-#         query = select(Vendor).where(Vendor.is_active == True)
-#         result = await self.session.execute(query)
-#         return list(result.scalars().all())
-#
-#     async def update_vendor_settings(
-#         self, vendor_id: int, encrypted_api_key: str, public_key: str
-#     ) -> Optional[VendorSettings]:
-#         """Update vendor settings."""
-#         query = select(VendorSettings).where(VendorSettings.vendor_id == vendor_id)
-#         result = await self.session.execute(query)
-#         settings = result.scalar_one_or_none()
-#
-#         if settings:
-#             settings.encrypted_api_key = encrypted_api_key
-#             settings.public_key = public_key
-#             await self.session.commit()
-#
-#         return settings
-#
-#     async def delete_vendor(self, vendor_id: int) -> bool:
-#         """Delete vendor and its settings."""
-#         query = select(Vendor).where(Vendor.id == vendor_id)
-#         result = await self.session.execute(query)
-#         vendor = result.scalar_one_or_none()
-#
-#         if vendor:
-#             await self.session.delete(vendor)
-#             await self.session.commit()
-#             return True
-#
-#         return False
+        return active_count

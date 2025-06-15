@@ -1,4 +1,4 @@
-from typing import Any, Optional, Literal
+from typing import Any, Optional, Literal, Self
 from datetime import datetime
 from pydantic import BaseModel, Field, SecretStr
 
@@ -104,6 +104,11 @@ class AIModel(BaseModel):
     id: str
     vendor: str
     vendor_id: str
+
+    @classmethod
+    def from_vendor(cls, vendor: Vendor, model_id: str) -> Self:
+        # return cls(id=f"[{vendor}]{model_id}", vendor=vendor, vendor_id=model_id)
+        return cls(id=f"{vendor}:{model_id}", vendor=vendor, vendor_id=model_id)
 
 
 class ErrorResponse(BaseModel):

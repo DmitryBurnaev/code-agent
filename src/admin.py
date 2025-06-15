@@ -7,13 +7,15 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from src.constants import APP_DIR
+from src.db.services import SASessionUOW
 from src.routers.admin import BaseModelView, UserAdmin, VendorAdmin
 from src.services.counters import AdminCounter
+from src.services.providers import ProviderService
+from src.settings import get_app_settings
 
 ADMIN_VIEWS: tuple[type[BaseModelView], ...] = (
     UserAdmin,
     VendorAdmin,
-    VendorSettingsAdmin,
 )
 
 
@@ -30,13 +32,20 @@ class AdminApp(Admin):
     @login_required
     async def index(self, request: Request) -> Response:
         """Index route which can be overridden to create dashboards."""
-        dashboard_stat = await AdminCounter().get_stat()
+        settings = get_app_settings()
+        async with SASessionUOW() as uow:
+            dashboard_stat = await AdminCounter().get_stat(session=uow.session)
+            models = await ProviderService(settings).get_list_models()
 
         context = {
             "vendors": {
                 "total": dashboard_stat.total_vendors,
                 "active": dashboard_stat.active_vendors,
-            }
+            },
+            "vendor_models": [
+                {"vendor": model.vendor, "model": model.id, "original_model": model.vendor_id}
+                for model in models
+            ],
         }
         return await self.templates.TemplateResponse(request, "dashboard.html", context=context)
 
