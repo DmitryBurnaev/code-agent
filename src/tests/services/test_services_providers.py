@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock
 from src.services.providers import ProviderService, ProviderClient
 from src.models import AIModel
 from src.settings import AppSettings
-from src.constants import Vendor
+from src.constants import VendorSlug
 
 from src.tests.conftest import MockTestResponse, MockHTTPxClient
 
@@ -93,7 +93,7 @@ class TestProviderService:
 
         # Set cache for the first provider
         service._cache_set_data(
-            Vendor.OPENAI,
+            VendorSlug.OPENAI,
             [AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4")],
         )
 
@@ -119,7 +119,7 @@ class TestProviderService:
 
         # Set cache for the first provider
         service._cache_set_data(
-            Vendor.OPENAI,
+            VendorSlug.OPENAI,
             [AIModel(id="openai__old-gpt-4", vendor="openai", vendor_id="old-gpt-4")],
         )
 

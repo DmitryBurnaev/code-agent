@@ -2,7 +2,7 @@ from enum import StrEnum
 
 
 __all__ = (
-    "Vendor",
+    "VendorSlug",
     "PROVIDER_URLS",
     "VENDOR_DEFAULT_TIMEOUT",
     "LOG_LEVELS",
@@ -19,7 +19,7 @@ class StingEnum(StrEnum):
         return cls[value.upper()]
 
 
-class Vendor(StingEnum):
+class VendorSlug(StingEnum):
     """Available LLM providers."""
 
     OPENAI = "openai"
@@ -35,13 +35,13 @@ class VendorAuthType(StingEnum):
 
 
 # Mapping of provider to their base URLs
-PROVIDER_URLS: dict[Vendor, str] = {
-    Vendor.OPENAI: "https://api.openai.com/v1",
-    Vendor.ANTHROPIC: "https://api.anthropic.com/v1",
-    Vendor.GOOGLE: "https://generativelanguage.googleapis.com/v1",
-    Vendor.DEEPSEEK: "https://api.deepseek.com/v1",
-    Vendor.CUSTOM: "https://custom-provider/v1",
-    Vendor.LOCAL: "http://localhost:1234/v1",
+PROVIDER_URLS: dict[VendorSlug, str] = {
+    VendorSlug.OPENAI: "https://api.openai.com/v1",
+    VendorSlug.ANTHROPIC: "https://api.anthropic.com/v1",
+    VendorSlug.GOOGLE: "https://generativelanguage.googleapis.com/v1",
+    VendorSlug.DEEPSEEK: "https://api.deepseek.com/v1",
+    VendorSlug.CUSTOM: "https://custom-provider/v1",
+    VendorSlug.LOCAL: "http://localhost:1234/v1",
 }
 VENDOR_DEFAULT_TIMEOUT = 30
 LOG_LEVELS = "DEBUG|INFO|WARNING|ERROR|CRITICAL"

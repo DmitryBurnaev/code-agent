@@ -130,6 +130,7 @@ class VendorRepository(BaseRepository[Vendor]):
         self,
         ids: Sequence[int] | None = None,
         slug: str | None = None,
+        is_active: bool | None = None,
     ) -> list[Vendor]:
         """Extra filtering vendors by some parameters."""
         filters: dict[str, Any] = {}
@@ -137,6 +138,8 @@ class VendorRepository(BaseRepository[Vendor]):
             filters["slug"] = slug
         if ids:
             filters["ids"] = ids
+        if is_active is not None:
+            filters["is_active"] = is_active
 
         return await self.all(**filters)
 

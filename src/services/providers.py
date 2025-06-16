@@ -6,8 +6,11 @@ from typing import TYPE_CHECKING, Iterable
 import httpx
 from pydantic import BaseModel
 
+from src.db.models import Vendor
+from src.db.repositories import VendorRepository
+from src.db.services import SASessionUOW
 from src.services.cache import CacheProtocol, InMemoryCache
-from src.constants import Vendor
+from src.constants import VendorSlug
 from src.services.http import AIProviderHTTPClient
 from src.models import LLMProvider, AIModel
 
@@ -102,7 +105,7 @@ class ProviderService:
         """
         self._settings = settings
         self._cache: CacheProtocol = InMemoryCache()
-        self._provider_clients: dict[Vendor, ProviderClient] = {}
+        self._provider_clients: dict[VendorSlug, ProviderClient] = {}
         self._http_client = http_client or AIProviderHTTPClient(settings)
 
     def get_client(self, provider: LLMProvider) -> ProviderClient:
@@ -121,21 +124,30 @@ class ProviderService:
         Results are cached per provider with TTL defined in settings.
         If a provider fails, other providers' cached data remains valid.
         """
+        async with SASessionUOW() as uow:
+            vendor_repository: VendorRepository = VendorRepository(session=uow.session)
+            active_vendors = await vendor_repository.filter(is_active=True)
+
+        if not active_vendors:
+            logger.warning("No active vendors found.")
+            return []
+
         if self._settings.offline_test_mode:
-            return self._mocked_models(vendors=[Vendor.OPENAI, Vendor.DEEPSEEK, Vendor.CUSTOM])
+            return self._mocked_models(vendors=[vendor.slug for vendor in active_vendors])
 
         all_models = []
         tasks = []
         providers = []
         logger.info("Fetching models from all providers...")
-        for llm_provider in self._settings.providers:
+        for vendor in active_vendors:
             logger.debug(
                 "Provider %s: fetching models (force_refresh: %s)",
-                llm_provider.vendor,
+                vendor,
                 force_refresh,
             )
+            llm_provider = LLMProvider.from_vendor(vendor)
             if not force_refresh:
-                cached = self._cache_get_data(llm_provider.vendor)
+                cached = self._cache_get_data(vendor.slug)
                 if cached is not None:
                     all_models.extend(cached)
                     continue
@@ -164,10 +176,10 @@ class ProviderService:
 
         return all_models
 
-    def _cache_set_data(self, vendor: Vendor, models: list[AIModel]) -> None:
+    def _cache_set_data(self, vendor: VendorSlug, models: list[AIModel]) -> None:
         self._cache.set(vendor, [model.model_dump() for model in models])
 
-    def _cache_get_data(self, vendor: Vendor) -> list[AIModel] | None:
+    def _cache_get_data(self, vendor: VendorSlug) -> list[AIModel] | None:
         cached = self._cache.get(vendor)
         if not cached or not isinstance(cached, list):
             logger.debug(f"No cached models for {vendor}: {cached!r}")
@@ -176,11 +188,11 @@ class ProviderService:
         return [AIModel.model_validate(model_data) for model_data in cached]
 
     @staticmethod
-    def _mocked_models(vendors: list[Vendor]) -> list[AIModel]:
+    def _mocked_models(vendors: list[VendorSlug]) -> list[AIModel]:
         mocked_models = {
-            Vendor.OPENAI: ["openai-chat", "o12-macro"],
-            Vendor.DEEPSEEK: ["deepseek-chat", "deepseek-think"],
-            Vendor.ANTHROPIC: ["anthropic-123"],
+            VendorSlug.OPENAI: ["openai-chat", "o12-macro"],
+            VendorSlug.DEEPSEEK: ["deepseek-chat", "deepseek-think"],
+            VendorSlug.ANTHROPIC: ["anthropic-123"],
         }
         result = []
         for vendor in vendors:
