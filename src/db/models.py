@@ -6,6 +6,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 
+from src.constants import VendorSlug
 from src.utils import utcnow
 from src.services.auth import PBKDF2PasswordHasher
 
@@ -63,7 +64,7 @@ class Vendor(BaseModel):
     __tablename__ = "vendors"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    slug: Mapped[str] = mapped_column(sa.String(255), nullable=False, unique=True)
+    slug: Mapped[VendorSlug] = mapped_column(sa.String(255), nullable=False, unique=True)
     api_url: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     api_key: Mapped[str] = mapped_column(sa.String(1024), nullable=False)  # Encrypted API key
     timeout: Mapped[int] = mapped_column(sa.Integer, nullable=True)
@@ -71,16 +72,16 @@ class Vendor(BaseModel):
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=True, onupdate=utcnow)
 
-    # Relationships
-    # settings: Mapped[list["VendorSettings"]] = relationship(
-    #     back_populates="vendor", cascade="all, delete-orphan"
-    # )
-
     def __str__(self) -> str:
         return f"Vendor '{self.slug}'"
 
     def __repr__(self) -> str:
         return f"Vendor(id={self.id!r}, slug={self.slug!r}, url={self.url!r})"
+
+    @property
+    def decrypted_api_key(self) -> str:
+        # TODO: use decryption algo (don't save api key in plain mode!)
+        return self.api_key
 
 
 # class VendorSettings(BaseModel):

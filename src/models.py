@@ -1,8 +1,12 @@
-from typing import Any, Optional, Literal, Self
+import secrets
+from typing import Any, Optional, Literal, Self, TYPE_CHECKING
 from datetime import datetime
 from pydantic import BaseModel, Field, SecretStr
 
-from src.constants import Vendor, VENDOR_DEFAULT_TIMEOUT, PROVIDER_URLS
+from src.constants import VendorSlug, VENDOR_DEFAULT_TIMEOUT, PROVIDER_URLS
+
+if TYPE_CHECKING:
+    from src.db.models import Vendor
 
 __all__ = (
     "SystemInfo",
@@ -72,11 +76,17 @@ class ChatRequest(BaseModel):
 class LLMProvider(BaseModel):
     """Provider configuration with API keys."""
 
-    vendor: Vendor
+    vendor: str
     api_key: SecretStr
     url: str | None = None
     auth_type: str = "Bearer"
     timeout: int = VENDOR_DEFAULT_TIMEOUT
+
+    @classmethod
+    def from_vendor(cls, vendor: "Vendor") -> Self:
+        return cls(
+            vendor=vendor.slug, api_key=SecretStr(vendor.decrypted_api_key), url=vendor.api_url
+        )
 
     @property
     def base_url(self) -> str:
@@ -106,7 +116,7 @@ class AIModel(BaseModel):
     vendor_id: str
 
     @classmethod
-    def from_vendor(cls, vendor: Vendor, model_id: str) -> Self:
+    def from_vendor(cls, vendor: VendorSlug, model_id: str) -> Self:
         # return cls(id=f"[{vendor}]{model_id}", vendor=vendor, vendor_id=model_id)
         return cls(id=f"{vendor}:{model_id}", vendor=vendor, vendor_id=model_id)
 

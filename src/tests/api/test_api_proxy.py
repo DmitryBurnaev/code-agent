@@ -10,7 +10,7 @@ from pydantic import SecretStr
 from fastapi.testclient import TestClient
 from starlette.responses import Response, StreamingResponse
 
-from src.constants import Vendor
+from src.constants import VendorSlug
 from src.settings import AppSettings
 from src.services.providers import ProviderService
 from src.models import ChatRequest, Message, AIModel, LLMProvider
@@ -44,8 +44,8 @@ def mock_settings() -> AppSettings:
     return AppSettings(
         api_token=SecretStr("test-token"),
         providers=[
-            LLMProvider(vendor=Vendor.OPENAI, api_key=SecretStr("test-key")),
-            LLMProvider(vendor=Vendor.DEEPSEEK, api_key=SecretStr("test-key")),
+            LLMProvider(vendor=VendorSlug.OPENAI, api_key=SecretStr("test-key")),
+            LLMProvider(vendor=VendorSlug.DEEPSEEK, api_key=SecretStr("test-key")),
         ],
         http_proxy_url=None,
     )

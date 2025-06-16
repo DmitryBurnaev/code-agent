@@ -9,7 +9,7 @@ import pytest
 from fastapi import Response
 from fastapi.responses import StreamingResponse
 
-from src.constants import Vendor
+from src.constants import VendorSlug
 from src.settings import AppSettings
 from src.models import ChatRequest, Message
 from src.exceptions import ProviderProxyError
@@ -182,7 +182,7 @@ class TestProxyService:
         assert content in actual_response_chunks
 
         vendor = stream_proxy_service._cache_get_vendor(completion_id)
-        assert vendor == Vendor.DEEPSEEK
+        assert vendor == VendorSlug.DEEPSEEK
 
     async def test_handle_request_no_body(self, proxy_service: ProxyService) -> None:
         """Test handling request without body."""
@@ -236,7 +236,7 @@ class TestProxyService:
     ) -> None:
         """Test handling cancellation request."""
         completion_id = "test-completion"
-        proxy_service._cache_set_vendor(completion_id, Vendor.OPENAI)
+        proxy_service._cache_set_vendor(completion_id, VendorSlug.OPENAI)
 
         mock_response.content = b'{"status": "cancelled"}'
         mock_http_client.send.return_value = mock_response

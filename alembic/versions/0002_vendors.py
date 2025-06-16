@@ -12,7 +12,7 @@ from alembic import op
 import sqlalchemy as sa
 
 from src.utils import utcnow
-from src.constants import PROVIDER_URLS, Vendor
+from src.constants import PROVIDER_URLS, VendorSlug
 
 # revision identifiers, used by Alembic.
 revision: str = "0002"
@@ -69,6 +69,6 @@ def _add_initial_vendors(connection: sa.Connection) -> None:
             "created_at": now_time,
         }
         for vendor_slug, vendor_url in PROVIDER_URLS.items()
-        if vendor_slug != Vendor.CUSTOM
+        if vendor_slug != VendorSlug.CUSTOM
     ]
     connection.execute(sa.text(query), vendors_data)
