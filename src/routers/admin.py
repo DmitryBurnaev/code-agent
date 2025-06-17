@@ -2,17 +2,24 @@ import logging
 from typing import cast, Any, Mapping, Sequence
 
 from fastapi import HTTPException
-from sqladmin import ModelView
+from sqladmin import ModelView, expose, BaseView
 from starlette.requests import Request
+from starlette.responses import Response
 from wtforms import Form, StringField, EmailField, PasswordField, BooleanField
 
 from src.constants import RENDER_KW
 from src.db.models import BaseModel, User, Vendor
 from src.db.repositories import VendorRepository
 from src.db.services import SASessionUOW
+from src.services.providers import ProviderService
+from src.settings import get_app_settings
 from src.utils import admin_get_link, simple_slugify
 
-
+__all__ = (
+    "UserAdmin",
+    "VendorAdmin",
+    "ModelsAdmin",
+)
 logger = logging.getLogger(__name__)
 type FormDataType = dict[str, str | int | None]
 
@@ -148,18 +155,23 @@ class VendorAdmin(BaseModelView, model=Vendor):
         return slug
 
 
-#
-# class VendorSettingsAdmin(BaseModelView, model=VendorSettings):
-#     name = "Vendor Access"
-#     name_plural = name
-#     column_list = (VendorSettings.id,)
-#     icon = "fa-solid fa-list-squares"
-#     form_columns = (
-#         VendorSettings.vendor,
-#         VendorSettings.api_key,
-#     )
-#     column_formatters = {
-#         VendorSettings.id: lambda model, a: admin_get_link(
-#             cast(BaseModel, model), url_name="vendor-settings"
-#         )
-#     }
+class ModelsAdmin(BaseView):
+    name = "Models"
+    icon = "fa-solid fa-chart-line"
+
+    @expose("/models", methods=["GET"])
+    async def get_models(self, request: Request) -> Response:
+        settings = get_app_settings()
+        models = await ProviderService(settings).get_list_models()
+
+        context = {
+            "vendor_models": [
+                {"vendor": model.vendor, "model": model.id, "original_model": model.vendor_id}
+                for model in models
+            ],
+        }
+        return await self.templates.TemplateResponse(
+            request,
+            name="models.html",
+            context=context,
+        )
