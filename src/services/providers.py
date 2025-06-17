@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Iterable
 import httpx
 from pydantic import BaseModel
 
-from src.db.models import Vendor
 from src.db.repositories import VendorRepository
 from src.db.services import SASessionUOW
 from src.services.cache import CacheProtocol, InMemoryCache

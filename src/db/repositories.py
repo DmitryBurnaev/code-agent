@@ -1,7 +1,6 @@
 """DB-specific module that provides specific operations on the database."""
 
 import logging
-from threading import active_count
 from typing import (
     Generic,
     TypeVar,
