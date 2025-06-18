@@ -82,24 +82,3 @@ class Vendor(BaseModel):
     def decrypted_api_key(self) -> str:
         # TODO: use decryption algo (don't save api key in plain mode!)
         return self.api_key
-
-
-# class VendorSettings(BaseModel):
-#     """Vendor settings model for storing encrypted API keys and other sensitive data."""
-#
-#     __tablename__ = "vendor_settings"
-#
-#     id: Mapped[int] = mapped_column(primary_key=True)
-#     vendor_id: Mapped[int] = mapped_column(sa.ForeignKey("vendors.id", ondelete="CASCADE"))
-#     api_key: Mapped[str] = mapped_column(sa.String(1024))  # Store an encrypted API key
-#     created_at: Mapped[datetime] = mapped_column(sa.DateTime, default=utcnow)
-#     updated_at: Mapped[datetime] = mapped_column(sa.DateTime, onupdate=utcnow)
-#
-#     # Relationships
-#     vendor: Mapped["Vendor"] = relationship(back_populates="settings", lazy="joined")
-#
-#     def __str__(self) -> str:
-#         return f"VendorSettings for '{self.vendor.slug}'"
-#
-#     def __repr__(self) -> str:
-#         return f"VendorSettings(id={self.id!r}, vendor_id={self.vendor_id!r})"
