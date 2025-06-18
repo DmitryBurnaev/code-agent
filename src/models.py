@@ -75,7 +75,7 @@ class ChatRequest(BaseModel):
 class LLMProvider(BaseModel):
     """Provider configuration with API keys."""
 
-    vendor: str
+    vendor: VendorSlug
     api_key: SecretStr
     url: str | None = None
     auth_type: str = "Bearer"
@@ -84,7 +84,9 @@ class LLMProvider(BaseModel):
     @classmethod
     def from_vendor(cls, vendor: "Vendor") -> Self:
         return cls(
-            vendor=vendor.slug, api_key=SecretStr(vendor.decrypted_api_key), url=vendor.api_url
+            vendor=vendor.slug,
+            api_key=SecretStr(vendor.decrypted_api_key),
+            url=vendor.api_url,
         )
 
     @property
