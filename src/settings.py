@@ -26,6 +26,7 @@ class AppSettings(BaseSettings):
 
     docs_enabled: bool = False
     api_token: SecretStr = Field(description="API token")
+    secret_key: SecretStr = Field(description="Secret key", alias="APP_SECRET_KEY")
     providers: list[LLMProvider] = Field(default_factory=list, description="List of LLM providers")
     app_host: str = "0.0.0.0"
     app_port: int = 8003

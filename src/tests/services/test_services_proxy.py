@@ -182,7 +182,7 @@ class TestProxyService:
         assert content in actual_response_chunks
 
         vendor = stream_proxy_service._cache_get_vendor(completion_id)
-        assert vendor == VendorSlug.DEEPSEEK
+        assert vendor == str(VendorSlug.DEEPSEEK)
 
     async def test_handle_request_no_body(self, proxy_service: ProxyService) -> None:
         """Test handling request without body."""

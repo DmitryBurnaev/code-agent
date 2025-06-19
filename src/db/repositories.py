@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import SQLCoreOperations
 from sqlalchemy.sql.roles import ColumnsClauseRole
 
-from src.db.models import BaseModel, Vendor
+from src.db.models import BaseModel, Vendor, User
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 logger = logging.getLogger(__name__)
@@ -118,6 +118,22 @@ class BaseRepository(Generic[ModelT]):
             statement = statement.filter(*filters_stmts)
 
         return statement
+
+
+class UserRepository(BaseRepository[User]):
+    """User's repository."""
+
+    model = User
+
+    async def get_by_username(self, username: str) -> User | None:
+        """Get user by username"""
+
+        logger.debug("[DB] Getting user by username: %s", username)
+        users = await self.all(username=username)
+        if not users:
+            return None
+
+        return users[0]
 
 
 class VendorRepository(BaseRepository[Vendor]):
