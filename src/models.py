@@ -75,7 +75,7 @@ class ChatRequest(BaseModel):
 class LLMProvider(BaseModel):
     """Provider configuration with API keys."""
 
-    vendor: VendorSlug
+    vendor: str
     api_key: SecretStr
     url: str | None = None
     auth_type: str = "Bearer"
@@ -130,7 +130,7 @@ class ErrorResponse(BaseModel):
 
 
 class ModelListResponse(BaseModel):
-    """Response model for list of available models."""
+    """Response model for a list of available models."""
 
     data: list[AIModel]
 

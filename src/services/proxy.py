@@ -378,10 +378,7 @@ class ProxyService:
         key = f"completion__{completion_id}"
         self._cache.set(key, vendor)
 
-    def _cache_get_vendor(self, completion_id: str) -> VendorSlug | None:
+    def _cache_get_vendor(self, completion_id: str) -> str | None:
         key = f"completion__{completion_id}"
         cached = self._cache.get(key)
-        if not cached:
-            return None
-
-        return VendorSlug.from_string(str(cached))
+        return str(cached) if not cached else None

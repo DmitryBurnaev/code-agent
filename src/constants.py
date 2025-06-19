@@ -35,7 +35,7 @@ class VendorAuthType(StingEnum):
 
 
 # Mapping of provider to their base URLs
-PROVIDER_URLS: dict[VendorSlug, str] = {
+PROVIDER_URLS: dict[str, str] = {
     VendorSlug.OPENAI: "https://api.openai.com/v1",
     VendorSlug.ANTHROPIC: "https://api.anthropic.com/v1",
     VendorSlug.GOOGLE: "https://generativelanguage.googleapis.com/v1",
