@@ -35,6 +35,7 @@ class SASessionUOW(ABC):
         await self.__session.flush()
         if self.__need_to_commit:
             await self.commit()
+
         await self.__session.close()
 
     @property

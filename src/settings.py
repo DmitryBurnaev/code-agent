@@ -37,8 +37,10 @@ class AppSettings(BaseSettings):
     provider_custom_url: str | None = Field(
         default_factory=lambda: None, description="API URL for 'custom' vendor"
     )
-    admin_username: str = "admin"
-    admin_password: str = "code-agent-password-WANEWEQFhUs"
+    admin_username: str = Field(
+        default_factory=lambda: "admin", description="Default admin username"
+    )
+    admin_password: SecretStr = Field(description="Default admin password")
     offline_test_mode: bool = False
 
     @cached_property

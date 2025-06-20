@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from jinja2 import FileSystemLoader
 from sqladmin import Admin, BaseView
@@ -6,12 +6,17 @@ from sqladmin.authentication import login_required
 from starlette.requests import Request
 from starlette.responses import Response
 
+from src.admin.auth import AdminAuth
 from src.constants import APP_DIR
 from src.db.services import SASessionUOW
-from src.routers.admin import UserAdmin, VendorAdmin, ModelsAdmin
+from src.admin.views import UserAdmin, VendorAdmin, ModelsAdmin
+from src.db.session import get_async_sessionmaker
 from src.services.counters import AdminCounter
 from src.services.providers import ProviderService
 from src.settings import get_app_settings
+
+if TYPE_CHECKING:
+    from src.main import CodeAgentAPP
 
 ADMIN_VIEWS: tuple[type[BaseView], ...] = (
     UserAdmin,
@@ -23,7 +28,7 @@ ADMIN_VIEWS: tuple[type[BaseView], ...] = (
 class AdminApp(Admin):
     """License-specific admin class."""
 
-    custom_templates_dir = "admin/templates/admin"
+    custom_templates_dir = "admin/templates"
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -56,3 +61,11 @@ class AdminApp(Admin):
     def _register_views(self) -> None:
         for view in ADMIN_VIEWS:
             self.add_view(view)
+
+
+def make_admin(app: "CodeAgentAPP") -> Admin:
+    return AdminApp(
+        app,
+        session_maker=get_async_sessionmaker(),
+        authentication_backend=AdminAuth(secret_key=app.settings.secret_key.get_secret_value()),
+    )

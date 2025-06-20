@@ -51,7 +51,7 @@ def _add_initial_admin(connection: sa.Connection) -> None:
     """
     users_data = {
         "username": app_settings.admin_username,
-        "password": PBKDF2PasswordHasher().encode(app_settings.admin_password),
+        "password": PBKDF2PasswordHasher().encode(app_settings.admin_password.get_secret_value()),
         "is_admin": True,
         "is_active": False,
     }

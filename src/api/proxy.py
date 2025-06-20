@@ -10,7 +10,7 @@ from src.models import (
     ChatCompletionStreamResponse,
     CancelCompletionResponse,
 )
-from src.routers import CORSBaseRoute
+from src.api import CORSBaseRoute
 from src.services.providers import ProviderService
 from src.services.proxy import ProxyRequestData, ProxyService, ProxyEndpoint
 

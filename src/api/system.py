@@ -5,7 +5,7 @@ from fastapi import APIRouter
 from src.db.repositories import VendorRepository
 from src.db.services import SASessionUOW
 from src.models import SystemInfo, HealthCheck
-from src.routers import ErrorHandlingBaseRoute
+from src.api import ErrorHandlingBaseRoute
 
 __all__ = ("router",)
 
