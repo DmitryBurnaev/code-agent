@@ -25,7 +25,7 @@ def mock_provider_service() -> Generator[AsyncMock, Any, None]:
         AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4"),
         AIModel(id="deepseek__deepseek-1", vendor="deepseek", vendor_id="deepseek-1"),
     ]
-    with patch("src.routers.proxy.ProviderService", return_value=mock_service):
+    with patch("src.api.proxy.ProviderService", return_value=mock_service):
         yield mock_service
 
 
@@ -34,7 +34,7 @@ def mock_proxy_service() -> Generator[AsyncMock, Any, None]:
     """Return mock proxy service."""
     service = AsyncMock(spec=ProxyService)
     service.handle_request.return_value = AsyncMock()
-    with patch("src.routers.proxy.ProxyService", return_value=service):
+    with patch("src.api.proxy.ProxyService", return_value=service):
         yield service
 
 
