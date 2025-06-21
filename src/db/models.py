@@ -2,7 +2,7 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 
@@ -58,6 +58,22 @@ class User(BaseModel):
         )
 
 
+class UserToken(BaseModel):
+    """Simple token storage for authorizing and API usages"""
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column()
+    token: Mapped[str] = mapped_column(unique=True)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    # relations
+    user: Mapped[User] = relationship(User, ondelete="CASCADE")
+
+    def __repr__(self) -> str:
+        return f"Token '{self.token}'"
+
+
 class Vendor(BaseModel):
     """User model representing a Telegram user in the system."""
 
@@ -69,8 +85,6 @@ class Vendor(BaseModel):
     api_key: Mapped[str] = mapped_column(sa.String(1024), nullable=False)  # Encrypted API key
     timeout: Mapped[int] = mapped_column(sa.Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=True, onupdate=utcnow)
 
     def __str__(self) -> str:
         return f"Vendor '{self.slug}'"

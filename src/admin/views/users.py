@@ -21,7 +21,8 @@ class UserAdminForm(Form):
     email = EmailField(render_kw=RENDER_KW)
     new_password = PasswordField(render_kw={"class": "form-control"}, label="New Password")
     repeat_password = PasswordField(
-        render_kw={"class": "form-control"}, label="Repeat New Password"
+        render_kw={"class": "form-control"},
+        label="Repeat New Password",
     )
     is_admin = BooleanField(render_kw={"class": "form-check-input"})
     is_active = BooleanField(render_kw={"class": "form-check-input"})
