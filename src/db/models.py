@@ -61,6 +61,8 @@ class User(BaseModel):
 class UserToken(BaseModel):
     """Simple token storage for authorizing and API usages"""
 
+    __tablename__ = "user_tokens"
+
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column()
     token: Mapped[str] = mapped_column(unique=True)
@@ -68,10 +70,21 @@ class UserToken(BaseModel):
     updated_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     # relations
-    user: Mapped[User] = relationship(User, ondelete="CASCADE")
+    user: Mapped[User] = relationship(User, cascade="all, delete-orphan")
+
+    def __str__(self) -> str:
+        return f"Token for user '{self.user}'"
 
     def __repr__(self) -> str:
-        return f"Token '{self.token}'"
+        return (
+            f"UserToken("
+            f"id={self.id}, "
+            f"user_id={self.user_id}, "
+            f"token={self.token}, "
+            f"created_at={self.created_at}, "
+            f"updated_at={self.updated_at}"
+            f")"
+        )
 
 
 class Vendor(BaseModel):
@@ -85,6 +98,8 @@ class Vendor(BaseModel):
     api_key: Mapped[str] = mapped_column(sa.String(1024), nullable=False)  # Encrypted API key
     timeout: Mapped[int] = mapped_column(sa.Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     def __str__(self) -> str:
         return f"Vendor '{self.slug}'"
