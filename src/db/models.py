@@ -24,6 +24,7 @@ class User(BaseModel):
     email: Mapped[str] = mapped_column(sa.String(128), nullable=True)
     is_admin: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
     is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     @classmethod
     def make_password(cls, raw_password: str) -> str:
@@ -56,16 +57,18 @@ class User(BaseModel):
         )
 
 
-class UserToken(BaseModel):
+class Token(BaseModel):
     """Simple token storage for authorizing and API usages"""
 
-    __tablename__ = "user_tokens"
+    __tablename__ = "tokens"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column()
+    system: Mapped[bool] = mapped_column(server_default=sa.false())
     token: Mapped[str] = mapped_column(unique=True)
+    expires_at: Mapped[datetime] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(nullable=True, onupdate=utcnow)
 
     # relations
     user: Mapped[User] = relationship(User, cascade="all, delete-orphan")
@@ -75,10 +78,11 @@ class UserToken(BaseModel):
 
     def __repr__(self) -> str:
         return (
-            f"UserToken("
+            f"Token("
             f"id={self.id}, "
             f"user_id={self.user_id}, "
-            f"token={self.token}, "
+            f"token='[MASKED]', "
+            f"expires_at={self.expires_at}, "
             f"created_at={self.created_at}, "
             f"updated_at={self.updated_at}"
             f")"
@@ -97,7 +101,7 @@ class Vendor(BaseModel):
     timeout: Mapped[int] = mapped_column(sa.Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(nullable=True, onupdate=utcnow)
 
     def __str__(self) -> str:
         return f"Vendor '{self.slug}'"

@@ -1,3 +1,6 @@
+import base64
+import json
+import logging
 from typing import cast
 
 from fastapi import HTTPException, Request
@@ -5,6 +8,9 @@ from sqladmin.authentication import AuthenticationBackend
 
 from src.db.repositories import UserRepository
 from src.db.services import SASessionUOW
+
+logger = logging.getLogger(__name__)
+type UserPayload = dict[str, str | int]
 
 
 class AdminAuth(AuthenticationBackend):
@@ -23,12 +29,11 @@ class AdminAuth(AuthenticationBackend):
         if not password_verified:
             raise HTTPException(status_code=403, detail="Invalid password")
 
-        # TODO: use Token model here
-        request.session.update({"token": "..."})
+        user_payload: UserPayload = {"id": user.id, "username": user.username, "email": user.email}
+        request.session.update({"token": self._encode_token(user_payload)})
         return True
 
     async def logout(self, request: Request) -> bool:
-        # Usually you'd want to just clear the session
         request.session.clear()
         return True
 
@@ -38,5 +43,21 @@ class AdminAuth(AuthenticationBackend):
         if not token:
             return False
 
-        # TODO: Check the real token here
+        user_payload = json.loads(base64.b64decode(token).decode())
+        async with SASessionUOW() as uow:
+            user = await UserRepository(session=uow.session).first(user_payload["id"])
+            if not user:
+                logger.error(f"User {user_payload['id']} not found")
+                return False
+
         return True
+
+    @classmethod
+    def _encode_token(cls, user_payload: UserPayload) -> str:
+        # TODO: use real JWT here model her
+        fake_jwt_token: str = base64.b64encode(json.dumps(user_payload).encode()).decode()
+        return fake_jwt_token
+
+    @classmethod
+    def _decode_token(cls, token: str) -> UserPayload:
+        return json.loads(base64.b64decode(token).decode())

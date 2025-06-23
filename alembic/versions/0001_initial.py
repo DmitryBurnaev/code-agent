@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 from src.services.auth import PBKDF2PasswordHasher
 from src.settings import get_app_settings
-
+from src.utils import utcnow
 
 revision: str = "0001"
 down_revision: Union[str, None] = None
@@ -31,6 +31,7 @@ def upgrade() -> None:
         sa.Column("email", sa.String(length=128), nullable=True),
         sa.Column("is_admin", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()),
+        sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_unique_constraint("users_username_uq", "users", ["username"])
@@ -45,13 +46,14 @@ def downgrade() -> None:
 def _add_initial_admin(connection: sa.Connection) -> None:
     app_settings = get_app_settings()
     query = """
-        INSERT INTO users (username, password, is_admin, is_active)
-        VALUES (:username, :password, :is_admin, :is_active)            
+        INSERT INTO users (username, password, is_admin, is_active, created_at)
+        VALUES (:username, :password, :is_admin, :is_active, :created_at)            
     """
     users_data = {
         "username": app_settings.admin_username,
         "password": PBKDF2PasswordHasher().encode(app_settings.admin_password.get_secret_value()),
         "is_admin": True,
         "is_active": False,
+        "created_at": utcnow(),
     }
     connection.execute(sa.text(query), users_data)

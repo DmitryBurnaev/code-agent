@@ -2,7 +2,7 @@
 
 Revision ID: 0003
 Revises: 0002
-Create Date: 2025-06-22 23:24:48.704346
+Create Date: 2025-06-23 19:50:08.662503
 
 """
 
@@ -10,6 +10,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+
 
 revision: str = "0003"
 down_revision: Union[str, None] = "0002"
@@ -20,12 +21,14 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Upgrade schema."""
     op.create_table(
-        "user_tokens",
+        "tokens",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("system", sa.Boolean(), server_default=sa.text("false"), nullable=False),
         sa.Column("token", sa.String(), nullable=False),
+        sa.Column("expires_at", sa.DateTime(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("token"),
     )
@@ -33,4 +36,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_table("user_tokens")
+    op.drop_column("users", "created_at")
+    op.drop_table("tokens")
