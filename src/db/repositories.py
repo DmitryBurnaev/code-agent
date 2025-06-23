@@ -38,9 +38,7 @@ class ActiveVendorsStat(TypedDict):
 
 
 class BaseRepository(Generic[ModelT]):
-    """
-    Base repository interface.
-    """
+    """Base repository interface."""
 
     model: type[ModelT]
 

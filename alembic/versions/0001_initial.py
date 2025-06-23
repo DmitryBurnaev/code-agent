@@ -15,7 +15,6 @@ from src.services.auth import PBKDF2PasswordHasher
 from src.settings import get_app_settings
 
 
-# revision identifiers, used by Alembic.
 revision: str = "0001"
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None

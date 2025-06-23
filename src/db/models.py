@@ -2,12 +2,10 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.orm import DeclarativeBase, relationship
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
 
-from src.constants import VendorSlug
 from src.utils import utcnow
+from src.constants import VendorSlug
 from src.services.auth import PBKDF2PasswordHasher
 
 
@@ -105,7 +103,7 @@ class Vendor(BaseModel):
         return f"Vendor '{self.slug}'"
 
     def __repr__(self) -> str:
-        return f"Vendor(id={self.id!r}, slug={self.slug!r}, url={self.url!r})"
+        return f"Vendor(id={self.id!r}, slug={self.slug!r}, is_active={self.is_active})"
 
     @property
     def decrypted_api_key(self) -> str:

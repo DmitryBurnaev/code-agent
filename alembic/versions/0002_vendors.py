@@ -14,7 +14,6 @@ import sqlalchemy as sa
 from src.utils import utcnow
 from src.constants import PROVIDER_URLS, VendorSlug
 
-# revision identifiers, used by Alembic.
 revision: str = "0002"
 down_revision: Union[str, None] = "0001"
 branch_labels: Union[str, Sequence[str], None] = None
@@ -36,16 +35,6 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_unique_constraint("vendors_slug_uq", "vendors", ["slug"])
-    # op.create_table(
-    #     "vendor_settings",
-    #     sa.Column("id", sa.Integer(), nullable=False),
-    #     sa.Column("vendor_id", sa.Integer(), nullable=False),
-    #     sa.Column("api_key", sa.String(length=1024), nullable=False),
-    #     sa.Column("created_at", sa.DateTime(), nullable=False),
-    #     sa.Column("updated_at", sa.DateTime(), nullable=False),
-    #     sa.ForeignKeyConstraint(["vendor_id"], ["vendors.id"], ondelete="CASCADE"),
-    #     sa.PrimaryKeyConstraint("id"),
-    # )
     _add_initial_vendors(op.get_bind())
 
 

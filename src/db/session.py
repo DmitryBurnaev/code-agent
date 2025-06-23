@@ -37,6 +37,7 @@ def make_sa_session() -> AsyncSession:
         )
         logger.debug("Successfully created async engine")
         return AsyncSession(engine)
+
     except Exception as e:
         logger.error("Failed to create async session: %s", str(e))
         raise
