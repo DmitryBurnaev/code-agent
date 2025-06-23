@@ -24,7 +24,6 @@ def upgrade() -> None:
         "tokens",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.Column("system", sa.Boolean(), server_default=sa.text("false"), nullable=False),
         sa.Column("token", sa.String(), nullable=False),
         sa.Column("expires_at", sa.DateTime(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),

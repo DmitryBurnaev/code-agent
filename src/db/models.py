@@ -64,7 +64,6 @@ class Token(BaseModel):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column()
-    system: Mapped[bool] = mapped_column(server_default=sa.false())
     token: Mapped[str] = mapped_column(unique=True)
     expires_at: Mapped[datetime] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
