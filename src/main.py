@@ -4,7 +4,7 @@ import sys
 import uvicorn
 from fastapi import FastAPI, Depends
 
-from src.admin.app import make_admin
+from src.modules.admin.app import make_admin
 from src.exceptions import AppSettingsError
 from src.settings import get_app_settings, AppSettings
 from src.api import system_router, proxy_router

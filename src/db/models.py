@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 
 import sqlalchemy as sa
@@ -5,8 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
 
 from src.utils import utcnow
-from src.constants import VendorSlug
-from src.services.auth import PBKDF2PasswordHasher
+from src.modules.auth.hashers import PBKDF2PasswordHasher
 
 
 class BaseModel(AsyncAttrs, DeclarativeBase):
@@ -63,14 +63,19 @@ class Token(BaseModel):
     __tablename__ = "tokens"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column()
-    token: Mapped[str] = mapped_column(unique=True)
+    user_id: Mapped[int] = mapped_column(sa.ForeignKey("users.id"))
+    token: Mapped[str] = mapped_column(unique=True, default=lambda: uuid.uuid4())
     expires_at: Mapped[datetime] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(nullable=True, onupdate=utcnow)
 
     # relations
-    user: Mapped[User] = relationship(User, cascade="all, delete-orphan")
+    user: Mapped[User] = relationship(User, cascade="all, delete-orphan", single_parent=True)
+
+    @classmethod
+    def make_token(cls) -> tuple[str, str]:
+
+        return ""
 
     def __str__(self) -> str:
         return f"Token for user '{self.user}'"
@@ -94,7 +99,7 @@ class Vendor(BaseModel):
     __tablename__ = "vendors"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    slug: Mapped[VendorSlug] = mapped_column(sa.String(255), nullable=False, unique=True)
+    slug: Mapped[str] = mapped_column(sa.String(255), nullable=False, unique=True)
     api_url: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     api_key: Mapped[str] = mapped_column(sa.String(1024), nullable=False)  # Encrypted API key
     timeout: Mapped[int] = mapped_column(sa.Integer, nullable=True)

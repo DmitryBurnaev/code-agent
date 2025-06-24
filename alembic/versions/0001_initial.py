@@ -11,7 +11,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-from src.services.auth import PBKDF2PasswordHasher
+from src.modules.auth.hashers import PBKDF2PasswordHasher
 from src.settings import get_app_settings
 from src.utils import utcnow
 

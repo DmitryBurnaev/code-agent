@@ -4,7 +4,7 @@ from typing import cast, Any
 from fastapi import HTTPException
 from starlette.requests import Request
 
-from src.admin.views.base import FormDataType, BaseModelView
+from src.modules.admin.views.base import FormDataType, BaseModelView
 from src.db.models import BaseModel, Vendor
 from src.db.repositories import VendorRepository
 from src.db.services import SASessionUOW

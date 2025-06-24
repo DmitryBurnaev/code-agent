@@ -2,7 +2,7 @@
 
 Revision ID: 0003
 Revises: 0002
-Create Date: 2025-06-23 19:50:08.662503
+Create Date: 2025-06-23 20:38:40.172822
 
 """
 
@@ -28,6 +28,7 @@ def upgrade() -> None:
         sa.Column("expires_at", sa.DateTime(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("token"),
     )
@@ -35,5 +36,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_column("users", "created_at")
     op.drop_table("tokens")
