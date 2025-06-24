@@ -1,16 +1,20 @@
 import base64
 import json
 import logging
-from typing import cast
+from typing import cast, TypedDict, Any
 
 from fastapi import HTTPException, Request
 from sqladmin.authentication import AuthenticationBackend
-
 from src.db.repositories import UserRepository
 from src.db.services import SASessionUOW
 
 logger = logging.getLogger(__name__)
-type UserPayload = dict[str, str | int]
+
+
+class UserPayload(TypedDict):
+    id: int
+    username: str
+    email: str
 
 
 class AdminAuth(AuthenticationBackend):
@@ -45,7 +49,7 @@ class AdminAuth(AuthenticationBackend):
 
         user_payload = json.loads(base64.b64decode(token).decode())
         async with SASessionUOW() as uow:
-            user = await UserRepository(session=uow.session).first(user_payload["id"])
+            user = await UserRepository(session=uow.session).first(instance_id=user_payload["id"])
             if not user:
                 logger.error(f"User {user_payload['id']} not found")
                 return False
@@ -54,10 +58,15 @@ class AdminAuth(AuthenticationBackend):
 
     @classmethod
     def _encode_token(cls, user_payload: UserPayload) -> str:
-        # TODO: use real JWT here model her
+        # TODO: use real JWT here
         fake_jwt_token: str = base64.b64encode(json.dumps(user_payload).encode()).decode()
         return fake_jwt_token
 
     @classmethod
     def _decode_token(cls, token: str) -> UserPayload:
-        return json.loads(base64.b64decode(token).decode())
+        user_payload: dict[str, Any] = json.loads(base64.b64decode(token).decode())
+        return UserPayload(
+            id=user_payload["id"],
+            username=user_payload["username"],
+            email=user_payload["email"],
+        )
