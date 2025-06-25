@@ -29,7 +29,7 @@ ADMIN_VIEWS: tuple[type[BaseView], ...] = (
 class AdminApp(Admin):
     """License-specific admin class."""
 
-    custom_templates_dir = "admin/templates"
+    custom_templates_dir = "modules/admin/templates"
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
