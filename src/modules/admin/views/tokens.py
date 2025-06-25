@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class TokenAdmin(BaseModelView, model=Token):
-    icon = "fa-solid fa-person-drowning"
+    icon = "fa-solid fa-key"
     column_list = (Token.id, Token.user, Token.expires_at)
     column_details_list = (
         Token.id,
