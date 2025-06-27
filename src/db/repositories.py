@@ -16,8 +16,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import SQLCoreOperations
 from sqlalchemy.sql.roles import ColumnsClauseRole
 
-from src.db.models import BaseModel, Vendor, User
+from src.db.models import BaseModel, Vendor, User, Token
 
+__all__ = (
+    "UserRepository",
+    "VendorRepository",
+    "TokenRepository",
+)
 ModelT = TypeVar("ModelT", bound=BaseModel)
 logger = logging.getLogger(__name__)
 P = ParamSpec("P")
@@ -175,3 +180,9 @@ class VendorRepository(BaseRepository[Vendor]):
                 active_count["inactive"] = count
 
         return active_count
+
+
+class TokenRepository(BaseRepository[Token]):
+    """Token's repository."""
+
+    model = Token

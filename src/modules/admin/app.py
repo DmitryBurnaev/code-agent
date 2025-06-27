@@ -9,7 +9,7 @@ from starlette.responses import Response
 from src.modules.admin.auth import AdminAuth
 from src.constants import APP_DIR
 from src.db.services import SASessionUOW
-from src.modules.admin.views import UserAdmin, VendorAdmin, ModelsAdmin, TokenAdmin
+from src.modules.admin.views import UserAdmin, VendorAdmin, ModelsAdmin, TokenAdminView
 from src.db.session import get_async_sessionmaker
 from src.services.counters import AdminCounter
 from src.services.providers import ProviderService
@@ -22,7 +22,7 @@ ADMIN_VIEWS: tuple[type[BaseView], ...] = (
     UserAdmin,
     VendorAdmin,
     ModelsAdmin,
-    TokenAdmin,
+    TokenAdminView,
 )
 
 

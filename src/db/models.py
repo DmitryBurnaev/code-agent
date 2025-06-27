@@ -64,18 +64,14 @@ class Token(BaseModel):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(sa.ForeignKey("users.id"))
-    token: Mapped[str] = mapped_column(unique=True, default=lambda: uuid.uuid4())
+    name: Mapped[str] = mapped_column(sa.String(128))
+    token: Mapped[str] = mapped_column(sa.String(512), unique=True)
     expires_at: Mapped[datetime] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(nullable=True, onupdate=utcnow)
 
     # relations
     user: Mapped[User] = relationship(User, cascade="all, delete-orphan", single_parent=True)
-
-    @classmethod
-    def make_token(cls) -> tuple[str, str]:
-
-        return ""
 
     def __str__(self) -> str:
         return f"Token for user '{self.user}'"
