@@ -5,10 +5,10 @@ from starlette.responses import Response
 from src.services.providers import ProviderService
 from src.settings import get_app_settings
 
-__all__ = ("ModelsAdmin",)
+__all__ = ("ModelsAdminView",)
 
 
-class ModelsAdmin(BaseView):
+class ModelsAdminView(BaseView):
     name = "Models"
     icon = "fa-solid fa-chart-line"
 

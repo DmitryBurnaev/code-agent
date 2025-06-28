@@ -1,5 +1,5 @@
 import logging
-from typing import cast, Any, Tuple
+from typing import cast, Any
 
 from sqladmin import expose
 from starlette.requests import Request
@@ -32,10 +32,10 @@ class TokenAdminView(BaseModelView, model=Token):
         cache.set(f"token__{token.id}", raw_token)
         return token
 
-    @expose("/tokens/:id/details", methods=["GET"])
-    async def get_models(self, id: int, request: Request) -> Response:
+    @expose("/tokens/:id_/details", methods=["GET"])
+    async def get_models(self, id_: int, request: Request) -> Response:
         async with SASessionUOW() as uow:
-            token: Token = await TokenRepository(uow.session).get(id)
+            token: Token = await TokenRepository(uow.session).get(id_)
 
         cache: InMemoryCache = InMemoryCache()
         raw_token: str = str(cache.get(f"token__{token.id}"))

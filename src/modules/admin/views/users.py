@@ -10,7 +10,7 @@ from src.constants import RENDER_KW
 from src.db.models import BaseModel, User
 from src.utils import admin_get_link
 
-__all__ = ("UserAdmin",)
+__all__ = ("UserAdminView",)
 logger = logging.getLogger(__name__)
 
 
@@ -38,7 +38,7 @@ class UserAdminForm(Form):
         return True
 
 
-class UserAdmin(BaseModelView, model=User):
+class UserAdminView(BaseModelView, model=User):
     form = UserAdminForm
     icon = "fa-solid fa-person-drowning"
     column_list = (User.id, User.username)

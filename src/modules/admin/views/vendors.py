@@ -10,11 +10,11 @@ from src.db.repositories import VendorRepository
 from src.db.services import SASessionUOW
 from src.utils import admin_get_link, simple_slugify
 
-__all__ = ("VendorAdmin",)
+__all__ = ("VendorAdminView",)
 logger = logging.getLogger(__name__)
 
 
-class VendorAdmin(BaseModelView, model=Vendor):
+class VendorAdminView(BaseModelView, model=Vendor):
     icon = "fa-solid fa-box-archive"
     column_list = (Vendor.id, Vendor.api_url, Vendor.is_active)
     column_formatters = {Vendor.id: lambda model, a: admin_get_link(cast(BaseModel, model))}
