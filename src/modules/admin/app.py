@@ -9,7 +9,12 @@ from starlette.responses import Response
 from src.modules.admin.auth import AdminAuth
 from src.constants import APP_DIR
 from src.db.services import SASessionUOW
-from src.modules.admin.views import UserAdmin, VendorAdmin, ModelsAdmin, TokenAdminView
+from src.modules.admin.views import (
+    UserAdminView,
+    VendorAdminView,
+    ModelsAdminView,
+    TokenAdminView,
+)
 from src.db.session import get_async_sessionmaker
 from src.services.counters import AdminCounter
 from src.services.providers import ProviderService
@@ -19,9 +24,9 @@ if TYPE_CHECKING:
     from src.main import CodeAgentAPP
 
 ADMIN_VIEWS: tuple[type[BaseView], ...] = (
-    UserAdmin,
-    VendorAdmin,
-    ModelsAdmin,
+    UserAdminView,
+    VendorAdminView,
+    ModelsAdminView,
     TokenAdminView,
 )
 
@@ -65,6 +70,7 @@ class AdminApp(Admin):
 
 
 def make_admin(app: "CodeAgentAPP") -> Admin:
+    """Create a simple admin application"""
     return AdminApp(
         app,
         session_maker=get_async_sessionmaker(),

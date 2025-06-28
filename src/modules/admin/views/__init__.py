@@ -1,4 +1,4 @@
-from .users import UserAdmin as UserAdmin
-from .vendors import VendorAdmin as VendorAdmin
-from .models import ModelsAdmin as ModelsAdmin
-from .tokens import TokenAdminView as TokenAdmin
+from .users import UserAdminView as UserAdminView
+from .vendors import VendorAdminView as VendorAdminView
+from .models import ModelsAdminView as ModelsAdminView
+from .tokens import TokenAdminView as TokenAdminView
