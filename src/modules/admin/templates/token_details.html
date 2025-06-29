@@ -1,0 +1,9 @@
+{% extends "sqladmin/details.html" %}
+{% block content %}
+    {% if model.raw_token != 'None' %}
+        <div class="col-12">
+            <div>{{ model.raw_token }}</div>
+        </div>
+    {% endif %}
+    {{ super() }}
+{% endblock %}
