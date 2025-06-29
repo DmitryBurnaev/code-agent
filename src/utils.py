@@ -1,6 +1,6 @@
 import datetime
 import logging
-from typing import TypeVar, Callable, ParamSpec, Any, TYPE_CHECKING
+from typing import TypeVar, Callable, ParamSpec, Any, TYPE_CHECKING, Literal
 
 import markupsafe
 from fastapi import Request
@@ -90,18 +90,23 @@ def decohints(decorator: Callable[..., Any]) -> Callable[..., Any]:
     return decorator
 
 
-def admin_get_link(instance: "BaseModel", url_name: str | None = None) -> str:
+def admin_get_link(
+    instance: "BaseModel",
+    url_name: str | None = None,
+    target: Literal["edit", "details"] = "edit",
+) -> str:
     """
     Simple helper function to generate a link to an instance
     (required for building items in admin's list view)
 
     :param instance: Some model's instance for link's building
     :param url_name: Part of url (admin path)
+    :param target: Link target (edit / link)
     :return: HTML-safe tag with a generated link
     """
     name = url_name or instance.__class__.__name__.lower()
     return markupsafe.Markup(
-        f'<a href="/admin/{name}/edit/{instance.id}">[#{instance.id}] {instance}</a>'
+        f'<a href="/admin/{name}/{target}/{instance.id}">[#{instance.id}] {instance}</a>'
     )
 
 

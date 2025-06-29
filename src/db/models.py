@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 
 import sqlalchemy as sa
@@ -74,12 +73,13 @@ class Token(BaseModel):
     user: Mapped[User] = relationship(User, cascade="all, delete-orphan", single_parent=True)
 
     def __str__(self) -> str:
-        return f"Token for user '{self.user}'"
+        return self.name
 
     def __repr__(self) -> str:
         return (
             f"Token("
             f"id={self.id}, "
+            f"name={self.name}, "
             f"user_id={self.user_id}, "
             f"token='[MASKED]', "
             f"expires_at={self.expires_at}, "
@@ -87,6 +87,15 @@ class Token(BaseModel):
             f"updated_at={self.updated_at}"
             f")"
         )
+
+    @property
+    def raw_token(self) -> str | None:
+        return "[MASKED] Test raw Token"
+        return getattr(self, "__raw_token", None)
+
+    @raw_token.setter
+    def raw_token(self, value: str) -> None:
+        setattr(self, "__raw_token", value)
 
 
 class Vendor(BaseModel):

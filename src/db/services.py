@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class SASessionUOW(ABC):
-    """ """
+    """Unit Of Work around SQLAlchemy-session related items: repositories, ops"""
 
     def __init__(self, session: AsyncSession | None = None) -> None:
         self.__session: AsyncSession = session or make_sa_session()
