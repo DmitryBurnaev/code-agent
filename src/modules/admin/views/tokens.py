@@ -1,12 +1,9 @@
 import logging
 from typing import cast, Any
 
-from sqladmin import expose
+from starlette.datastructures import URL
 from starlette.requests import Request
-from starlette.responses import Response
 
-from src.db.repositories import TokenRepository
-from src.db.services import SASessionUOW
 from src.modules.auth.tokens import make_token
 from src.services.cache import InMemoryCache
 from src.utils import admin_get_link
@@ -45,21 +42,6 @@ class TokenAdminView(BaseModelView, model=Token):
         cache.invalidate(cache_key)
         return token
 
-    # @expose("/tokens/:id_/details", methods=["GET"])
-    # async def get_models(self, id_: int, request: Request) -> Response:
-    #     async with SASessionUOW() as uow:
-    #         token: Token = await TokenRepository(uow.session).get(id_)
-    #
-    #     cache: InMemoryCache = InMemoryCache()
-    #     raw_token: str = str(cache.get(f"token__{token.id}"))
-    #     cache.invalidate(raw_token)
-    #
-    #     context = {
-    #         "token": token,
-    #         "raw_token": raw_token,
-    #     }
-    #     return await self.templates.TemplateResponse(
-    #         request,
-    #         name="token_details.html",
-    #         context=context,
-    #     )
+    def get_save_redirect_url(self, request: Request, token: Token) -> URL:
+        """Override get_redirect_url method to return specific URL"""
+        return self._build_url_for("admin:details", request=request, obj=token)
