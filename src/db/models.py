@@ -90,7 +90,6 @@ class Token(BaseModel):
 
     @property
     def raw_token(self) -> str | None:
-        return "[MASKED] Test raw Token"
         return getattr(self, "__raw_token", None)
 
     @raw_token.setter

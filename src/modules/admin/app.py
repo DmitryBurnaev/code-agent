@@ -1,8 +1,9 @@
 from typing import Any, TYPE_CHECKING
 
 from jinja2 import FileSystemLoader
-from sqladmin import Admin, BaseView
+from sqladmin import Admin, BaseView, ModelView
 from sqladmin.authentication import login_required
+from starlette.datastructures import FormData, URL
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -59,6 +60,23 @@ class AdminApp(Admin):
             },
         }
         return await self.templates.TemplateResponse(request, "dashboard.html", context=context)
+
+    def get_save_redirect_url(
+        self,
+        request: Request,
+        form: FormData,
+        model_view: ModelView,
+        obj: Any,
+    ) -> str | URL:
+        """Make more flexable getting redirect URL after saving model instance"""
+        redirect_url: URL | str | None = None
+        if hasattr(model_view, "get_save_redirect_url"):
+            redirect_url = model_view.get_save_redirect_url(request=request, token=obj)
+
+        if not redirect_url:
+            redirect_url = super().get_save_redirect_url(request, form, model_view, obj)
+
+        return redirect_url
 
     def _init_jinja_templates(self) -> None:
         templates_dir = APP_DIR / self.custom_templates_dir
