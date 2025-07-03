@@ -186,3 +186,12 @@ class TokenRepository(BaseRepository[Token]):
     """Token's repository."""
 
     model = Token
+
+    async def get_by_token(self, token: str) -> Token | None:
+        """Get token by hashed token value"""
+        logger.debug("[DB] Getting token by token: %s", token)
+        filtered_tokens = await self.all(token=token)
+        if not filtered_tokens:
+            return None
+
+        return filtered_tokens[0]
