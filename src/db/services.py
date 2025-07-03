@@ -1,5 +1,4 @@
 import logging
-from abc import ABC
 from types import TracebackType
 from typing import Self
 
@@ -10,7 +9,7 @@ from src.db.session import make_sa_session
 logger = logging.getLogger(__name__)
 
 
-class SASessionUOW(ABC):
+class SASessionUOW:
     """Unit Of Work around SQLAlchemy-session related items: repositories, ops"""
 
     def __init__(self, session: AsyncSession | None = None) -> None:

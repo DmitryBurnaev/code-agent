@@ -41,7 +41,7 @@ class UserAdminForm(Form):
 class UserAdminView(BaseModelView, model=User):
     form = UserAdminForm
     icon = "fa-solid fa-person-drowning"
-    column_list = (User.id, User.username)
+    column_list = (User.id, User.username, User.is_active)
     column_details_list = (User.id, User.username, User.email)
     column_formatters = {User.username: lambda model, a: admin_get_link(cast(BaseModel, model))}
 
@@ -56,6 +56,7 @@ class UserAdminView(BaseModelView, model=User):
 
     async def update_model(self, request: Request, pk: str, data: FormDataType) -> Any:
         raw_password = data.pop("new_password", None)
+        data.pop("repeat_password", None)
         if raw_password:
             data["password"] = User.make_password(str(raw_password))
 

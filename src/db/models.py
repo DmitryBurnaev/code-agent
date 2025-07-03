@@ -2,7 +2,7 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column, backref
 
 from src.utils import utcnow
 from src.modules.auth.hashers import PBKDF2PasswordHasher
@@ -70,7 +70,11 @@ class Token(BaseModel):
     updated_at: Mapped[datetime] = mapped_column(nullable=True, onupdate=utcnow)
 
     # relations
-    user: Mapped[User] = relationship(User, cascade="all, delete-orphan", single_parent=True)
+    user: Mapped[User] = relationship(
+        User,
+        backref=backref("tokens", cascade="all, delete-orphan"),
+        lazy="joined",
+    )
 
     def __str__(self) -> str:
         return self.name

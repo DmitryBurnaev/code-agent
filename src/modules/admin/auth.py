@@ -26,12 +26,15 @@ class AdminAuth(AuthenticationBackend):
         async with SASessionUOW() as uow:
             user = await UserRepository(session=uow.session).get_by_username(username=username)
             if not user:
-                raise HTTPException(status_code=404, detail="User not found")
+                raise HTTPException(status_code=401, detail="User not found")
+
+            if not user.is_active:
+                raise HTTPException(status_code=401, detail="User inactive")
 
             password_verified = user.verify_password(password)
 
         if not password_verified:
-            raise HTTPException(status_code=403, detail="Invalid password")
+            raise HTTPException(status_code=401, detail="Invalid password")
 
         user_payload: UserPayload = {"id": user.id, "username": user.username, "email": user.email}
         request.session.update({"token": self._encode_token(user_payload)})
