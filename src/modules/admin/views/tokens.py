@@ -27,11 +27,13 @@ class TokenAdminView(BaseModelView, model=Token):
     details_template = "token_details.html"
 
     async def insert_model(self, request: Request, data: FormDataType) -> Token:
-        raw_token, hashed_token = make_token()
-        data["token"] = hashed_token
+        expires_at = data.get("expires_at")
+        print(f"expires_at={expires_at!r}")
+        token_info = make_token(expires_at=data.get("expires_in"))
+        data["token"] = token_info.hashed_value
         token: Token = await super().insert_model(request, data)
         cache: InMemoryCache = InMemoryCache()
-        cache.set(f"token__{token.id}", raw_token)
+        cache.set(f"token__{token.id}", token_info.value)
         return token
 
     async def get_object_for_details(self, value: Any) -> Token:

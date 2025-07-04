@@ -1,6 +1,7 @@
-import datetime
-import hashlib
 import uuid
+import random
+import hashlib
+import datetime
 from typing import NamedTuple
 
 import jwt
@@ -18,8 +19,7 @@ __all__ = (
     "hash_token",
     "verify_api_token",
 )
-
-from utils import utcnow
+FIXED_JWT_PREFIX = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
 
 
 class TokenInfo(NamedTuple):
@@ -27,22 +27,24 @@ class TokenInfo(NamedTuple):
     hashed_value: str
 
 
-def make_token(token_expires_in: datetime.datetime | None = None) -> TokenInfo:
+def make_token(expires_at: datetime.datetime | None = None) -> TokenInfo:
     """Generates token, and it hashed value (requires for storage)"""
     settings = get_app_settings()
-    user_show_id = f"{utcnow().microsecond:0>6}{uuid.uuid4().hex[-6:]}"
+    user_show_id = f"{random.randint(100, 999):0>3}{uuid.uuid4().hex[-6:]}"
     payload: dict[str, str | datetime.datetime] = {"sub": user_show_id}
-    if token_expires_in is not None:
-        payload["exp"] = token_expires_in
+    if expires_at is not None:
+        payload["exp"] = expires_at
 
-    # TODO:
     encrypted_token = jwt.encode(
         payload,
         key=settings.secret_key.get_secret_value(),
         algorithm=settings.jwt_algorithm,
     )
+    split_token = encrypted_token.split(".")
+    result_value = f"{split_token[1]}{split_token[2]}"
+    assert split_token[0] == FIXED_JWT_PREFIX
     return TokenInfo(
-        value=encrypted_token,
+        value=result_value,
         hashed_value=hash_token(encrypted_token),
     )
 
