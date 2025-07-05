@@ -1,4 +1,5 @@
 import logging
+import datetime
 from typing import cast, Any
 
 from starlette.datastructures import URL
@@ -27,16 +28,22 @@ class TokenAdminView(BaseModelView, model=Token):
     details_template = "token_details.html"
 
     async def insert_model(self, request: Request, data: FormDataType) -> Token:
-        expires_at = data.get("expires_at")
-        print(f"expires_at={expires_at!r}")
-        token_info = make_token(expires_at=data.get("expires_in"))
+        """
+        Create new token and save it to the database with generated token and its hashed value
+        """
+        expires_at: datetime.datetime | None = data.get("expires_at")
+        token_info = make_token(expires_at=expires_at)
         data["token"] = token_info.hashed_value
         token: Token = await super().insert_model(request, data)
-        cache: InMemoryCache = InMemoryCache()
-        cache.set(f"token__{token.id}", token_info.value)
+        # TODO: use more safety way to showing token to user in the next request.
+        cache = InMemoryCache()
+        cache.set(f"token__{token.id}", token_info.value, ttl=10)  # 10 seconds for showing to user
         return token
 
     async def get_object_for_details(self, value: Any) -> Token:
+        """
+        Get token object and show it in the details page.
+        """
         token: Token = await super().get_object_for_details(value)
         cache: InMemoryCache = InMemoryCache()
         cache_key = f"token__{token.id}"
