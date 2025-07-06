@@ -1,3 +1,4 @@
+import dataclasses
 import uuid
 import random
 import hashlib
@@ -27,9 +28,10 @@ class TokenInfo(NamedTuple):
     hashed_value: str
 
 
-class PayloadTokenInfo(TypedDict):
+@dataclasses.dataclass
+class PayloadTokenInfo:
     sub: str
-    exp: datetime.datetime | None
+    exp: datetime.datetime | None = None
 
 
 def make_token(expires_at: datetime.datetime | None = None) -> TokenInfo:
@@ -47,13 +49,12 @@ def make_token(expires_at: datetime.datetime | None = None) -> TokenInfo:
         TokenInfo - tuple of token and its hashed value
     """
     settings = get_app_settings()
-    payload_info = PayloadTokenInfo(
-        sub=f"{random.randint(100, 999):0>3}{uuid.uuid4().hex[-6:]}",
-        exp=expires_at,
-    )
+    payload_info = PayloadTokenInfo(sub=f"{random.randint(100, 999):0>3}{uuid.uuid4().hex[-6:]}")
+    if expires_at:
+        payload_info.exp = expires_at
 
     encrypted_token = jwt.encode(
-        cast(dict[str, Any], payload_info),
+        dataclasses.asdict(payload_info),
         key=settings.secret_key.get_secret_value(),
         algorithm=settings.jwt_algorithm,
     )
@@ -80,7 +81,7 @@ def decode_token(token: str) -> PayloadTokenInfo:
         algorithm=settings.jwt_algorithm,
     )
     header_part, _, _ = just_for_header_token.split(".")
-    payload_part, signature_part = token[-SIGNATURE_LENGTH:], token[SIGNATURE_LENGTH:]
+    payload_part, signature_part = token[:-SIGNATURE_LENGTH], token[-SIGNATURE_LENGTH:]
 
     checking_token = f"{header_part}.{payload_part}.{signature_part}"
     logger.debug("Authentication: JWT decode token: %s", checking_token)
@@ -133,7 +134,7 @@ async def verify_api_token(
 
     auth_token = auth_token.replace("Bearer ", "").strip()
     decoded_payload = decode_token(auth_token)
-    raw_token_identity = decoded_payload.get("sub")
+    raw_token_identity = decoded_payload.sub
     if not raw_token_identity:
         raise HTTPException(status_code=401, detail="Token has no identity")
 

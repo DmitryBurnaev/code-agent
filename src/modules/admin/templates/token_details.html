@@ -23,10 +23,12 @@
         // copy value from input to clipboard
         const tokenValueInput = document.getElementById('token-value-input');
         const copyTokenBtn = document.getElementById('copy-token-btn');
-        copyTokenBtn.addEventListener('click', () => {
-            tokenValueInput.select();
-            document.execCommand('copy');
-        });
+        if (copyTokenBtn !== null){
+            copyTokenBtn.addEventListener('click', () => {
+                tokenValueInput.select();
+                document.execCommand('copy');
+            });
+        }
     </script>
     {{ super() }}
 {% endblock %}
