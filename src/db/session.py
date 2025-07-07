@@ -22,7 +22,7 @@ def make_sa_session() -> AsyncSession:
     """
     Create a new SQLAlchemy session for connection to SQLite database.
     """
-    logger.debug("Creating new async SQLAlchemy session")
+    logger.debug("[DB] Creating new async SQLAlchemy session")
     db_settings = get_db_settings()
 
     try:
@@ -35,11 +35,11 @@ def make_sa_session() -> AsyncSession:
             echo=db_settings.echo,
             **extra_kwargs,
         )
-        logger.debug("Successfully created async engine")
+        logger.debug("[DB] Successfully created async engine")
         return AsyncSession(engine)
 
     except Exception as e:
-        logger.error("Failed to create async session: %s", str(e))
+        logger.error("[DB] Failed to create async session: %s", str(e))
         raise
 
 
@@ -51,4 +51,4 @@ async def session_scope() -> AsyncGenerator[AsyncSession, None]:
         yield session
     finally:
         await session.close()
-        logger.debug("Session closed")
+        logger.debug("[DB] Session closed")

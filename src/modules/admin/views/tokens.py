@@ -2,9 +2,14 @@ import logging
 import datetime
 from typing import cast, Any
 
+from jinja2.runtime import identity
+from sqladmin import action
 from starlette.datastructures import URL
 from starlette.requests import Request
+from starlette.responses import Response, RedirectResponse
 
+from db.repositories import TokenRepository
+from db.services import SASessionUOW
 from src.modules.auth.tokens import make_token
 from src.services.cache import InMemoryCache
 from src.utils import admin_get_link
@@ -17,8 +22,8 @@ logger = logging.getLogger(__name__)
 
 class TokenAdminView(BaseModelView, model=Token):
     icon = "fa-solid fa-key"
-    column_list = (Token.id, Token.user, Token.expires_at)
-    form_columns = (Token.user, Token.name, Token.expires_at)
+    column_list = (Token.id, Token.user, Token.is_active, Token.expires_at)
+    form_columns = (Token.user, Token.name, Token.is_active, Token.expires_at)
     can_edit = False
     column_formatters = {
         Token.id: lambda model, a: admin_get_link(cast(BaseModel, model), target="details")
@@ -54,3 +59,40 @@ class TokenAdminView(BaseModelView, model=Token):
     def get_save_redirect_url(self, request: Request, token: Token) -> URL:
         """Override get_redirect_url method to return specific URL"""
         return self._build_url_for("admin:details", request=request, obj=token)
+
+    @action(
+        name="deactivate",
+        label="Deactivate",
+        add_in_detail=True,
+        add_in_list=True,
+        confirmation_message="Are you sure you want to deactivate selected tokens?",
+    )
+    async def deactivate_tokens(self, request: Request) -> Response:
+        """Downloads single license (as single *.lic file) and several (combined to *.zip)"""
+
+        return await self._set_active(request, is_active=False)
+
+    @action(
+        name="activate",
+        label="Activate",
+        add_in_detail=True,
+        add_in_list=True,
+        confirmation_message="Are you sure you want to activate selected tokens?",
+    )
+    async def activate_tokens(self, request: Request) -> Response:
+        """Activate tokens by their IDs"""  
+        return await self._set_active(request, is_active=True)
+
+    async def _set_active(self, request: Request, token_ids: list[int | str], is_active: bool) -> Response:
+        """Set active status for tokens by their IDs"""
+
+        logger.info("[ADMIN] %s tokens: %r", "Deactivating" if not is_active else "Activating", token_ids)
+        token_ids = request.query_params.get("pks", "").split(",")
+        if not token_ids:
+            raise RuntimeError("No pks provided")
+
+        async with SASessionUOW() as uow:
+            await TokenRepository(session=uow.session).set_active(token_ids, is_active=is_active)
+            await uow.commit()
+
+        return RedirectResponse(url=request.url_for("admin:list", identity=self.identity))

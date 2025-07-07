@@ -54,7 +54,15 @@ class AdminAuth(AuthenticationBackend):
         async with SASessionUOW() as uow:
             user = await UserRepository(session=uow.session).first(instance_id=user_payload["id"])
             if not user:
-                logger.error(f"User {user_payload['id']} not found")
+                logger.error("User 'id: %r' not found", user_payload["id"])
+                return False
+
+            if not user.is_active:
+                logger.error("User '%r' inactive", user)
+                return False
+
+            if not user.is_admin:
+                logger.error("User '%r' not admin", user)
                 return False
 
         return True

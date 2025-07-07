@@ -3,7 +3,7 @@ import uuid
 import random
 import hashlib
 import datetime
-from typing import NamedTuple, TypedDict, cast, Any
+from typing import NamedTuple
 
 import jwt
 from fastapi import Security
@@ -31,7 +31,10 @@ class TokenInfo(NamedTuple):
 @dataclasses.dataclass
 class PayloadTokenInfo:
     sub: str
-    exp: datetime.datetime | None = None
+    exp: datetime.datetime
+
+    def as_dict(self) -> dict[str, str | datetime.datetime]:
+        return dataclasses.asdict(self)
 
 
 def make_token(expires_at: datetime.datetime | None = None) -> TokenInfo:
@@ -49,19 +52,18 @@ def make_token(expires_at: datetime.datetime | None = None) -> TokenInfo:
         TokenInfo - tuple of token and its hashed value
     """
     settings = get_app_settings()
-    payload_info = PayloadTokenInfo(sub=f"{random.randint(100, 999):0>3}{uuid.uuid4().hex[-6:]}")
-    if expires_at:
-        payload_info.exp = expires_at
-
+    expires_at = expires_at or datetime.datetime.max
+    token_identifier = f"{random.randint(100, 999):0>3}{uuid.uuid4().hex[-6:]}"
+    payload_info = PayloadTokenInfo(sub=token_identifier, exp=expires_at)
     encrypted_token = jwt.encode(
-        dataclasses.asdict(payload_info),
+        payload_info.as_dict(),
         key=settings.secret_key.get_secret_value(),
         algorithm=settings.jwt_algorithm,
     )
     _, payload_part, signature_part = encrypted_token.split(".")
     result_value = f"{payload_part}{signature_part}"
 
-    return TokenInfo(value=result_value, hashed_value=hash_token(encrypted_token))
+    return TokenInfo(value=result_value, hashed_value=hash_token(token_identifier))
 
 
 def decode_token(token: str) -> PayloadTokenInfo:
@@ -84,7 +86,7 @@ def decode_token(token: str) -> PayloadTokenInfo:
     payload_part, signature_part = token[:-SIGNATURE_LENGTH], token[-SIGNATURE_LENGTH:]
 
     checking_token = f"{header_part}.{payload_part}.{signature_part}"
-    logger.debug("Authentication: JWT decode token: %s", checking_token)
+    logger.debug("[auth] JWT decoding token: %s", checking_token)
 
     try:
         payload = jwt.decode(
@@ -100,6 +102,7 @@ def decode_token(token: str) -> PayloadTokenInfo:
     if payload.get("exp") is None:
         raise HTTPException(status_code=401, detail="Token has no expiration time")
 
+    logger.debug("[auth] Got payload: %s", payload)
     return PayloadTokenInfo(sub=payload["sub"], exp=payload.get("exp"))
 
 
@@ -130,24 +133,25 @@ async def verify_api_token(
     if not auth_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    logger.debug("Authentication: input auth token: %s", auth_token)
+    logger.debug("[auth] Authentication: input auth token: %s", auth_token)
 
     auth_token = auth_token.replace("Bearer ", "").strip()
     decoded_payload = decode_token(auth_token)
     raw_token_identity = decoded_payload.sub
     if not raw_token_identity:
-        raise HTTPException(status_code=401, detail="Token has no identity")
+        raise HTTPException(status_code=401, detail="Not authenticated: token has no identity")
 
     hashed_token = hash_token(raw_token_identity)
 
     async with SASessionUOW() as uow:
-        token = await TokenRepository(session=uow.session).get_by_token(token=hashed_token)
+        token = await TokenRepository(session=uow.session).get_by_token(hashed_token)
+        logger.info("[auth] Verification: token extracted '%s'", token)
         if not token:
-            raise HTTPException(status_code=401, detail="Not authenticated")
+            raise HTTPException(status_code=401, detail="Not authenticated: unknown token")
 
         # TODO: move flag "is_active" to the token model
         if not token.user.is_active:
-            raise HTTPException(status_code=401, detail="User is not active")
+            raise HTTPException(status_code=401, detail="Not authenticated: inactive")
 
         logger.info("[auth] Verified token for %(user)s", {"user": token.user})
 
