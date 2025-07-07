@@ -10,7 +10,7 @@ from typing import (
     ParamSpec,
 )
 
-from sqlalchemy import select, BinaryExpression, delete, Select, func
+from sqlalchemy import select, BinaryExpression, delete, Select, func, update
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import SQLCoreOperations
@@ -187,11 +187,19 @@ class TokenRepository(BaseRepository[Token]):
 
     model = Token
 
-    async def get_by_token(self, token: str) -> Token | None:
+    async def get_by_token(self, hashed_token: str) -> Token | None:
         """Get token by hashed token value"""
-        logger.debug("[DB] Getting token by token: %s", token)
-        filtered_tokens = await self.all(token=token)
+        logger.debug("[DB] Getting token by hash: %s", hashed_token)
+        filtered_tokens = await self.all(token=hashed_token)
         if not filtered_tokens:
             return None
 
         return filtered_tokens[0]
+
+    async def set_active(self, token_ids: Sequence[int | str], is_active: bool) -> None:
+        """Set active status for tokens by their IDs"""
+        logger.info("[DB] %s tokens: %r", "Deactivating" if not is_active else "Activating", token_ids)
+        statement = update(self.model).filter(self.model.id.in_(int(id_) for id_ in token_ids))
+        result = await self.session.execute(statement, {"is_active": is_active})
+        await self.session.flush()
+        logger.info("[DB] %s %d tokens", "Deactivated" if not is_active else "Activated", result.rowcount)
