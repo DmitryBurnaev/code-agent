@@ -1,6 +1,5 @@
 import logging
 import datetime
-from typing import ClassVar
 
 from sqladmin import ModelView
 
@@ -12,4 +11,3 @@ __all__ = ("BaseModelView",)
 class BaseModelView(ModelView):
     can_export = False
     is_async = True
-    save_redirect: ClassVar[str | None] = None

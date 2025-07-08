@@ -23,6 +23,7 @@ from src.settings import get_app_settings
 
 if TYPE_CHECKING:
     from src.main import CodeAgentAPP
+    from src.db.models import BaseModel
 
 ADMIN_VIEWS: tuple[type[BaseView], ...] = (
     UserAdminView,
@@ -60,6 +61,19 @@ class AdminApp(Admin):
             },
         }
         return await self.templates.TemplateResponse(request, "dashboard.html", context=context)
+
+    @login_required
+    async def create(self, request: Request) -> Response:
+        response: Response = await super().create(request)
+
+        identity = request.path_params["identity"]
+        model_view = self._find_model_view(identity)
+        if hasattr(model_view, "handle_post_create"):
+            # TODO: decide how to get last inserted instance
+            obj: "BaseModel" = None
+            response = model_view.handle_post_create(request=request, obj=obj)
+
+        return response
 
     def get_save_redirect_url(
         self,
