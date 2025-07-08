@@ -20,7 +20,7 @@ __all__ = (
     "hash_token",
     "verify_api_token",
 )
-SIGNATURE_LENGTH = 43
+SIGNATURE_LENGTH = 43  # based
 
 
 class TokenInfo(NamedTuple):
@@ -149,9 +149,11 @@ async def verify_api_token(
         if not token:
             raise HTTPException(status_code=401, detail="Not authenticated: unknown token")
 
-        # TODO: move flag "is_active" to the token model
+        if not token.is_active:
+            raise HTTPException(status_code=401, detail="Not authenticated: inactive token")
+
         if not token.user.is_active:
-            raise HTTPException(status_code=401, detail="Not authenticated: inactive")
+            raise HTTPException(status_code=401, detail="Not authenticated: user is not active")
 
         logger.info("[auth] Verified token for %(user)s", {"user": token.user})
 

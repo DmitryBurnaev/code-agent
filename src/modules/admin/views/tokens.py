@@ -2,18 +2,17 @@ import logging
 import datetime
 from typing import cast, Any
 
-from jinja2.runtime import identity
 from sqladmin import action
 from starlette.datastructures import URL
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 
-from db.repositories import TokenRepository
-from db.services import SASessionUOW
-from src.modules.auth.tokens import make_token
+from src.db.repositories import TokenRepository
+from src.db.services import SASessionUOW
+from src.db.models import BaseModel, Token
 from src.services.cache import InMemoryCache
 from src.utils import admin_get_link
-from src.db.models import BaseModel, Token
+from src.modules.auth.tokens import make_token
 from src.modules.admin.views.base import BaseModelView, FormDataType
 
 __all__ = ("TokenAdminView",)
@@ -34,9 +33,12 @@ class TokenAdminView(BaseModelView, model=Token):
 
     async def insert_model(self, request: Request, data: FormDataType) -> Token:
         """
-        Create new token and save it to the database with generated token and its hashed value
+        Create a new token and save it to the database with generated token and its hashed value
         """
-        expires_at: datetime.datetime | None = data.get("expires_at")
+        expires_at: datetime.datetime | None = None
+        if data.get("expires_at"):
+            expires_at = cast(datetime.datetime, data["expires_at"])
+
         token_info = make_token(expires_at=expires_at)
         data["token"] = token_info.hashed_value
         token: Token = await super().insert_model(request, data)
@@ -80,13 +82,17 @@ class TokenAdminView(BaseModelView, model=Token):
         confirmation_message="Are you sure you want to activate selected tokens?",
     )
     async def activate_tokens(self, request: Request) -> Response:
-        """Activate tokens by their IDs"""  
+        """Activate tokens by their IDs"""
         return await self._set_active(request, is_active=True)
 
-    async def _set_active(self, request: Request, token_ids: list[int | str], is_active: bool) -> Response:
+    async def _set_active(
+        self, request: Request, token_ids: list[int | str], is_active: bool
+    ) -> Response:
         """Set active status for tokens by their IDs"""
 
-        logger.info("[ADMIN] %s tokens: %r", "Deactivating" if not is_active else "Activating", token_ids)
+        logger.info(
+            "[ADMIN] %s tokens: %r", "Deactivating" if not is_active else "Activating", token_ids
+        )
         token_ids = request.query_params.get("pks", "").split(",")
         if not token_ids:
             raise RuntimeError("No pks provided")
