@@ -1,4 +1,4 @@
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, cast
 
 from jinja2 import FileSystemLoader
 from sqladmin import Admin, BaseView, ModelView
@@ -24,6 +24,7 @@ from src.settings import get_app_settings
 if TYPE_CHECKING:
     from src.main import CodeAgentAPP
     from src.db.models import BaseModel
+    from modules.admin.views import BaseModelView
 
 ADMIN_VIEWS: tuple[type[BaseView], ...] = (
     UserAdminView,
@@ -66,12 +67,13 @@ class AdminApp(Admin):
     async def create(self, request: Request) -> Response:
         response: Response = await super().create(request)
 
+        # ==== prepare custom logic ====
         identity = request.path_params["identity"]
-        model_view = self._find_model_view(identity)
-        if hasattr(model_view, "handle_post_create"):
-            # TODO: decide how to get last inserted instance
-            obj: "BaseModel" = None
-            response = model_view.handle_post_create(request=request, obj=obj)
+        model_view: "BaseModelView" = cast(BaseModelView, self._find_model_view(identity))
+        if model_view.custom_post_create:
+            object_id = int(response.headers["location"])
+            response = await model_view.handle_post_create(request, object_id)
+        # ====
 
         return response
 
@@ -79,16 +81,22 @@ class AdminApp(Admin):
         self,
         request: Request,
         form: FormData,
-        model_view: ModelView,
-        obj: Any,
+        model_view: "BaseModelView",
+        obj: "BaseModel",
     ) -> str | URL:
         """Make more flexable getting redirect URL after saving model instance"""
-        redirect_url: URL | str | None = None
-        if hasattr(model_view, "get_save_redirect_url"):
-            redirect_url = model_view.get_save_redirect_url(request=request, token=obj)
-
-        if not redirect_url:
+        if model_view.custom_post_create:
+            # required for getting instance ID after base creation's method finished
+            redirect_url = str(obj.id)
+        else:
             redirect_url = super().get_save_redirect_url(request, form, model_view, obj)
+
+        # redirect_url: URL | str | None = None
+        # if hasattr(model_view, "get_save_redirect_url"):
+        #     redirect_url = model_view.get_save_redirect_url(request=request, token=obj)
+
+        # if not redirect_url:
+        #     redirect_url = super().get_save_redirect_url(request, form, model_view, obj)
 
         return redirect_url
 
