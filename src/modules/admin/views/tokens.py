@@ -30,6 +30,7 @@ class TokenAdminView(BaseModelView, model=Token):
     column_details_list = (Token.id, Token.user, Token.name, Token.expires_at, Token.created_at)
     column_default_li = ()
     details_template = "token_details.html"
+    custom_post_create = True
 
     async def insert_model(self, request: Request, data: FormDataType) -> Token:
         """
@@ -84,6 +85,10 @@ class TokenAdminView(BaseModelView, model=Token):
     async def activate_tokens(self, request: Request) -> Response:
         """Activate tokens by their IDs"""
         return await self._set_active(request, is_active=True)
+
+    async def handle_post_create(self, request: Request, obj: BaseModel) -> Response:
+        """Handle tokens' creation logic"""
+        return RedirectResponse(url=request.url_for("admin:list", identity=self.identity))
 
     async def _set_active(
         self, request: Request, token_ids: list[int | str], is_active: bool
