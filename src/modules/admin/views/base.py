@@ -19,7 +19,7 @@ class BaseModelView(ModelView):
 
     async def handle_post_create(self, request: Request, object_id: int) -> Response:
         if not self.custom_post_create:
-            raise HTTPException(status_code=400, detail="Missing save details' logic")
+            raise HTTPException(status_code=400, detail="Missing handle_post_create' logic")
 
         model = await self.get_object_for_details(object_id)
         if not model:
