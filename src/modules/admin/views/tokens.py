@@ -90,18 +90,16 @@ class TokenAdminView(BaseModelView, model=Token):
         """Handle tokens' creation logic"""
         return RedirectResponse(url=request.url_for("admin:list", identity=self.identity))
 
-    async def _set_active(
-        self, request: Request, token_ids: list[int | str], is_active: bool
-    ) -> Response:
+    async def _set_active(self, request: Request, is_active: bool) -> Response:
         """Set active status for tokens by their IDs"""
 
-        logger.info(
-            "[ADMIN] %s tokens: %r", "Deactivating" if not is_active else "Activating", token_ids
-        )
         token_ids = request.query_params.get("pks", "").split(",")
         if not token_ids:
             raise RuntimeError("No pks provided")
 
+        logger.info(
+            "[ADMIN] %s tokens: %r", "Deactivating" if not is_active else "Activating", token_ids
+        )
         async with SASessionUOW() as uow:
             await TokenRepository(session=uow.session).set_active(token_ids, is_active=is_active)
             await uow.commit()

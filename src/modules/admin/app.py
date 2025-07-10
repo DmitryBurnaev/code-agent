@@ -84,7 +84,12 @@ class AdminApp(Admin):
         model_view: "BaseModelView",
         obj: "BaseModel",
     ) -> str | URL:
-        """Make more flexable getting redirect URL after saving model instance"""
+        """
+        Make more flexable getting redirect URL after saving model instance
+        Allows fetching created instance's ID from formed redirect response (location header)
+        We have to do this to avoid overriding whole `create` method of this class
+        """
+        redirect_url: str | URL
         if model_view.custom_post_create:
             # required for getting instance ID after base creation's method finished
             redirect_url = str(obj.id)
