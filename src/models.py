@@ -117,8 +117,7 @@ class AIModel(BaseModel):
     vendor_id: str
 
     @classmethod
-    def from_vendor(cls, vendor: VendorSlug, model_id: str) -> Self:
-        # return cls(id=f"[{vendor}]{model_id}", vendor=vendor, vendor_id=model_id)
+    def from_vendor(cls, vendor: str, model_id: str) -> Self:
         return cls(id=f"{vendor}:{model_id}", vendor=vendor, vendor_id=model_id)
 
 

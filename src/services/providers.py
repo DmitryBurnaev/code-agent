@@ -104,7 +104,7 @@ class ProviderService:
         """
         self._settings = settings
         self._cache: CacheProtocol = InMemoryCache()
-        self._provider_clients: dict[VendorSlug, ProviderClient] = {}
+        self._provider_clients: dict[str, ProviderClient] = {}
         self._http_client = http_client or AIProviderHTTPClient(settings)
 
     def get_client(self, provider: LLMProvider) -> ProviderClient:
@@ -175,10 +175,10 @@ class ProviderService:
 
         return all_models
 
-    def _cache_set_data(self, vendor: VendorSlug, models: list[AIModel]) -> None:
+    def _cache_set_data(self, vendor: str, models: list[AIModel]) -> None:
         self._cache.set(vendor, [model.model_dump() for model in models])
 
-    def _cache_get_data(self, vendor: VendorSlug) -> list[AIModel] | None:
+    def _cache_get_data(self, vendor: str) -> list[AIModel] | None:
         cached = self._cache.get(vendor)
         if not cached or not isinstance(cached, list):
             logger.debug(f"No cached models for {vendor}: {cached!r}")
@@ -187,11 +187,11 @@ class ProviderService:
         return [AIModel.model_validate(model_data) for model_data in cached]
 
     @staticmethod
-    def _mocked_models(vendors: list[VendorSlug]) -> list[AIModel]:
-        mocked_models = {
-            VendorSlug.OPENAI: ["openai-chat", "o12-macro"],
-            VendorSlug.DEEPSEEK: ["deepseek-chat", "deepseek-think"],
-            VendorSlug.ANTHROPIC: ["anthropic-123"],
+    def _mocked_models(vendors: list[str]) -> list[AIModel]:
+        mocked_models: dict[str, list[str]] = {
+            VendorSlug.OPENAI.name: ["openai-chat", "o12-macro"],
+            VendorSlug.DEEPSEEK.name: ["deepseek-chat", "deepseek-think"],
+            VendorSlug.ANTHROPIC.name: ["anthropic-123"],
         }
         result = []
         for vendor in vendors:

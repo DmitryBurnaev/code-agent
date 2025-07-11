@@ -11,6 +11,7 @@ from src.modules.admin.auth import AdminAuth
 from src.constants import APP_DIR
 from src.db.services import SASessionUOW
 from src.modules.admin.views import (
+    BaseModelView,
     UserAdminView,
     VendorAdminView,
     ModelsAdminView,
@@ -24,7 +25,6 @@ from src.settings import get_app_settings
 if TYPE_CHECKING:
     from src.main import CodeAgentAPP
     from src.db.models import BaseModel
-    from modules.admin.views import BaseModelView
 
 ADMIN_VIEWS: tuple[type[BaseView], ...] = (
     UserAdminView,
@@ -66,10 +66,12 @@ class AdminApp(Admin):
     @login_required
     async def create(self, request: Request) -> Response:
         response: Response = await super().create(request)
+        if request.method == "GET":
+            return response
 
         # ==== prepare custom logic ====
         identity = request.path_params["identity"]
-        model_view: "BaseModelView" = cast(BaseModelView, self._find_model_view(identity))
+        model_view: "BaseModelView" = cast("BaseModelView", self._find_model_view(identity))
         if model_view.custom_post_create:
             object_id = int(response.headers["location"])
             response = await model_view.handle_post_create(request, object_id)
@@ -81,7 +83,7 @@ class AdminApp(Admin):
         self,
         request: Request,
         form: FormData,
-        model_view: "BaseModelView",
+        model_view: ModelView,
         obj: "BaseModel",
     ) -> str | URL:
         """
@@ -89,19 +91,13 @@ class AdminApp(Admin):
         Allows fetching created instance's ID from formed redirect response (location header)
         We have to do this to avoid overriding whole `create` method of this class
         """
+
         redirect_url: str | URL
-        if model_view.custom_post_create:
+        if isinstance(model_view, BaseModelView) and model_view.custom_post_create:
             # required for getting instance ID after base creation's method finished
             redirect_url = str(obj.id)
         else:
             redirect_url = super().get_save_redirect_url(request, form, model_view, obj)
-
-        # redirect_url: URL | str | None = None
-        # if hasattr(model_view, "get_save_redirect_url"):
-        #     redirect_url = model_view.get_save_redirect_url(request=request, token=obj)
-
-        # if not redirect_url:
-        #     redirect_url = super().get_save_redirect_url(request, form, model_view, obj)
 
         return redirect_url
 

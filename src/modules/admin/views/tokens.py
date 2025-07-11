@@ -43,7 +43,6 @@ class TokenAdminView(BaseModelView, model=Token):
         token_info = make_token(expires_at=expires_at)
         data["token"] = token_info.hashed_value
         token: Token = await super().insert_model(request, data)
-        # TODO: use more safety way to showing token to user in the next request.
         cache = InMemoryCache()
         cache.set(f"token__{token.id}", token_info.value, ttl=10)  # 10 seconds for showing to user
         return token
@@ -85,10 +84,6 @@ class TokenAdminView(BaseModelView, model=Token):
     async def activate_tokens(self, request: Request) -> Response:
         """Activate tokens by their IDs"""
         return await self._set_active(request, is_active=True)
-
-    async def handle_post_create(self, request: Request, obj: BaseModel) -> Response:
-        """Handle tokens' creation logic"""
-        return RedirectResponse(url=request.url_for("admin:list", identity=self.identity))
 
     async def _set_active(self, request: Request, is_active: bool) -> Response:
         """Set active status for tokens by their IDs"""
