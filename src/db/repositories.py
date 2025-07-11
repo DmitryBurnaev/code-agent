@@ -198,8 +198,12 @@ class TokenRepository(BaseRepository[Token]):
 
     async def set_active(self, token_ids: Sequence[int | str], is_active: bool) -> None:
         """Set active status for tokens by their IDs"""
-        logger.info("[DB] %s tokens: %r", "Deactivating" if not is_active else "Activating", token_ids)
+        logger.info(
+            "[DB] %s tokens: %r", "Deactivating" if not is_active else "Activating", token_ids
+        )
         statement = update(self.model).filter(self.model.id.in_(int(id_) for id_ in token_ids))
         result = await self.session.execute(statement, {"is_active": is_active})
         await self.session.flush()
-        logger.info("[DB] %s %d tokens", "Deactivated" if not is_active else "Activated", result.rowcount)
+        logger.info(
+            "[DB] %s %d tokens", "Deactivated" if not is_active else "Activated", result.rowcount
+        )

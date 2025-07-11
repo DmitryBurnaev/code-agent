@@ -51,11 +51,7 @@ class VendorAdminView(BaseModelView, model=Vendor):
         return await super().update_model(request, pk, data)
 
     @classmethod
-    async def _validate(
-        cls,
-        data: dict[str, str | int | None],
-        vendor_id: int | None = None,
-    ) -> dict[str, str | int | None]:
+    async def _validate(cls, data: FormDataType, vendor_id: int | None = None) -> FormDataType:
         slug = data.pop("slug", None)
         if not slug:
             raise HTTPException(status_code=400, detail="Slug required")
