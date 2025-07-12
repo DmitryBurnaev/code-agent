@@ -19,7 +19,7 @@ from src.modules.admin.views import (
 )
 from src.db.session import get_async_sessionmaker
 from src.services.counters import AdminCounter
-from src.services.providers import ProviderService
+from src.services.vendors import VendorService
 from src.settings import get_app_settings
 
 if TYPE_CHECKING:
@@ -50,7 +50,7 @@ class AdminApp(Admin):
         settings = get_app_settings()
         async with SASessionUOW() as uow:
             dashboard_stat = await AdminCounter().get_stat(session=uow.session)
-            models = await ProviderService(settings).get_list_models()
+            models = await VendorService(settings).get_list_models()
 
         context = {
             "vendors": {

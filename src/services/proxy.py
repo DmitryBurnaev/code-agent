@@ -11,11 +11,11 @@ from httpx import Headers
 from starlette.responses import StreamingResponse, Response
 
 from src.services.cache import CacheProtocol, InMemoryCache
-from src.exceptions import ProviderProxyError
-from src.models import ChatRequest, LLMProvider
-from src.services.http import AIProviderHTTPClient
+from src.exceptions import VendorProxyError
+from src.models import ChatRequest, LLMVendor
+from src.services.http import VendorHTTPClient
 from src.settings import AppSettings
-from src.services.providers import ProviderService
+from src.services.vendors import VendorService
 
 logger = logging.getLogger(__name__)
 
@@ -47,18 +47,18 @@ class ProxyRequestData:
 
 class ProxyService:
     """
-    Service for proxying requests to AI providers.
+    Service for proxying requests to AI vendors.
 
     Handles routing, request transformation and response streaming
-    for different AI providers like OpenAI, Anthropic, etc.
+    for different AI vendors like OpenAI, Anthropic, etc.
 
     Capabilities:
-    - Route requests to appropriate provider endpoints
-    - Transform request/response data between providers
+    - Route requests to appropriate vendor endpoints
+    - Transform request/response data between vendors
     - Handle streaming responses
 
     Args:
-        settings: Application settings containing provider configurations
+        settings: Application settings containing vendor configurations
 
     Attributes:
         _settings: Stored settings instance
@@ -72,8 +72,8 @@ class ProxyService:
 
     def __init__(self, settings: AppSettings, http_client: httpx.AsyncClient | None = None) -> None:
         self._settings = settings
-        self._http_client = http_client or AIProviderHTTPClient(settings)
-        self._provider_service = ProviderService(settings, self._http_client)
+        self._http_client = http_client or VendorHTTPClient(settings)
+        self._vendor_service = VendorService(settings, self._http_client)
         self._cache: CacheProtocol = InMemoryCache()
 
     async def __aenter__(self) -> Self:
@@ -115,28 +115,28 @@ class ProxyService:
         endpoint: ProxyEndpoint,
     ) -> Response:
         """
-        Handle an incoming proxy request by forwarding it to the appropriate provider.
+        Handle an incoming proxy request by forwarding it to the appropriate vendor.
 
         Args:
             request_data: Encapsulated request data including method, headers, params and body
             endpoint: Which endpoint to proxy to (chat, models, etc.)
 
         Returns:
-            Response from the provider, may be streaming or regular response
+            Response from the vendor, may be streaming or regular response
 
         Raises:
-            HTTPException: If a provider is not found or the request fails
-            ProviderProxyError: If request times out or other provider errors occur
+            HTTPException: If a vendor is not found or the request fails
+            VendorProxyError: If request times out or other vendor errors occur
         """
         if not request_data.body and endpoint != ProxyEndpoint.CANCEL_CHAT_COMPLETION:
-            raise ProviderProxyError(f"Request body is required for {endpoint}")
+            raise VendorProxyError(f"Request body is required for {endpoint}")
 
         logger.info("ProxyService: %s requested |  %s", endpoint, request_data)
-        provider, actual_model = self._extract_provider_requested(request_data, endpoint)
+        vendor, actual_model = self._extract_vendor_requested(request_data, endpoint)
 
         # Prepare request data
-        url = self._build_target_url(provider, endpoint, request_data)
-        headers = self._prepare_headers(provider)
+        url = self._build_target_url(vendor, endpoint, request_data)
+        headers = self._prepare_headers(vendor)
         is_streaming = False
         body = None
         if request_data.body:
@@ -151,7 +151,7 @@ class ProxyService:
             "ProxyService[%(vendor)s]: requested [%(method)s] %(url)s\n "
             "headers: %(headers)s\n body: %(body)s",
             {
-                "vendor": provider.vendor,
+                "vendor": vendor.slug,
                 "method": request_data.method,
                 "url": url,
                 "headers": headers,
@@ -180,7 +180,7 @@ class ProxyService:
                     "ProxyService[%(vendor)s]: %(prefix)s %(url)s\n "
                     "headers: %(headers)s\n body: %(log_body)s\n length: %(length)s bytes",
                     {
-                        "vendor": provider.vendor,
+                        "vendor": vendor.slug,
                         "prefix": log_prefix,
                         "headers": dict(httpx_response.headers),
                         "log_body": log_body,
@@ -192,12 +192,12 @@ class ProxyService:
             if is_streaming:
                 return await self._handle_stream(
                     httpx_response,
-                    vendor=provider.vendor,
+                    vendor=vendor.slug,
                     endpoint=endpoint,
                 )
 
             if endpoint == ProxyEndpoint.CANCEL_CHAT_COMPLETION:
-                self._save_vendor(httpx_response.content, vendor=provider.vendor, endpoint=endpoint)
+                self._save_vendor(httpx_response.content, vendor=vendor.slug, endpoint=endpoint)
 
             safe_headers = {
                 k: v
@@ -213,7 +213,7 @@ class ProxyService:
 
         except httpx.TimeoutException as exc:
             error_msg = "Stream timeout" if is_streaming else "Request timeout"
-            raise ProviderProxyError(error_msg) from exc
+            raise VendorProxyError(error_msg) from exc
 
     async def _handle_stream(
         self,
@@ -236,7 +236,7 @@ class ProxyService:
                     yield chunk
 
             except httpx.TimeoutException as exc:
-                raise ProviderProxyError("Stream timeout") from exc
+                raise VendorProxyError("Stream timeout") from exc
 
             else:
                 logger.info("ProxyService[%s]: stream iterations completed", vendor)
@@ -262,37 +262,37 @@ class ProxyService:
 
     def _build_target_url(
         self,
-        provider: LLMProvider,
+        vendor: LLMVendor,
         endpoint: ProxyEndpoint,
         request_data: ProxyRequestData,
     ) -> str:
-        """Build a provider-specific path for the endpoint."""
+        """Build a vendor-specific path for the endpoint."""
         path = self._ENDPOINT_PATHS[endpoint]
 
         # Replace path parameters if needed
         if endpoint == ProxyEndpoint.CANCEL_CHAT_COMPLETION:
             if not request_data.completion_id:
-                raise ProviderProxyError("completion_id is required for cancellation")
+                raise VendorProxyError("completion_id is required for cancellation")
 
             path = path.format(completion_id=request_data.completion_id)
 
-        return urllib.parse.urljoin(provider.base_url, path)
+        return urllib.parse.urljoin(vendor.base_url, path)
 
-    def _extract_provider_requested(
+    def _extract_vendor_requested(
         self,
         request_data: ProxyRequestData,
         endpoint: ProxyEndpoint,
-    ) -> tuple[LLMProvider, str]:
-        """Extract provider and actual model name from the composite model identifier."""
+    ) -> tuple[LLMVendor, str]:
+        """Extract vendor and actual model name from the composite model identifier."""
 
         if endpoint == ProxyEndpoint.CANCEL_CHAT_COMPLETION:
             completion_id = request_data.completion_id
             if not completion_id:
-                raise ProviderProxyError("completion_id is required for cancellation")
+                raise VendorProxyError("completion_id is required for cancellation")
 
             vendor = self._cache_get_vendor(completion_id)
             if not vendor:
-                raise ProviderProxyError(f"Unable to find provider for {completion_id=}")
+                raise VendorProxyError(f"Unable to find vendor for {completion_id=}")
 
             model = f"{vendor}__SKIP"
 
@@ -300,31 +300,29 @@ class ProxyService:
             model = request_data.body.model if request_data.body else ""
 
         try:
-            provider, model_name = model.split("__", 1)
-            llm_provider = self._settings.provider_by_vendor[provider.lower()]
+            vendor, model_name = model.split("__", 1)
+            llm_vendor = self._settings.vendor_by_vendor[vendor.lower()]
         except ValueError as exc:
-            raise ProviderProxyError(
-                "Invalid model format. Expected 'provider__model_name', e.g. 'openai__gpt-4'"
+            raise VendorProxyError(
+                "Invalid model format. Expected 'vendor__model_name', e.g. 'openai__gpt-4'"
             ) from exc
 
         except KeyError as exc:
-            raise ProviderProxyError(f"Unable to extract provider from model name {model}") from exc
+            raise VendorProxyError(f"Unable to extract vendor from model name {model}") from exc
 
         else:
-            logger.debug(
-                "ProxyService: detected provider %s | source model: %s", llm_provider, model
-            )
+            logger.debug("ProxyService: detected vendor %s | source model: %s", llm_vendor, model)
 
-        return llm_provider, model_name
+        return llm_vendor, model_name
 
     @staticmethod
-    def _prepare_headers(provider: LLMProvider) -> dict[str, str]:
+    def _prepare_headers(vendor: LLMVendor) -> dict[str, str]:
         """Prepare headers for proxy request with auth if configured."""
         result_headers = {
             "accept": "application/json",
             "content-type": "application/json",
         }
-        return result_headers | provider.auth_headers
+        return result_headers | vendor.auth_headers
 
     def _save_vendor(
         self,
@@ -367,9 +365,9 @@ class ProxyService:
             content = json.loads(chunk_data)
             completion_id = content["id"]
         except json.decoder.JSONDecodeError as exc:
-            raise ProviderProxyError(f"Unable to decode chunk content: '{chunk_data!r}'") from exc
+            raise VendorProxyError(f"Unable to decode chunk content: '{chunk_data!r}'") from exc
         except KeyError as exc:
-            raise ProviderProxyError("Missed completion_id in response") from exc
+            raise VendorProxyError("Missed completion_id in response") from exc
 
         return str(completion_id)
 

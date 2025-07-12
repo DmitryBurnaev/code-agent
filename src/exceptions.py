@@ -19,29 +19,29 @@ class AppSettingsError(BaseApplicationError):
     """Settings error"""
 
 
-class ProviderError(BaseApplicationError):
-    """Provider error"""
+class VendorError(BaseApplicationError):
+    """Vendor error"""
 
 
-class ProviderLookupError(ProviderError):
-    """Provider lookup error"""
+class VendorLookupError(VendorError):
+    """Vendor lookup error"""
 
     log_level: int = logging.ERROR
-    log_message: str = "Provider lookup error"
+    log_message: str = "Vendor lookup error"
     status_code: int = status.HTTP_404_NOT_FOUND
 
 
-class ProviderProxyError(ProviderError):
-    """Provider proxy error"""
+class VendorProxyError(VendorError):
+    """Vendor proxy error"""
 
     log_level: int = logging.WARNING
-    log_message: str = "Provider proxy error"
+    log_message: str = "Vendor proxy error"
     status_code: int = status.HTTP_400_BAD_REQUEST
 
 
-class ProviderRequestError(ProviderError):
-    """Provider request error"""
+class VendorRequestError(VendorError):
+    """Vendor request error"""
 
     log_level: int = logging.ERROR
-    log_message: str = "Provider request error"
+    log_message: str = "Vendor request error"
     status_code: int = status.HTTP_400_BAD_REQUEST

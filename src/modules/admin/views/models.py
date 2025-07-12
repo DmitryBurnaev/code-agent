@@ -2,7 +2,7 @@ from sqladmin import expose, BaseView
 from starlette.requests import Request
 from starlette.responses import Response
 
-from src.services.providers import ProviderService
+from src.services.vendors import VendorService
 from src.settings import get_app_settings
 
 __all__ = ("ModelsAdminView",)
@@ -15,7 +15,7 @@ class ModelsAdminView(BaseView):
     @expose("/models", methods=["GET"])
     async def get_models(self, request: Request) -> Response:
         settings = get_app_settings()
-        models = await ProviderService(settings).get_list_models()
+        models = await VendorService(settings).get_list_models()
 
         context = {
             "vendor_models": [

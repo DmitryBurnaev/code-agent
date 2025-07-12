@@ -142,7 +142,6 @@ When enabled, the Swagger documentation is available at `/docs` and ReDoc at `/r
 |-----------------|--------------------------------------------|------------------------|
 | LOG_LEVEL       | Sets the logging level for the application | INFO                   |
 | AUTH_API_TOKEN  | API token for authentication               | (required, no default) |
-| PROVIDERS       | List of providers in JSON format           | []                     |
 | SWAGGER_ENABLED | Enables/disables Swagger documentation     | true                   |
 | APP_HOST        | Host address for the application           | localhost              |
 | APP_PORT        | Port number for the application            | 8003                   |

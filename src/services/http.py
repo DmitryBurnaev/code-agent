@@ -1,4 +1,4 @@
-"""HTTP client for AI providers."""
+"""HTTP client for AI vendors."""
 
 import logging
 from typing import Any
@@ -7,36 +7,36 @@ import httpx
 from httpx import URL, Response
 
 from src.settings import AppSettings
-from src.models import LLMProvider
+from src.models import LLMVendor
 
 logger = logging.getLogger(__name__)
 
 
-class AIProviderHTTPClient(httpx.AsyncClient):
-    """Wrapper around httpx.AsyncClient for AI providers."""
+class VendorHTTPClient(httpx.AsyncClient):
+    """Wrapper around httpx.AsyncClient for AI vendors."""
 
     def __init__(
         self,
         settings: AppSettings,
-        provider: LLMProvider | None = None,
+        vendor: LLMVendor | None = None,
         timeout: int | None = None,
         retries: int | None = None,
     ) -> None:
         transport = httpx.AsyncHTTPTransport(
-            retries=(retries or settings.provider_default_retries),
+            retries=(retries or settings.vendor_default_retries),
             proxy=settings.http_proxy_url,
         )
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
-        if provider is not None:
-            headers |= provider.auth_headers
+        if vendor is not None:
+            headers |= vendor.auth_headers
 
         super().__init__(
             transport=transport,
             headers=headers,
-            timeout=timeout or settings.provider_default_timeout,
+            timeout=timeout or settings.vendor_default_timeout,
         )
 
     async def get(self, url: URL | str, **kwargs: Any) -> Response:

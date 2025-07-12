@@ -12,7 +12,7 @@ from fastapi.responses import StreamingResponse
 from src.constants import VendorSlug
 from src.settings import AppSettings
 from src.models import ChatRequest, Message
-from src.exceptions import ProviderProxyError
+from src.exceptions import VendorProxyError
 from src.services.proxy import ProxyService, ProxyRequestData, ProxyEndpoint
 
 pytestmark = pytest.mark.asyncio
@@ -193,7 +193,7 @@ class TestProxyService:
             body=None,
         )
 
-        with pytest.raises(ProviderProxyError, match="Request body is required"):
+        with pytest.raises(VendorProxyError, match="Request body is required"):
             await proxy_service.handle_request(
                 request_data,
                 endpoint=ProxyEndpoint.CHAT_COMPLETION,
@@ -207,21 +207,21 @@ class TestProxyService:
         """Test handling request with an invalid model format."""
         request_data.body.model = "invalid-model"  # type: ignore
 
-        with pytest.raises(ProviderProxyError, match="Invalid model format"):
+        with pytest.raises(VendorProxyError, match="Invalid model format"):
             await proxy_service.handle_request(
                 request_data,
                 endpoint=ProxyEndpoint.CHAT_COMPLETION,
             )
 
-    async def test_handle_request_unknown_provider(
+    async def test_handle_request_unknown_vendor(
         self,
         request_data: ProxyRequestData,
         proxy_service: ProxyService,
     ) -> None:
-        """Test handling request with an unknown provider."""
+        """Test handling request with an unknown vendor."""
         request_data.body.model = "unknown__gpt-4"  # type: ignore
 
-        with pytest.raises(ProviderProxyError, match="Unable to extract provider"):
+        with pytest.raises(VendorProxyError, match="Unable to extract vendor"):
             await proxy_service.handle_request(
                 request_data,
                 endpoint=ProxyEndpoint.CHAT_COMPLETION,
@@ -257,7 +257,7 @@ class TestProxyService:
         proxy_service: ProxyService,
     ) -> None:
         """Test handling cancellation request without completion ID."""
-        with pytest.raises(ProviderProxyError, match="completion_id is required"):
+        with pytest.raises(VendorProxyError, match="completion_id is required"):
             await proxy_service.handle_request(
                 request_data,
                 endpoint=ProxyEndpoint.CANCEL_CHAT_COMPLETION,
@@ -344,7 +344,7 @@ class TestProxyService:
         request_data.timeout = 0.1
         mock_http_client.send.side_effect = httpx.TimeoutException("Request timed out")
 
-        with pytest.raises(ProviderProxyError, match="Request timeout"):
+        with pytest.raises(VendorProxyError, match="Request timeout"):
             await proxy_service.handle_request(
                 request_data,
                 endpoint=ProxyEndpoint.CHAT_COMPLETION,
@@ -361,7 +361,7 @@ class TestProxyService:
         stream_request_data.timeout = 0.1
         mock_stream_http_client.send.side_effect = httpx.TimeoutException("Stream timed out")
 
-        with pytest.raises(ProviderProxyError, match="Stream timeout"):
+        with pytest.raises(VendorProxyError, match="Stream timeout"):
             await stream_proxy_service.handle_request(
                 stream_request_data,
                 endpoint=ProxyEndpoint.CHAT_COMPLETION,
@@ -414,6 +414,6 @@ class TestProxyService:
         )
         assert isinstance(response, StreamingResponse)
 
-        with pytest.raises(ProviderProxyError, match="Missed completion_id in response"):
+        with pytest.raises(VendorProxyError, match="Missed completion_id in response"):
             async for _ in response.body_iterator:
                 pass

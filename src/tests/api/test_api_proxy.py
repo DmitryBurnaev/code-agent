@@ -10,22 +10,21 @@ from pydantic import SecretStr
 from fastapi.testclient import TestClient
 from starlette.responses import Response, StreamingResponse
 
-from src.constants import VendorSlug
 from src.settings import AppSettings
-from src.services.providers import ProviderService
-from src.models import ChatRequest, Message, AIModel, LLMProvider
+from src.services.vendors import VendorService
+from src.models import ChatRequest, Message, AIModel
 from src.services.proxy import ProxyService, ProxyRequestData, ProxyEndpoint
 
 
 @pytest.fixture
-def mock_provider_service() -> Generator[AsyncMock, Any, None]:
-    """Return mock provider service."""
-    mock_service = AsyncMock(spec=ProviderService)
+def mock_vendor_service() -> Generator[AsyncMock, Any, None]:
+    """Return mock vendor service."""
+    mock_service = AsyncMock(spec=VendorService)
     mock_service.get_list_models.return_value = [
         AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4"),
         AIModel(id="deepseek__deepseek-1", vendor="deepseek", vendor_id="deepseek-1"),
     ]
-    with patch("src.api.proxy.ProviderService", return_value=mock_service):
+    with patch("src.api.proxy.VendorService", return_value=mock_service):
         yield mock_service
 
 
@@ -43,10 +42,6 @@ def mock_settings() -> AppSettings:
     """Return mock settings for testing."""
     return AppSettings(
         api_token=SecretStr("test-token"),
-        providers=[
-            LLMProvider(vendor=VendorSlug.OPENAI, api_key=SecretStr("test-key")),
-            LLMProvider(vendor=VendorSlug.DEEPSEEK, api_key=SecretStr("test-key")),
-        ],
         http_proxy_url=None,
     )
 
@@ -54,7 +49,7 @@ def mock_settings() -> AppSettings:
 class TestProxyAPI:
     """Tests for proxy API endpoints."""
 
-    def test_list_models(self, client: TestClient, mock_provider_service: AsyncMock) -> None:
+    def test_list_models(self, client: TestClient, mock_vendor_service: AsyncMock) -> None:
         """Test GET /ai-proxy/models endpoint."""
         response = client.get("/api/ai-proxy/models")
         assert response.status_code == 200
@@ -65,7 +60,7 @@ class TestProxyAPI:
                 {"id": "deepseek__deepseek-1", "vendor": "deepseek", "vendor_id": "deepseek-1"},
             ]
         }
-        mock_provider_service.get_list_models.assert_awaited_once()
+        mock_vendor_service.get_list_models.assert_awaited_once()
 
     def test_create_chat_completion(
         self,

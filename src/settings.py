@@ -6,7 +6,6 @@ from pydantic import SecretStr, StringConstraints, Field
 from pydantic_core import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from src.models import LLMProvider
 from src.exceptions import AppSettingsError
 from src.constants import LOG_LEVELS
 
@@ -27,15 +26,14 @@ class AppSettings(BaseSettings):
     docs_enabled: bool = False
     api_token: SecretStr = Field(description="API token")
     secret_key: SecretStr = Field(description="Secret key", alias="APP_SECRET_KEY")
-    providers: list[LLMProvider] = Field(default_factory=list, description="List of LLM providers")
     app_host: str = "0.0.0.0"
     app_port: int = 8003
     log_level: LogLevelString = "INFO"
     jwt_algorithm: str = "HS256"
     http_proxy_url: str | None = Field(default_factory=lambda: None, description="Socks5 Proxy URL")
-    provider_default_timeout: int = 30
-    provider_default_retries: int = 3
-    provider_custom_url: str | None = Field(
+    vendor_default_timeout: int = 30
+    vendor_default_retries: int = 3
+    vendor_custom_url: str | None = Field(
         default_factory=lambda: None, description="API URL for 'custom' vendor"
     )
     admin_username: str = Field(
@@ -43,10 +41,6 @@ class AppSettings(BaseSettings):
     )
     admin_password: SecretStr = Field(description="Default admin password")
     offline_test_mode: bool = False
-
-    @cached_property
-    def provider_by_vendor(self) -> dict[str, LLMProvider]:
-        return {provider.vendor: provider for provider in self.providers}
 
     @property
     def log_config(self) -> dict[str, Any]:

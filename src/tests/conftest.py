@@ -10,25 +10,18 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.dependencies.settings import get_app_settings
 from src.main import make_app
-from src.services.providers import ProviderService
-from src.settings import AppSettings
+from src.services.vendors import VendorService
+from src.settings import AppSettings, get_app_settings
 from src.constants import VendorSlug
-from src.models import LLMProvider
+from src.models import LLMVendor
 from pydantic import SecretStr
 
 
 @pytest.fixture
 def mock_settings() -> AppSettings:
     """Return mock settings."""
-    return AppSettings(
-        api_token=SecretStr("test-token"),
-        providers=[
-            LLMProvider(vendor=VendorSlug.OPENAI, api_key=SecretStr("openai-key")),
-            LLMProvider(vendor=VendorSlug.DEEPSEEK, api_key=SecretStr("deepseek-key")),
-        ],
-    )
+    return AppSettings(api_token=SecretStr("test-token"), secret_key=SecretStr("test-secret"))
 
 
 @pytest.fixture
@@ -44,10 +37,10 @@ def auth_test_header(auth_test_token: str) -> dict[str, str]:
 
 
 @pytest.fixture
-def providers() -> list[LLMProvider]:
+def vendors() -> list[LLMVendor]:
     return [
-        LLMProvider(
-            vendor=VendorSlug.OPENAI,
+        LLMVendor(
+            slug=VendorSlug.OPENAI,
             api_key=SecretStr("test-key"),
         )
     ]
@@ -56,13 +49,12 @@ def providers() -> list[LLMProvider]:
 @pytest.fixture
 def client(
     auth_test_token: str,
-    providers: list[LLMProvider],
+    vendors: list[LLMVendor],
     auth_test_header: dict[str, str],
 ) -> TestClient:
     """Create a test client with mocked settings."""
     test_settings = AppSettings(
         api_token=SecretStr(auth_test_token),
-        providers=providers,
         http_proxy_url=None,
     )
     test_app = make_app(settings=test_settings)
@@ -122,9 +114,9 @@ def mock_httpx_client() -> MockHTTPxClient:
 
 
 @pytest.fixture
-def service(mock_settings: AppSettings, mock_httpx_client: MockHTTPxClient) -> ProviderService:
-    """Return a provider service instance."""
-    return ProviderService(mock_settings, cast(httpx.AsyncClient, mock_httpx_client))
+def service(mock_settings: AppSettings, mock_httpx_client: MockHTTPxClient) -> VendorService:
+    """Return a vendor's service instance."""
+    return VendorService(mock_settings, cast(httpx.AsyncClient, mock_httpx_client))
 
 
 @pytest.fixture
