@@ -2,7 +2,7 @@ from typing import Any, Optional, Literal, Self, TYPE_CHECKING
 from datetime import datetime
 from pydantic import BaseModel, Field, SecretStr
 
-from src.constants import VendorSlug, VENDOR_DEFAULT_TIMEOUT, PROVIDER_URLS
+from src.constants import VENDOR_DEFAULT_TIMEOUT, PROVIDER_URLS
 
 if TYPE_CHECKING:
     from src.db.models import Vendor

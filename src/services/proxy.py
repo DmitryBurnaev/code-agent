@@ -10,7 +10,6 @@ import httpx
 from httpx import Headers
 from starlette.responses import StreamingResponse, Response
 
-from src.constants import VendorSlug
 from src.services.cache import CacheProtocol, InMemoryCache
 from src.exceptions import ProviderProxyError
 from src.models import ChatRequest, LLMProvider
@@ -219,7 +218,7 @@ class ProxyService:
     async def _handle_stream(
         self,
         httpx_response: httpx.Response,
-        vendor: VendorSlug,
+        vendor: str,
         endpoint: ProxyEndpoint,
     ) -> StreamingResponse:
         """Wraps the response in a StreamingResponse for correct closing connection"""
@@ -330,7 +329,7 @@ class ProxyService:
     def _save_vendor(
         self,
         resp_content: bytes | str,
-        vendor: VendorSlug,
+        vendor: str,
         endpoint: ProxyEndpoint,
     ) -> None:
         if endpoint != ProxyEndpoint.CHAT_COMPLETION:
@@ -349,7 +348,7 @@ class ProxyService:
         )
 
     @staticmethod
-    def _extract_completion_id(chunk_data: bytes | str, vendor: VendorSlug) -> str:
+    def _extract_completion_id(chunk_data: bytes | str, vendor: str) -> str:
 
         if isinstance(chunk_data, bytes):
             chunk_data = chunk_data.decode("utf-8")
@@ -374,7 +373,7 @@ class ProxyService:
 
         return str(completion_id)
 
-    def _cache_set_vendor(self, completion_id: str, vendor: VendorSlug) -> None:
+    def _cache_set_vendor(self, completion_id: str, vendor: str) -> None:
         key = f"completion__{completion_id}"
         self._cache.set(key, vendor)
 
