@@ -8,8 +8,11 @@ from typing import Self, AsyncIterator, Any
 
 import httpx
 from httpx import Headers
+from pydantic import SecretStr
 from starlette.responses import StreamingResponse, Response
 
+from src.db.repositories import VendorRepository
+from src.db.services import SASessionUOW
 from src.services.cache import CacheProtocol, InMemoryCache
 from src.exceptions import VendorProxyError
 from src.models import ChatRequest, LLMVendor
@@ -132,7 +135,7 @@ class ProxyService:
             raise VendorProxyError(f"Request body is required for {endpoint}")
 
         logger.info("ProxyService: %s requested |  %s", endpoint, request_data)
-        vendor, actual_model = self._extract_vendor_requested(request_data, endpoint)
+        vendor, actual_model = await self._extract_vendor_requested(request_data, endpoint)
 
         # Prepare request data
         url = self._build_target_url(vendor, endpoint, request_data)
@@ -278,7 +281,7 @@ class ProxyService:
 
         return urllib.parse.urljoin(vendor.base_url, path)
 
-    def _extract_vendor_requested(
+    async def _extract_vendor_requested(
         self,
         request_data: ProxyRequestData,
         endpoint: ProxyEndpoint,
@@ -290,18 +293,32 @@ class ProxyService:
             if not completion_id:
                 raise VendorProxyError("completion_id is required for cancellation")
 
-            vendor = self._cache_get_vendor(completion_id)
-            if not vendor:
+            vendor_slug = self._cache_get_vendor(completion_id)
+            if not vendor_slug:
                 raise VendorProxyError(f"Unable to find vendor for {completion_id=}")
 
-            model = f"{vendor}__SKIP"
+            model = f"{vendor_slug}__SKIP"
 
         else:
             model = request_data.body.model if request_data.body else ""
 
         try:
-            vendor, model_name = model.split("__", 1)
-            llm_vendor = self._settings.vendor_by_vendor[vendor.lower()]
+            vendor_slug, model_name = model.split("__", 1)
+            async with SASessionUOW() as uow:
+                vendor_instance = await VendorRepository(session=uow.session).get_by_slug(
+                    slug=vendor_slug.lower().strip()
+                )
+                if not vendor_instance:
+                    raise VendorProxyError(f"Unable to find vendor for {vendor_slug}")
+
+                # TODO: think about escaping LLMVendor class (using SA model instead)
+                vendor = LLMVendor(
+                    slug=vendor_instance.slug,
+                    api_key=SecretStr(vendor_instance.api_key),
+                    url=vendor_instance.api_url,
+                    timeout=vendor_instance.timeout,
+                )
+
         except ValueError as exc:
             raise VendorProxyError(
                 "Invalid model format. Expected 'vendor__model_name', e.g. 'openai__gpt-4'"
@@ -311,9 +328,9 @@ class ProxyService:
             raise VendorProxyError(f"Unable to extract vendor from model name {model}") from exc
 
         else:
-            logger.debug("ProxyService: detected vendor %s | source model: %s", llm_vendor, model)
+            logger.debug("ProxyService: detected vendor %s | source model: %s", vendor, model)
 
-        return llm_vendor, model_name
+        return vendor, model_name
 
     @staticmethod
     def _prepare_headers(vendor: LLMVendor) -> dict[str, str]:

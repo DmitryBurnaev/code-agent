@@ -25,7 +25,7 @@ class AppSettings(BaseSettings):
 
     docs_enabled: bool = False
     api_token: SecretStr = Field(description="API token")
-    secret_key: SecretStr = Field(description="Secret key", alias="APP_SECRET_KEY")
+    secret_key: SecretStr = Field(description="Secret key")
     app_host: str = "0.0.0.0"
     app_port: int = 8003
     log_level: LogLevelString = "INFO"

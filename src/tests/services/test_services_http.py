@@ -14,6 +14,9 @@ def mock_settings() -> AppSettings:
     """Return mock settings."""
     return AppSettings(
         api_token=SecretStr("test_token"),
+        admin_username="test-username",
+        admin_password=SecretStr("test-password"),
+        secret_key=SecretStr("test-secret"),
         http_proxy_url=None,
     )
 
