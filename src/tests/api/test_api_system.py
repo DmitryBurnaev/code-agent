@@ -4,20 +4,19 @@ from datetime import datetime
 
 from starlette.testclient import TestClient
 
-from src.models import LLMProvider
 
 
 class TestSystemAPI:
     """Tests for system API endpoints."""
 
-    def test_get_system_info(self, client: TestClient, providers: list[LLMProvider]) -> None:
+    def test_get_system_info(self, client: TestClient, vendors) -> None:
         """Test GET /system/info/ endpoint."""
         response = client.get("/api/system/info/")
         assert response.status_code == 200
         data = response.json()
         assert data == {
             "status": "ok",
-            "providers": [provider.vendor for provider in providers],
+            "vendors": [vendor.slug for vendor in vendors],
         }
 
     def test_health_check(self, client: TestClient) -> None:

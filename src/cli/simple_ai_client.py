@@ -15,10 +15,10 @@ from typing import Any, Optional, ContextManager
 DEFAULT_VENDOR_URL = "https://api.deepseek.com/v1"
 DEFAULT_VENDOR = "deepseek"
 DEFAULT_MODEL = "deepseek-chat"
-PROVIDER_URLS: dict[str, str] = {
+VENDOR_URLS: dict[str, str] = {
     "openai": "https://api.openai.com/v1",
     "deepseek": "https://api.deepseek.com/v1",
-    "custom": "https://custom-provider/v1",
+    "custom": "https://custom-vendor/v1",
 }
 
 
@@ -150,8 +150,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="CLI for interacting with AI models (DeepSeek/OpenAI compatible API)"
     )
-    parser.add_argument("--vendor", help="AI provider (deepseek, ...)")
-    parser.add_argument("--vendor-url", help="AI provider URL (https://api.deepseek.com/v1, ...)")
+    parser.add_argument("--vendor", help="AI vendor (deepseek, ...)")
+    parser.add_argument("--vendor-url", help="AI vendor URL (https://api.deepseek.com/v1, ...)")
     parser.add_argument("--model", default="deepseek-chat", help="Model name (e.g. deepseek-chat)")
     parser.add_argument(
         "--token", default=None, help="Authorization token (or environment variable)"
@@ -168,7 +168,7 @@ def main() -> None:
             print("[error] Either --vendor or --vendor-url must be provided")
             sys.exit(1)
 
-        vendor_url = PROVIDER_URLS.get(vendor)
+        vendor_url = VENDOR_URLS.get(vendor)
         if not vendor_url:
             print(f"[error] Unknown vendor: {vendor}")
             sys.exit(1)

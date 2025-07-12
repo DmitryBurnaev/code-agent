@@ -1,4 +1,4 @@
-"""Tests for provider service."""
+"""Tests for vendor service."""
 
 from typing import cast
 
@@ -6,7 +6,7 @@ import httpx
 import pytest
 from unittest.mock import AsyncMock
 
-from src.services.providers import ProviderService, ProviderClient
+from src.services.vendors import VendorService, VendorClient
 from src.models import AIModel
 from src.settings import AppSettings
 from src.constants import VendorSlug
@@ -67,31 +67,31 @@ def mock_httpx_for_models_client(mock_models: MOCK_MODELS_TYPE) -> MockHTTPxClie
 def service(
     mock_settings: AppSettings,
     mock_httpx_for_models_client: MockHTTPxClient,
-) -> ProviderService:
-    """Return a provider service instance."""
-    return ProviderService(mock_settings, cast(httpx.AsyncClient, mock_httpx_for_models_client))
+) -> VendorService:
+    """Return a vendor service instance."""
+    return VendorService(mock_settings, cast(httpx.AsyncClient, mock_httpx_for_models_client))
 
 
-class TestProviderService:
-    """Tests for ProviderService."""
+class TestVendorService:
+    """Tests for VendorService."""
 
-    async def test_get_client(self, service: ProviderService, mock_settings: AppSettings) -> None:
-        """Test getting provider client."""
-        provider = mock_settings.providers[0]
-        client = service.get_client(provider)
-        assert isinstance(client, ProviderClient)
+    async def test_get_client(self, service: VendorService, mock_settings: AppSettings) -> None:
+        """Test getting vendor client."""
+        vendor = mock_settings.vendors[0]
+        client = service.get_client(vendor)
+        assert isinstance(client, VendorClient)
         # Check client reuse
-        assert service.get_client(provider) is client
+        assert service.get_client(vendor) is client
 
     async def test_get_list_models_cached(
         self,
         mock_settings: AppSettings,
-        service: ProviderService,
+        service: VendorService,
         mock_httpx_for_models_client: MockHTTPxClient,
     ) -> None:
         """Test getting models' list with cache."""
 
-        # Set cache for the first provider
+        # Set cache for the first vendor
         service._cache_set_data(
             VendorSlug.OPENAI,
             [AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4")],
@@ -112,12 +112,12 @@ class TestProviderService:
 
     async def test_get_list_models_force_refresh(
         self,
-        service: ProviderService,
+        service: VendorService,
         mock_httpx_for_models_client: AsyncMock,
     ) -> None:
         """Test getting models list with force refresh."""
 
-        # Set cache for the first provider
+        # Set cache for the first vendor
         service._cache_set_data(
             VendorSlug.OPENAI,
             [AIModel(id="openai__old-gpt-4", vendor="openai", vendor_id="old-gpt-4")],
@@ -144,7 +144,7 @@ class TestProviderService:
 
     async def test_get_list_models_error_handling(
         self,
-        service: ProviderService,
+        service: VendorService,
         mock_settings: AppSettings,
         mock_httpx_for_models_client: AsyncMock,
     ) -> None:

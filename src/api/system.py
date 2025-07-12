@@ -28,7 +28,7 @@ async def get_system_info() -> SystemInfo:
 
     return SystemInfo(
         status="ok",
-        providers=[vendor.slug for vendor in vendors],
+        vendors=[vendor.slug for vendor in vendors],
     )
 
 

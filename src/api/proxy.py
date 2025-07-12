@@ -11,7 +11,7 @@ from src.models import (
     CancelCompletionResponse,
 )
 from src.api import CORSBaseRoute
-from src.services.providers import ProviderService
+from src.services.vendors import VendorService
 from src.services.proxy import ProxyRequestData, ProxyService, ProxyEndpoint
 
 logger = logging.getLogger(__name__)
@@ -30,12 +30,12 @@ async def options_models() -> Response:
 
 @router.get(
     "/models",
-    description="List available models from all configured providers",
+    description="List available models from all configured vendors",
     response_model=ModelListResponse,
 )
 async def list_models(settings: SettingsDep) -> ModelListResponse:
-    """Get a list of available models from all configured providers"""
-    service = ProviderService(settings)
+    """Get a list of available models from all configured vendors"""
+    service = VendorService(settings)
     models = await service.get_list_models()
     return ModelListResponse(data=models)
 
@@ -52,7 +52,7 @@ async def options_chat_completion() -> Response:
 
 @router.post(
     "/chat/completions",
-    description="Send a chat completion request to the AI provider specified by model name",
+    description="Send a chat completion request to the AI vendor specified by model name",
     response_model=ChatCompletionResponse | ChatCompletionStreamResponse,
     responses={
         200: {
@@ -70,7 +70,7 @@ async def create_chat_completion(
     chat_request: ChatRequest,
     settings: SettingsDep,
 ) -> Response:
-    """Create a chat completion using the provider specified in the model name"""
+    """Create a chat completion using the vendor specified in the model name"""
     request_data = ProxyRequestData(
         method=request.method,
         headers=dict(request.headers),
@@ -101,8 +101,8 @@ async def cancel_chat_completion(
 ) -> Response:
     """
     Cancel an ongoing chat completion request.
-    Requires the original model name to determine the provider.
-    Not all providers support this functionality.
+    Requires the original model name to determine the vendor.
+    Not all vendors support this functionality.
     """
     request_data = ProxyRequestData(
         method=request.method,

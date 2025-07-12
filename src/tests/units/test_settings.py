@@ -7,21 +7,19 @@ import pytest
 from pydantic import SecretStr
 
 from src.settings import AppSettings, get_app_settings
-from src.models import LLMProvider
-from src.constants import VendorSlug, LOG_LEVELS
+from src.constants import LOG_LEVELS
 
 
 class TestAppSettings:
     """Tests for AppSettings class."""
 
-    @patch.dict(os.environ, {"PROVIDERS": "[]", "API_TOKEN": "test-token"})
+    @patch.dict(os.environ, {"API_TOKEN": "test-token"})
     def test_default_settings(self) -> None:
         """Test default settings values."""
         get_app_settings.cache_clear()
         settings = AppSettings(_env_file=None)  # type: ignore
         assert settings.docs_enabled is False
         assert settings.api_token.get_secret_value() == "test-token"
-        assert settings.providers == []
 
     @pytest.mark.parametrize("log_level", LOG_LEVELS.split("|"))
     def test_valid_log_levels(self, log_level: str) -> None:
@@ -30,7 +28,7 @@ class TestAppSettings:
             api_token=SecretStr("test-token"),
             log_level=log_level,
             http_proxy_url=None,
-            provider_custom_url=None,
+            vendor_custom_url=None,
         )
         assert settings.log_level == log_level.upper()
 
@@ -41,26 +39,8 @@ class TestAppSettings:
                 api_token=SecretStr("test-token"),
                 log_level="INVALID",
                 http_proxy_url=None,
-                provider_custom_url=None,
+                vendor_custom_url=None,
             )
-
-    def test_providers(self) -> None:
-        """Test providers configuration."""
-        providers = [
-            LLMProvider(vendor=VendorSlug.OPENAI, api_key=SecretStr("openai-key")),
-            LLMProvider(vendor=VendorSlug.DEEPSEEK, api_key=SecretStr("deepseek-key")),
-        ]
-        settings = AppSettings(
-            api_token=SecretStr("test-token"),
-            providers=providers,
-            http_proxy_url=None,
-            provider_custom_url=None,
-        )
-        assert settings.providers == providers
-        assert settings.provider_by_vendor == {
-            VendorSlug.OPENAI: providers[0],
-            VendorSlug.DEEPSEEK: providers[1],
-        }
 
     def test_log_config(self) -> None:
         """Test log configuration."""
@@ -68,7 +48,7 @@ class TestAppSettings:
             api_token=SecretStr("test-token"),
             log_level="DEBUG",
             http_proxy_url=None,
-            provider_custom_url=None,
+            vendor_custom_url=None,
         )
         log_config = settings.log_config
         assert log_config["version"] == 1
@@ -95,7 +75,6 @@ class TestGetSettings:
             "APP_HOST": "localhost",
             "APP_PORT": "8080",
             "HTTP_PROXY_URL": "socks5://127.0.0.1:8080",
-            "PROVIDERS": '[{"vendor":"openai","api_key":"openai-key"}]',
         },
     )
     def test_get_app_settings_from_env(self) -> None:
@@ -107,9 +86,6 @@ class TestGetSettings:
         assert settings.app_host == "localhost"
         assert settings.app_port == 8080
         assert settings.http_proxy_url == "socks5://127.0.0.1:8080"
-        assert settings.providers == [
-            LLMProvider(vendor=VendorSlug.OPENAI, api_key=SecretStr("openai-key")),
-        ]
 
     @patch.dict(os.environ, {"AUTH_API_TOKEN": "test-token", "LOG_LEVEL": "INVALID"})
     def test_get_app_settings_validation_error(self) -> None:

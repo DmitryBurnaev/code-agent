@@ -9,7 +9,7 @@ from src.models import (
     HealthCheck,
     Message,
     ChatRequest,
-    LLMProvider,
+    LLMVendor,
 )
 from src.constants import VENDOR_DEFAULT_TIMEOUT, VendorSlug
 
@@ -21,12 +21,12 @@ class TestSystemInfo:
         """Test SystemInfo model creation."""
         info = SystemInfo()
         assert info.status == "ok"
-        assert info.providers == []
+        assert info.vendors == []
 
-    def test_system_info_with_providers(self) -> None:
-        """Test SystemInfo model with providers."""
-        info = SystemInfo(providers=["test-provider"])
-        assert info.providers == ["test-provider"]
+    def test_system_info_with_vendors(self) -> None:
+        """Test SystemInfo model with vendors."""
+        info = SystemInfo(vendors=["test-vendor"])
+        assert info.vendors == ["test-vendor"]
 
 
 class TestHealthCheck:
@@ -68,29 +68,29 @@ class TestChatRequest:
         assert request.model == "test-model"
         assert request.stream is False
 
-    def test_chat_request_with_provider_params(self) -> None:
-        """Test ChatRequest model with provider-specific parameters."""
+    def test_chat_request_with_vendor_params(self) -> None:
+        """Test ChatRequest model with vendor-specific parameters."""
         messages = [Message(role="user", content="Hello!")]
         request = ChatRequest(
             messages=messages,
             model="test-model",
             **{"temperature": 0.7, "max_tokens": 1000},  # type: ignore
         )
-        provider_params = request.get_extra_params()
-        assert provider_params == {"temperature": 0.7, "max_tokens": 1000}
+        vendor_params = request.get_extra_params()
+        assert vendor_params == {"temperature": 0.7, "max_tokens": 1000}
 
 
-class TestLLMProvider:
-    """Tests for LLMProvider model."""
+class TestLLMVendor:
+    """Tests for LLMVendor model."""
 
-    def test_llm_provider_creation(self) -> None:
-        """Test LLMProvider model creation."""
-        provider = LLMProvider(vendor=VendorSlug.OPENAI, api_key=SecretStr("test-key"))
-        assert provider.vendor == VendorSlug.OPENAI
-        assert provider.api_key.get_secret_value() == "test-key"
-        assert provider.timeout == VENDOR_DEFAULT_TIMEOUT
+    def test_llm_vendor_creation(self) -> None:
+        """Test LLMVendor model creation."""
+        vendor = LLMVendor(slug=VendorSlug.OPENAI, api_key=SecretStr("test-key"))
+        assert vendor.slug == VendorSlug.OPENAI
+        assert vendor.api_key.get_secret_value() == "test-key"
+        assert vendor.timeout == VENDOR_DEFAULT_TIMEOUT
 
-    def test_llm_provider_auth_headers(self) -> None:
-        """Test LLMProvider auth headers."""
-        provider = LLMProvider(vendor=VendorSlug.OPENAI, api_key=SecretStr("test-key"))
-        assert provider.auth_headers == {"Authorization": "Bearer test-key"}
+    def test_llm_vendor_auth_headers(self) -> None:
+        """Test LLMVendor auth headers."""
+        vendor = LLMVendor(slug=VendorSlug.OPENAI, api_key=SecretStr("test-key"))
+        assert vendor.auth_headers == {"Authorization": "Bearer test-key"}

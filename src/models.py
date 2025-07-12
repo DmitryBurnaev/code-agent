@@ -2,7 +2,7 @@ from typing import Any, Optional, Literal, Self, TYPE_CHECKING
 from datetime import datetime
 from pydantic import BaseModel, Field, SecretStr
 
-from src.constants import VENDOR_DEFAULT_TIMEOUT, PROVIDER_URLS
+from src.constants import VENDOR_DEFAULT_TIMEOUT, VENDOR_URLS
 
 if TYPE_CHECKING:
     from src.db.models import Vendor
@@ -12,7 +12,7 @@ __all__ = (
     "HealthCheck",
     "Message",
     "ChatRequest",
-    "LLMProvider",
+    "LLMVendor",
     "AIModel",
     "ErrorResponse",
     "ModelListResponse",
@@ -27,7 +27,7 @@ class SystemInfo(BaseModel):
     """System information response model."""
 
     status: str = "ok"
-    providers: list[str] = Field(default_factory=list)
+    vendors: list[str] = Field(default_factory=list)
 
 
 class HealthCheck(BaseModel):
@@ -72,10 +72,10 @@ class ChatRequest(BaseModel):
         }
 
 
-class LLMProvider(BaseModel):
-    """Provider configuration with API keys."""
+class LLMVendor(BaseModel):
+    """Vendor configuration with API keys."""
 
-    vendor: str
+    slug: str
     api_key: SecretStr
     url: str | None = None
     auth_type: str = "Bearer"
@@ -84,15 +84,16 @@ class LLMProvider(BaseModel):
     @classmethod
     def from_vendor(cls, vendor: "Vendor") -> Self:
         return cls(
-            vendor=vendor.slug,
+            slug=vendor.slug,
             api_key=SecretStr(vendor.decrypted_api_key),
             url=vendor.api_url,
         )
 
     @property
     def base_url(self) -> str:
-        """Get base URL for provider."""
-        url = self.url or PROVIDER_URLS[self.vendor]
+        """Get base URL for vendor configuration."""
+        # USE vendor URL from DB's model
+        url = self.url or VENDOR_URLS[self.slug]
         if not url.endswith("/"):
             url += "/"
 
@@ -103,10 +104,10 @@ class LLMProvider(BaseModel):
         return {"Authorization": f"{self.auth_type} {self.api_key.get_secret_value()}"}
 
     def __repr__(self) -> str:
-        return f"LLMProvider(vendor={self.vendor}, api_key={self.api_key})"
+        return f"LLMVendor(vendor={self.slug}, api_key={self.api_key})"
 
     def __str__(self) -> str:
-        return f"Provider {self.vendor}"
+        return f"LLMVendor {self.slug}"
 
 
 class AIModel(BaseModel):
