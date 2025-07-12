@@ -21,7 +21,12 @@ from pydantic import SecretStr
 @pytest.fixture
 def mock_settings() -> AppSettings:
     """Return mock settings."""
-    return AppSettings(api_token=SecretStr("test-token"), secret_key=SecretStr("test-secret"))
+    return AppSettings(
+        api_token=SecretStr("test-token"),
+        admin_username="test-username",
+        admin_password=SecretStr("test-password"),
+        secret_key=SecretStr("test-secret"),
+    )
 
 
 @pytest.fixture
@@ -56,6 +61,9 @@ def client(
     test_settings = AppSettings(
         api_token=SecretStr(auth_test_token),
         http_proxy_url=None,
+        admin_username="test-username",
+        admin_password=SecretStr("test-password"),
+        secret_key=SecretStr("test-secret"),
     )
     test_app = make_app(settings=test_settings)
     test_app.dependency_overrides = {

@@ -26,6 +26,9 @@ class TestAppSettings:
         """Test valid log levels."""
         settings = AppSettings(
             api_token=SecretStr("test-token"),
+            admin_username="test-username",
+            admin_password=SecretStr("test-password"),
+            secret_key=SecretStr("test-secret"),
             log_level=log_level,
             http_proxy_url=None,
             vendor_custom_url=None,
@@ -37,6 +40,9 @@ class TestAppSettings:
         with pytest.raises(ValueError):
             AppSettings(
                 api_token=SecretStr("test-token"),
+                admin_username="test-username",
+                admin_password=SecretStr("test-password"),
+                secret_key=SecretStr("test-secret"),
                 log_level="INVALID",
                 http_proxy_url=None,
                 vendor_custom_url=None,
@@ -46,6 +52,9 @@ class TestAppSettings:
         """Test log configuration."""
         settings = AppSettings(
             api_token=SecretStr("test-token"),
+            admin_username="test-username",
+            admin_password=SecretStr("test-password"),
+            secret_key=SecretStr("test-secret"),
             log_level="DEBUG",
             http_proxy_url=None,
             vendor_custom_url=None,

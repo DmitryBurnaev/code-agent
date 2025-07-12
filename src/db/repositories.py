@@ -181,6 +181,15 @@ class VendorRepository(BaseRepository[Vendor]):
 
         return active_count
 
+    async def get_by_slug(self, slug: str) -> Vendor | None:
+        """Get vendor instance by slug"""
+        logger.debug("[DB] Getting vendor by slug: %s", slug)
+        vendors = await self.filter(slug=slug)
+        if not vendors:
+            return None
+
+        return vendors[0]
+
 
 class TokenRepository(BaseRepository[Token]):
     """Token's repository."""
