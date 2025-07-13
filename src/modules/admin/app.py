@@ -38,11 +38,13 @@ class AdminApp(Admin):
     """License-specific admin class."""
 
     custom_templates_dir = "modules/admin/templates"
+    app: "CodeAgentAPP"
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._init_jinja_templates()
         self._register_views()
+        self._views: list[BaseModelView] = []
 
     @login_required
     async def index(self, request: Request) -> Response:
@@ -109,11 +111,17 @@ class AdminApp(Admin):
         for view in ADMIN_VIEWS:
             self.add_view(view)
 
+        for view_instance in self._views:
+            view_instance.app = self.app
+
 
 def make_admin(app: "CodeAgentAPP") -> Admin:
     """Create a simple admin application"""
     return AdminApp(
         app,
         session_maker=get_async_sessionmaker(),
-        authentication_backend=AdminAuth(secret_key=app.settings.secret_key.get_secret_value()),
+        authentication_backend=AdminAuth(
+            secret_key=app.settings.secret_key.get_secret_value(),
+            settings=app.settings,
+        ),
     )

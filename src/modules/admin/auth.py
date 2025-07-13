@@ -1,14 +1,18 @@
-import base64
-import json
+import datetime
 import logging
-from typing import cast, TypedDict, Any
+from typing import cast, TypedDict
 
 from fastapi import HTTPException, Request
 from sqladmin.authentication import AuthenticationBackend
 from src.db.repositories import UserRepository
 from src.db.services import SASessionUOW
+from src.dependencies import SettingsDep
+from src.modules.auth.tokens import jwt_encode, JWTPayload, jwt_decode
+from src.settings import AppSettings
+from src.utils import utcnow
 
 logger = logging.getLogger(__name__)
+type USER_ID = int
 
 
 class UserPayload(TypedDict):
@@ -18,6 +22,14 @@ class UserPayload(TypedDict):
 
 
 class AdminAuth(AuthenticationBackend):
+    """
+    Customized admin authentication (based on encoding JWT token based on current user)
+    """
+
+    def __init__(self, secret_key: str, settings: SettingsDep) -> None:
+        super().__init__(secret_key=secret_key)
+        self.settings: AppSettings = settings
+
     async def login(self, request: Request) -> bool:
         form = await request.form()
         username: str = cast(str, form["username"])
@@ -50,11 +62,11 @@ class AdminAuth(AuthenticationBackend):
         if not token:
             return False
 
-        user_payload = json.loads(base64.b64decode(token).decode())
+        user_id = self._decode_token(token)
         async with SASessionUOW() as uow:
-            user = await UserRepository(session=uow.session).first(instance_id=user_payload["id"])
+            user = await UserRepository(session=uow.session).first(instance_id=user_id)
             if not user:
-                logger.error("User 'id: %r' not found", user_payload["id"])
+                logger.error("User 'id: %r' not found", user_id)
                 return False
 
             if not user.is_active:
@@ -67,17 +79,15 @@ class AdminAuth(AuthenticationBackend):
 
         return True
 
-    @classmethod
-    def _encode_token(cls, user_payload: UserPayload) -> str:
-        # TODO: use real JWT here
-        fake_jwt_token: str = base64.b64encode(json.dumps(user_payload).encode()).decode()
-        return fake_jwt_token
-
-    @classmethod
-    def _decode_token(cls, token: str) -> UserPayload:
-        user_payload: dict[str, Any] = json.loads(base64.b64decode(token).decode())
-        return UserPayload(
-            id=user_payload["id"],
-            username=user_payload["username"],
-            email=user_payload["email"],
+    def _encode_token(self, user_payload: UserPayload) -> str:
+        exp_time = self.settings.admin_session_expiration_time
+        admin_login_token = jwt_encode(
+            payload=JWTPayload(sub=str(user_payload["id"])),
+            expires_at=(utcnow() + datetime.timedelta(seconds=exp_time)),
+            settings=self.settings,
         )
+        return admin_login_token
+
+    def _decode_token(self, token: str) -> USER_ID:
+        user_payload = jwt_decode(token, settings=self.settings)
+        return int(user_payload.sub)

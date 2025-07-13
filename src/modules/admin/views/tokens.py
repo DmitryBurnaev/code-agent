@@ -12,7 +12,7 @@ from src.db.services import SASessionUOW
 from src.db.models import BaseModel, Token
 from src.services.cache import InMemoryCache
 from src.utils import admin_get_link
-from src.modules.auth.tokens import make_token
+from src.modules.auth.tokens import make_api_token
 from src.modules.admin.views.base import BaseModelView, FormDataType
 
 __all__ = ("TokenAdminView",)
@@ -40,7 +40,7 @@ class TokenAdminView(BaseModelView, model=Token):
         if data.get("expires_at"):
             expires_at = cast(datetime.datetime, data["expires_at"])
 
-        token_info = make_token(expires_at=expires_at)
+        token_info = make_api_token(expires_at=expires_at, settings=self.app.settings)
         data["token"] = token_info.hashed_value
         token: Token = await super().insert_model(request, data)
         cache = InMemoryCache()
