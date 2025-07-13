@@ -11,7 +11,7 @@ from fastapi.security import APIKeyHeader
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
-from src.dependencies import SettingsDep
+from src.settings import SettingsDep
 from src.db.repositories import TokenRepository
 from src.db.services import SASessionUOW, logger
 
