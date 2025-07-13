@@ -40,6 +40,7 @@ class AppSettings(BaseSettings):
         default_factory=lambda: "admin", description="Default admin username"
     )
     admin_password: SecretStr = Field(description="Default admin password")
+    admin_session_expiration_time: int = 2 * 24 * 3600  # 2 days
     offline_test_mode: bool = False
 
     @property
