@@ -6,7 +6,7 @@ from fastapi import HTTPException, Request
 from sqladmin.authentication import AuthenticationBackend
 from src.db.repositories import UserRepository
 from src.db.services import SASessionUOW
-from src.dependencies import SettingsDep
+from src.settings import SettingsDep
 from src.modules.auth.tokens import jwt_encode, JWTPayload, jwt_decode
 from src.settings import AppSettings
 from src.utils import utcnow

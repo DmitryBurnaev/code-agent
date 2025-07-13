@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, Request, Response
 
-from src.dependencies import SettingsDep
+from src.settings import SettingsDep
 from src.models import (
     ChatRequest,
     ModelListResponse,

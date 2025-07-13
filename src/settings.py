@@ -2,6 +2,7 @@ import logging
 from functools import lru_cache, cached_property
 from typing import Annotated, Any, TypeVar
 
+from fastapi import Depends
 from pydantic import SecretStr, StringConstraints, Field
 from pydantic_core import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -114,3 +115,11 @@ def get_app_settings() -> AppSettings:
 def get_db_settings() -> DBSettings:
     """Prepares database settings from environment variables"""
     return _get_settings(DBSettings)
+
+
+def _app_settings() -> AppSettings:
+    """Simple access to settings from controllers"""
+    return get_app_settings()
+
+
+SettingsDep = Annotated[AppSettings, Depends(_app_settings)]
