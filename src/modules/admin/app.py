@@ -15,7 +15,7 @@ from src.modules.admin.views import (
     BaseModelView,
     UserAdminView,
     VendorAdminView,
-    ModelsAdminView,
+    AIModelsAdminView,
     TokenAdminView,
 )
 from src.db.session import get_async_sessionmaker
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 ADMIN_VIEWS: tuple[type[BaseView], ...] = (
     UserAdminView,
     VendorAdminView,
-    ModelsAdminView,
+    AIModelsAdminView,
     TokenAdminView,
 )
 

@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class VendorAIModel(BaseModel):
+class VendorModelResponse(BaseModel):
     """
     Parse vendor sent data
     Example: {'id': 'o1-mini', 'object': 'model', 'created': 1725649008, 'owned_by': 'system'}
@@ -28,10 +28,10 @@ class VendorAIModel(BaseModel):
     id: str
 
 
-class VendorAIModelsResponse(BaseModel):
+class VendorDataResponse(BaseModel):
     """Represents an AI model with vendor-specific details."""
 
-    data: list[VendorAIModel]
+    data: list[VendorModelResponse]
 
 
 class VendorClient:
@@ -61,7 +61,7 @@ class VendorClient:
                 logger.warning("%s | No models data in vendor response.", self._vendor)
                 return []
 
-            models_data = VendorAIModelsResponse.model_validate(response_data)
+            models_data = VendorDataResponse.model_validate(response_data)
             vendor = self._vendor.slug
             return [AIModel.from_vendor(vendor, model_id=model.id) for model in models_data.data]
 
@@ -107,12 +107,12 @@ class VendorService:
         self._vendor_clients: dict[str, VendorClient] = {}
         self._http_client = http_client or VendorHTTPClient(settings)
 
-    def get_client(self, vendor: LLMVendor) -> VendorClient:
+    def get_client(self, llm_vendor: LLMVendor) -> VendorClient:
         """Get or create a client for the specified vendor."""
-        if vendor.slug not in self._vendor_clients:
-            self._vendor_clients[vendor.slug] = VendorClient(vendor, self._http_client)
+        if llm_vendor.slug not in self._vendor_clients:
+            self._vendor_clients[llm_vendor.slug] = VendorClient(llm_vendor, self._http_client)
 
-        return self._vendor_clients[vendor.slug]
+        return self._vendor_clients[llm_vendor.slug]
 
     async def get_list_models(self, force_refresh: bool = False) -> list[AIModel]:
         """Get a list of available models from all configured vendors.
@@ -124,11 +124,10 @@ class VendorService:
         If a vendor fails, other vendors' cached data remains valid.
         """
         async with SASessionUOW() as uow:
-            vendor_repository: VendorRepository = VendorRepository(session=uow.session)
-            active_vendors = await vendor_repository.filter(is_active=True)
+            active_vendors = await VendorRepository(session=uow.session).filter(is_active=True)
 
         if not active_vendors:
-            logger.warning("No active vendors found.")
+            logger.warning("No active vendors detected.")
             return []
 
         if self._settings.offline_test_mode:
@@ -152,8 +151,8 @@ class VendorService:
                     continue
 
             vendors.append(llm_vendor)
-            client = self.get_client(llm_vendor)
-            tasks.append(client.get_list_models())
+            vendor_client = self.get_client(llm_vendor)
+            tasks.append(vendor_client.get_list_models())
 
         if tasks:
             # Run tasks in parallel for vendors that need refresh

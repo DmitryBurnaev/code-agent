@@ -2,7 +2,7 @@ from typing import Any, Optional, Literal, Self, TYPE_CHECKING
 from datetime import datetime
 from pydantic import BaseModel, Field, SecretStr
 
-from src.constants import VENDOR_DEFAULT_TIMEOUT, VENDOR_URLS
+from src.constants import VENDOR_DEFAULT_TIMEOUT, VENDOR_URLS, VENDOR_ID_SEPARATOR
 
 if TYPE_CHECKING:
     from src.db.models import Vendor
@@ -87,12 +87,12 @@ class LLMVendor(BaseModel):
             slug=vendor.slug,
             api_key=SecretStr(vendor.decrypted_api_key),
             url=vendor.api_url,
+            timeout=vendor.timeout or VENDOR_DEFAULT_TIMEOUT,
         )
 
     @property
     def base_url(self) -> str:
         """Get base URL for vendor configuration."""
-        # USE vendor URL from DB's model
         url = self.url or VENDOR_URLS[self.slug]
         if not url.endswith("/"):
             url += "/"
@@ -119,7 +119,7 @@ class AIModel(BaseModel):
 
     @classmethod
     def from_vendor(cls, vendor: str, model_id: str) -> Self:
-        return cls(id=f"{vendor}:{model_id}", vendor=vendor, vendor_id=model_id)
+        return cls(id=f"{vendor}{VENDOR_ID_SEPARATOR}{model_id}", vendor=vendor, vendor_id=model_id)
 
 
 class ErrorResponse(BaseModel):

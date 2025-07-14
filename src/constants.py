@@ -47,3 +47,4 @@ VENDOR_DEFAULT_TIMEOUT = 30
 LOG_LEVELS = "DEBUG|INFO|WARNING|ERROR|CRITICAL"
 APP_DIR = Path(__file__).parent
 RENDER_KW = {"class": "form-control", "required": True}
+VENDOR_ID_SEPARATOR = ":"

@@ -8,9 +8,9 @@ from typing import Self, AsyncIterator, Any
 
 import httpx
 from httpx import Headers
-from pydantic import SecretStr
 from starlette.responses import StreamingResponse, Response
 
+from src.constants import VENDOR_ID_SEPARATOR
 from src.db.repositories import VendorRepository
 from src.db.services import SASessionUOW
 from src.services.cache import CacheProtocol, InMemoryCache
@@ -18,7 +18,6 @@ from src.exceptions import VendorProxyError
 from src.models import ChatRequest, LLMVendor
 from src.services.http import VendorHTTPClient
 from src.settings import AppSettings
-from src.services.vendors import VendorService
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +75,6 @@ class ProxyService:
     def __init__(self, settings: AppSettings, http_client: httpx.AsyncClient | None = None) -> None:
         self._settings = settings
         self._http_client = http_client or VendorHTTPClient(settings)
-        self._vendor_service = VendorService(settings, self._http_client)
         self._cache: CacheProtocol = InMemoryCache()
 
     async def __aenter__(self) -> Self:
@@ -125,7 +123,7 @@ class ProxyService:
             endpoint: Which endpoint to proxy to (chat, models, etc.)
 
         Returns:
-            Response from the vendor, may be streaming or regular response
+            Response from the vendor may be streaming or regular response
 
         Raises:
             HTTPException: If a vendor is not found or the request fails
@@ -135,11 +133,11 @@ class ProxyService:
             raise VendorProxyError(f"Request body is required for {endpoint}")
 
         logger.info("ProxyService: %s requested |  %s", endpoint, request_data)
-        vendor, actual_model = await self._extract_vendor_requested(request_data, endpoint)
+        llm_vendor, actual_model = await self._extract_vendor_requested(request_data, endpoint)
 
         # Prepare request data
-        url = self._build_target_url(vendor, endpoint, request_data)
-        headers = self._prepare_headers(vendor)
+        url = self._build_target_url(llm_vendor, endpoint, request_data)
+        headers = self._prepare_headers(llm_vendor)
         is_streaming = False
         body = None
         if request_data.body:
@@ -154,7 +152,7 @@ class ProxyService:
             "ProxyService[%(vendor)s]: requested [%(method)s] %(url)s\n "
             "headers: %(headers)s\n body: %(body)s",
             {
-                "vendor": vendor.slug,
+                "vendor": llm_vendor.slug,
                 "method": request_data.method,
                 "url": url,
                 "headers": headers,
@@ -183,7 +181,7 @@ class ProxyService:
                     "ProxyService[%(vendor)s]: %(prefix)s %(url)s\n "
                     "headers: %(headers)s\n body: %(log_body)s\n length: %(length)s bytes",
                     {
-                        "vendor": vendor.slug,
+                        "vendor": llm_vendor.slug,
                         "prefix": log_prefix,
                         "headers": dict(httpx_response.headers),
                         "log_body": log_body,
@@ -195,12 +193,12 @@ class ProxyService:
             if is_streaming:
                 return await self._handle_stream(
                     httpx_response,
-                    vendor=vendor.slug,
+                    vendor=llm_vendor.slug,
                     endpoint=endpoint,
                 )
 
             if endpoint == ProxyEndpoint.CANCEL_CHAT_COMPLETION:
-                self._save_vendor(httpx_response.content, vendor=vendor.slug, endpoint=endpoint)
+                self._save_vendor(httpx_response.content, vendor=llm_vendor.slug, endpoint=endpoint)
 
             safe_headers = {
                 k: v
@@ -303,34 +301,27 @@ class ProxyService:
             model = request_data.body.model if request_data.body else ""
 
         try:
-            vendor_slug, model_name = model.split("__", 1)
+            vendor_slug, model_name = model.split(VENDOR_ID_SEPARATOR, 1)
             async with SASessionUOW() as uow:
-                vendor_instance = await VendorRepository(session=uow.session).get_by_slug(
-                    slug=vendor_slug.lower().strip()
-                )
-                if not vendor_instance:
-                    raise VendorProxyError(f"Unable to find vendor for {vendor_slug}")
+                slug = vendor_slug.lower().strip()
+                vendor = await VendorRepository(session=uow.session).get_by_slug(slug)
+                if not vendor:
+                    raise VendorProxyError(f"Unable to find vendor '{vendor_slug}'")
 
-                # TODO: think about escaping LLMVendor class (using SA model instead)
-                vendor = LLMVendor(
-                    slug=vendor_instance.slug,
-                    api_key=SecretStr(vendor_instance.api_key),
-                    url=vendor_instance.api_url,
-                    timeout=vendor_instance.timeout,
-                )
+                llm_vendor = LLMVendor.from_vendor(vendor)
 
         except ValueError as exc:
             raise VendorProxyError(
-                "Invalid model format. Expected 'vendor__model_name', e.g. 'openai__gpt-4'"
+                "Invalid model format. Expected 'vendor:model_id', e.g. 'openai:gpt-4'"
             ) from exc
 
         except KeyError as exc:
             raise VendorProxyError(f"Unable to extract vendor from model name {model}") from exc
 
         else:
-            logger.debug("ProxyService: detected vendor %s | source model: %s", vendor, model)
+            logger.info("ProxyService: detected vendor %s | source model: %s", llm_vendor, model)
 
-        return vendor, model_name
+        return llm_vendor, model_name
 
     @staticmethod
     def _prepare_headers(vendor: LLMVendor) -> dict[str, str]:

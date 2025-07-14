@@ -101,7 +101,7 @@ def make_api_token(
     _, payload_part, signature_part = encrypted_token.split(".")
     result_value = f"{payload_part}{signature_part}"
     if len(signature_part) != SIGNATURE_LENGTH:
-        logger.warning("[auth] Generated token has wrong signature length: %d", len(signature_part))
+        logger.error("[auth] Generated token has wrong signature length: %d", len(signature_part))
         raise HTTPException(status_code=401, detail="Invalid generated signature (length mismatch)")
 
     return GeneratedToken(value=result_value, hashed_value=hash_token(token_identifier))
