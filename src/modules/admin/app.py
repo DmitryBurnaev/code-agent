@@ -11,6 +11,7 @@ from src.modules.admin.auth import AdminAuth
 from src.constants import APP_DIR
 from src.db.services import SASessionUOW
 from src.modules.admin.views import (
+    BaseAPPView,
     BaseModelView,
     UserAdminView,
     VendorAdminView,
@@ -43,8 +44,8 @@ class AdminApp(Admin):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._init_jinja_templates()
+        self._views: list[BaseModelView | BaseAPPView] = []  # type: ignore
         self._register_views()
-        self._views: list[BaseModelView] = []
 
     @login_required
     async def index(self, request: Request) -> Response:

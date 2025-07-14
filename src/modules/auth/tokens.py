@@ -61,16 +61,11 @@ def jwt_decode(jwt_token: str, settings: SettingsDep) -> JWTPayload:
     """
     Returns decoded JWT payload.
     """
-    try:
-        payload: JWT_PAYLOAD_RAW_T = jwt.decode(
-            jwt_token,
-            settings.secret_key.get_secret_value(),
-            algorithms=[settings.jwt_algorithm],
-        )
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    payload: JWT_PAYLOAD_RAW_T = jwt.decode(
+        jwt_token,
+        settings.secret_key.get_secret_value(),
+        algorithms=[settings.jwt_algorithm],
+    )
 
     return JWTPayload(
         sub=str(payload["sub"]),

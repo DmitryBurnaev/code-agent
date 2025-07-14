@@ -2,7 +2,7 @@ import logging
 import datetime
 from typing import ClassVar, TYPE_CHECKING
 
-from sqladmin import ModelView
+from sqladmin import ModelView, BaseView
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
@@ -15,7 +15,15 @@ type FormDataType = dict[str, str | int | datetime.datetime | None]
 __all__ = ("BaseModelView",)
 
 
+class BaseAPPView(BaseView):
+    """Same as BaseView but annotated with app instance (will be passed while views registering)"""
+
+    app: "CodeAgentAPP"
+
+
 class BaseModelView(ModelView):
+    """Extended version of ModelView with extra settings and logic across all our views"""
+
     app: "CodeAgentAPP"
     can_export = False
     is_async = True
