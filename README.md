@@ -136,26 +136,49 @@ Note: Make sure your domain's DNS records are properly configured and pointing t
 
 When enabled, the Swagger documentation is available at `/docs` and ReDoc at `/redoc`.
 
+## Vendor API Key Encryption
+
+The application now supports encrypted storage of vendor API keys using AES-256-GCM encryption. This ensures that sensitive API credentials are not stored in plaintext in the database.
+
+### Setup Encryption
+
+1. Generate a secure encryption key:
+   ```bash
+   python -m src.cli.generate_encryption_key
+   ```
+
+2. Add the generated key to your `.env` file:
+   ```bash
+   VENDOR_ENCRYPTION_KEY=your-generated-key-here
+   ```
+
+3. API keys will be automatically encrypted when:
+   - Creating new vendors through the admin interface
+   - Updating existing vendor API keys
+
+For detailed information, see [VENDOR_ENCRYPTION.md](VENDOR_ENCRYPTION.md).
+
 ## Environment Variables
 
-| Variable Name   | Description                                | Default Value          |
-|-----------------|--------------------------------------------|------------------------|
-| LOG_LEVEL       | Sets the logging level for the application | INFO                   |
-| AUTH_API_TOKEN  | API token for authentication               | (required, no default) |
-| SWAGGER_ENABLED | Enables/disables Swagger documentation     | true                   |
-| APP_HOST        | Host address for the application           | localhost              |
-| APP_PORT        | Port number for the application            | 8003                   |
+| Variable Name           | Description                                | Default Value          |
+|-------------------------|--------------------------------------------|------------------------|
+| LOG_LEVEL               | Sets the logging level for the application | INFO                   |
+| AUTH_API_TOKEN          | API token for authentication               | (required, no default) |
+| SWAGGER_ENABLED         | Enables/disables Swagger documentation     | true                   |
+| APP_HOST                | Host address for the application           | localhost              |
+| APP_PORT                | Port number for the application            | 8003                   |
+| VENDOR_ENCRYPTION_KEY   | Secret key for vendor API key encryption   | (required, no default) |
 
 
 ## In the Future
 1. Use DB storage for
    1. AI credentials (encrypted) and user settings
-      - [ ] Create SQLAlchemy models for vendors and their settings
-      - [ ] Implement asymmetric encryption for sensitive data (tokens)
-      - [ ] Create repository pattern for vendor data access
-      - [ ] Add migration system for database schema
-      - [ ] Implement vendor settings management API
-      - [ ] Add validation for vendor settings
+      - [x] Create SQLAlchemy models for vendors and their settings
+      - [x] Implement symmetric encryption for sensitive data (tokens)
+      - [x] Create repository pattern for vendor data access
+      - [x] Add migration system for database schema
+      - [x] Implement vendor settings management API
+      - [x] Add validation for vendor settings
       - [ ] Create backup/restore mechanism for vendor data
    2. request-response history (by completion-id)
    3. models usages 

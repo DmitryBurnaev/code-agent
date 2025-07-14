@@ -16,6 +16,7 @@ dependencies = [
     "asyncpg==0.30.0",
     "greenlet==3.2.3", # for alembic only
     "pyjwt==2.10.1",
+    "pycryptodomex==3.23.0", # for vendor API key encryption
 ]
 
 [tool.uv]
