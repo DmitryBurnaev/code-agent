@@ -5,7 +5,6 @@ from datetime import datetime
 from starlette.testclient import TestClient
 
 
-
 class TestSystemAPI:
     """Tests for system API endpoints."""
 

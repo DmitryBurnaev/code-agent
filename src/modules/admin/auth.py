@@ -2,8 +2,10 @@ import datetime
 import logging
 from typing import cast, TypedDict
 
+import jwt
 from fastapi import HTTPException, Request
 from sqladmin.authentication import AuthenticationBackend
+
 from src.db.repositories import UserRepository
 from src.db.services import SASessionUOW
 from src.settings import SettingsDep
@@ -63,18 +65,22 @@ class AdminAuth(AuthenticationBackend):
             return False
 
         user_id = self._decode_token(token)
+        if not user_id:
+            logger.warning("[admin-auth] Invalid or outdated session's token")
+            return False
+
         async with SASessionUOW() as uow:
             user = await UserRepository(session=uow.session).first(instance_id=user_id)
             if not user:
-                logger.error("User 'id: %r' not found", user_id)
+                logger.error("[admin-auth] User 'id: %r' not found", user_id)
                 return False
 
             if not user.is_active:
-                logger.error("User '%r' inactive", user)
+                logger.error("[admin-auth] User '%r' inactive", user)
                 return False
 
             if not user.is_admin:
-                logger.error("User '%r' not admin", user)
+                logger.error("[admin-auth] User '%r' not admin", user)
                 return False
 
         return True
@@ -88,6 +94,10 @@ class AdminAuth(AuthenticationBackend):
         )
         return admin_login_token
 
-    def _decode_token(self, token: str) -> USER_ID:
-        user_payload = jwt_decode(token, settings=self.settings)
+    def _decode_token(self, token: str) -> USER_ID | None:
+        try:
+            user_payload = jwt_decode(token, settings=self.settings)
+        except jwt.PyJWTError:
+            return None
+
         return int(user_payload.sub)

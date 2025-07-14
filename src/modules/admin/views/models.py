@@ -1,14 +1,15 @@
-from sqladmin import expose, BaseView
+from sqladmin import expose
 from starlette.requests import Request
 from starlette.responses import Response
 
+from src.modules.admin.views.base import BaseAPPView
 from src.services.vendors import VendorService
 from src.settings import get_app_settings
 
 __all__ = ("ModelsAdminView",)
 
 
-class ModelsAdminView(BaseView):
+class ModelsAdminView(BaseAPPView):
     name = "Models"
     icon = "fa-solid fa-chart-line"
 
