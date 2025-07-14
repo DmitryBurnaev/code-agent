@@ -6,11 +6,11 @@ from src.modules.admin.views.base import BaseAPPView
 from src.services.vendors import VendorService
 from src.settings import get_app_settings
 
-__all__ = ("ModelsAdminView",)
+__all__ = ("AIModelsAdminView",)
 
 
-class ModelsAdminView(BaseAPPView):
-    name = "Models"
+class AIModelsAdminView(BaseAPPView):
+    name = "AI Models"
     icon = "fa-solid fa-chart-line"
 
     @expose("/models", methods=["GET"])

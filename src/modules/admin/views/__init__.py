@@ -1,7 +1,7 @@
 from .base import BaseModelView, BaseAPPView
 from .users import UserAdminView
 from .vendors import VendorAdminView
-from .models import ModelsAdminView
+from .ai_models import AIModelsAdminView
 from .tokens import TokenAdminView
 
 __all__ = (
@@ -9,6 +9,6 @@ __all__ = (
     "BaseAPPView",
     "UserAdminView",
     "VendorAdminView",
-    "ModelsAdminView",
+    "AIModelsAdminView",
     "TokenAdminView",
 )

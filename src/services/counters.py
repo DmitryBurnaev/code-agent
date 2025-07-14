@@ -12,9 +12,11 @@ class DashboardCounts:
 
 
 class AdminCounter:
+    """Admin's dashboard aggregations"""
 
     @classmethod
     async def get_stat(cls, session: AsyncSession) -> DashboardCounts:
+        """Get vendors counts"""
         vendor_repository = VendorRepository(session)
         active_vendors = await vendor_repository.group_by_active()
         return DashboardCounts(
