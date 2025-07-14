@@ -43,6 +43,7 @@ class AppSettings(BaseSettings):
     admin_password: SecretStr = Field(description="Default admin password")
     admin_session_expiration_time: int = 2 * 24 * 3600  # 2 days
     offline_test_mode: bool = False
+    vendor_encryption_key: SecretStr = Field(description="Secret key for vendor API key encryption")
 
     @property
     def log_config(self) -> dict[str, Any]:
