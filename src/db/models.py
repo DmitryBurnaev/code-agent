@@ -5,6 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column, backref
 
+from src.exceptions import VendorEncryptionError
 from src.utils import utcnow
 from src.modules.auth.hashers import PBKDF2PasswordHasher
 from src.modules.auth.encryption import VendorKeyEncryption
@@ -136,8 +137,9 @@ class Vendor(BaseModel):
             decrypted_key = encryption.decrypt(self.api_key)
 
         except (ValueError, KeyError) as exc:
-            # Log decryption errors
             logger.error("Failed to decrypt API key for vendor %s: %s", self.slug, exc)
-            raise ValueError(f"Failed to decrypt API key for vendor {self.slug}") from exc
-    
+            raise VendorEncryptionError(
+                f"Failed to decrypt API key for vendor '{self.slug}'"
+            ) from exc
+
         return decrypted_key

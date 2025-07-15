@@ -6,7 +6,7 @@ from starlette.requests import Request
 from wtforms import Form, StringField, EmailField, PasswordField, BooleanField
 
 from src.modules.admin.views.base import BaseModelView, FormDataType
-from src.constants import RENDER_KW
+from src.constants import RENDER_KW_REQ
 from src.db.models import BaseModel, User
 from src.utils import admin_get_link
 
@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 class UserAdminForm(Form):
     """Provides extra validation for users' creation/updating"""
 
-    username = StringField(render_kw=RENDER_KW, label="Username")
-    email = EmailField(render_kw=RENDER_KW)
+    username = StringField(render_kw=RENDER_KW_REQ, label="Username")
+    email = EmailField(render_kw=RENDER_KW_REQ)
     new_password = PasswordField(render_kw={"class": "form-control"}, label="New Password")
     repeat_password = PasswordField(
         render_kw={"class": "form-control"},

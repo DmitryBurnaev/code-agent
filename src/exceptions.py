@@ -45,3 +45,11 @@ class VendorRequestError(VendorError):
     log_level: int = logging.ERROR
     log_message: str = "Vendor request error"
     status_code: int = status.HTTP_400_BAD_REQUEST
+
+
+class VendorEncryptionError(VendorError):
+    """Vendor encryption error"""
+
+    log_level: int = logging.ERROR
+    log_message: str = "Vendor encryption error"
+    status_code: int = status.HTTP_503_SERVICE_UNAVAILABLE

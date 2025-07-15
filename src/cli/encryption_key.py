@@ -1,17 +1,15 @@
-#!/usr/bin/env python3
 """Generate a secure encryption key for vendor API keys."""
 
 import base64
 import secrets
-import sys
 
 
-def generate_encryption_key(length: int = 32) -> str:
+def generate_key(length: int = 32) -> str:
     """Generate a secure random encryption key.
-    
+
     Args:
         length: Length of the key in bytes (default: 32 for AES-256)
-        
+
     Returns:
         Base64 encoded key string
     """
@@ -20,12 +18,12 @@ def generate_encryption_key(length: int = 32) -> str:
 
 
 def main() -> None:
-    """Generate and display encryption key."""
+    """Generate and display an encryption key."""
     print("Generating secure encryption key for vendor API keys...")
     print()
-    
-    key = generate_encryption_key()
-    
+
+    key = generate_key()
+
     print("Add this to your .env file:")
     print(f"VENDOR_ENCRYPTION_KEY={key}")
     print()
@@ -36,4 +34,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main() 
+    main()
