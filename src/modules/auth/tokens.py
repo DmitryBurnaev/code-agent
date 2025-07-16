@@ -20,7 +20,6 @@ __all__ = (
     "hash_token",
     "verify_api_token",
 )
-SIGNATURE_LENGTH = 43  # based on algorithm
 type JWT_PAYLOAD_RAW_T = dict[str, str | int | datetime.datetime]
 
 
@@ -92,6 +91,7 @@ def make_api_token(
         TokenInfo - tuple of token and its hashed value
     """
     expires_at = expires_at or datetime.datetime.max
+    # just random id, that will be hashed to retrieve from DB in an auth process
     token_identifier = f"{random.randint(100, 999):0>3}{uuid.uuid4().hex[-6:]}"
     encrypted_token = jwt_encode(
         payload=JWTPayload(sub=token_identifier, exp=expires_at),
@@ -99,10 +99,15 @@ def make_api_token(
         settings=settings,
     )
     _, payload_part, signature_part = encrypted_token.split(".")
-    result_value = f"{payload_part}{signature_part}"
-    if len(signature_part) != SIGNATURE_LENGTH:
-        logger.error("[auth] Generated token has wrong signature length: %d", len(signature_part))
-        raise HTTPException(status_code=401, detail="Invalid generated signature (length mismatch)")
+    sign_len_prefix = f"{len(signature_part):0>3}"
+    logger.debug(
+        "[auth] Generated token: id: '%s' | len_prefix: '%s' | payload: '%s' | signature: '%s'",
+        token_identifier,
+        sign_len_prefix,
+        payload_part,
+        signature_part,
+    )
+    result_value = f"{sign_len_prefix}{payload_part}{signature_part}"
 
     return GeneratedToken(value=result_value, hashed_value=hash_token(token_identifier))
 
@@ -110,6 +115,14 @@ def make_api_token(
 def decode_api_token(token: str, settings: SettingsDep) -> JWTPayload:
     """
     Decodes custom formatted JWT token (without header part).
+
+    Note: token doesn't contain header part + it has prefix with length of the signature part.
+    Example of generated token:
+        049daszAuxuGG7vnhek8EPXT3Blbsign1234567890
+    Where:
+        049 - length of the signature part
+        daszAuxuGG7vnhek8EPXT3Blbsignature - payload part
+        sign1234567890 - signature part
 
     Parameters:
         token: str - token to decode
@@ -120,7 +133,13 @@ def decode_api_token(token: str, settings: SettingsDep) -> JWTPayload:
     """
     just_for_header_token = jwt_encode(payload=JWTPayload(sub="example"), settings=settings)
     header_part, _, _ = just_for_header_token.split(".")
-    payload_part, signature_part = token[:-SIGNATURE_LENGTH], token[-SIGNATURE_LENGTH:]
+    sign_len_prefix, token = token[:3], token[3:]
+    if not sign_len_prefix.isnumeric():
+        logger.error("[auth] Unexpected sign len prefix detected: %s", sign_len_prefix)
+        raise HTTPException(status_code=401, detail="Invalid token signature")
+
+    signature_length = int(sign_len_prefix)
+    payload_part, signature_part = token[:-signature_length], token[-signature_length:]
 
     checking_token = f"{header_part}.{payload_part}.{signature_part}"
     logger.debug("[auth] JWT decoding token: %s", checking_token)
