@@ -22,12 +22,19 @@ logger = logging.getLogger(__name__)
 class TokenAdminView(BaseModelView, model=Token):
     icon = "fa-solid fa-key"
     column_list = (Token.id, Token.user, Token.is_active, Token.expires_at)
-    form_columns = (Token.user, Token.name, Token.is_active, Token.expires_at)
+    form_columns = (Token.user, Token.name, Token.expires_at)
     can_edit = False
     column_formatters = {
         Token.id: lambda model, a: admin_get_link(cast(BaseModel, model), target="details")
     }
-    column_details_list = (Token.id, Token.user, Token.name, Token.expires_at, Token.created_at)
+    column_details_list = (
+        Token.id,
+        Token.user,
+        Token.name,
+        Token.is_active,
+        Token.expires_at,
+        Token.created_at,
+    )
     column_default_li = ()
     details_template = "token_details.html"
     custom_post_create = True

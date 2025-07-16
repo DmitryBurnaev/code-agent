@@ -71,7 +71,9 @@ class Token(BaseModel):
     user_id: Mapped[int] = mapped_column(sa.ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(sa.String(128))
     token: Mapped[str] = mapped_column(sa.String(512), unique=True)
-    is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
+    is_active: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, default=True, server_default=sa.true()
+    )
     expires_at: Mapped[datetime] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(nullable=True, onupdate=utcnow)
