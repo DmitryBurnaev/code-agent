@@ -12,7 +12,6 @@ from src.db.repositories import VendorRepository
 from src.db.services import SASessionUOW
 from src.utils import admin_get_link, simple_slugify
 from src.modules.auth.encryption import VendorKeyEncryption
-from src.settings import get_app_settings
 
 __all__ = ("VendorAdminView",)
 logger = logging.getLogger(__name__)
@@ -29,6 +28,8 @@ class VendorAdminForm(Form):
 
 
 class VendorAdminView(BaseModelView, model=Vendor):
+    name = "AI Vendor"
+    name_plural = "AI Vendors"
     icon = "fa-solid fa-box-archive"
     column_list = (Vendor.id, Vendor.api_url, Vendor.is_active)
     column_formatters = {Vendor.id: lambda model, a: admin_get_link(cast(BaseModel, model))}
@@ -65,8 +66,7 @@ class VendorAdminView(BaseModelView, model=Vendor):
             data["api_key"] = self._encrypt_api_key(str(new_api_key))
         return await super().update_model(request, pk, data)
 
-    @staticmethod
-    def _encrypt_api_key(plaintext_key: str) -> str:
+    def _encrypt_api_key(self, plaintext_key: str) -> str:
         """Encrypt API key using application encryption settings.
 
         Args:
@@ -82,9 +82,9 @@ class VendorAdminView(BaseModelView, model=Vendor):
             raise ValueError("API key cannot be empty")
 
         try:
-            settings = get_app_settings()
-            encryption = VendorKeyEncryption(settings.vendor_encryption_key)
+            encryption = VendorKeyEncryption(self.app.settings.vendor_encryption_key)
             return encryption.encrypt(plaintext_key)
+
         except Exception as exc:
             logger.error("Failed to encrypt API key: %s", exc)
             raise ValueError("Failed to encrypt API key") from exc

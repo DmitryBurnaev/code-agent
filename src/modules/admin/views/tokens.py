@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 class TokenAdminView(BaseModelView, model=Token):
+    name = "API Token"
+    name_plural = "API Tokens"
     icon = "fa-solid fa-key"
     column_list = (Token.id, Token.user, Token.is_active, Token.expires_at)
     form_columns = (Token.user, Token.name, Token.expires_at)
