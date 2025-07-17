@@ -107,7 +107,7 @@ def make_api_token(
         payload_part,
         signature_part,
     )
-    result_value = f"{sign_len_prefix}{payload_part}{signature_part}"
+    result_value = f"{payload_part}{signature_part}{sign_len_prefix}"
 
     return GeneratedToken(value=result_value, hashed_value=hash_token(token_identifier))
 
@@ -116,13 +116,13 @@ def decode_api_token(token: str, settings: SettingsDep) -> JWTPayload:
     """
     Decodes custom formatted JWT token (without header part).
 
-    Note: token doesn't contain header part + it has prefix with length of the signature part.
+    Note: token doesn't contain header part + it has a prefix with the length of the signature part.
     Example of generated token:
-        049daszAuxuGG7vnhek8EPXT3Blbsign1234567890
+        daszAuxGG7vnhek8EPXT3Blbsign123456789g049
     Where:
-        049 - length of the signature part
+        049 - length of the signature part (at the end of string)
         daszAuxuGG7vnhek8EPXT3Blbsignature - payload part
-        sign1234567890 - signature part
+        sign123456789g - signature part
 
     Parameters:
         token: str - token to decode
@@ -133,7 +133,7 @@ def decode_api_token(token: str, settings: SettingsDep) -> JWTPayload:
     """
     just_for_header_token = jwt_encode(payload=JWTPayload(sub="example"), settings=settings)
     header_part, _, _ = just_for_header_token.split(".")
-    sign_len_prefix, token = token[:3], token[3:]
+    token, sign_len_prefix = token[:-3], token[-3:]  # last 3 symbols contain len of signature
     if not sign_len_prefix.isnumeric():
         logger.error("[auth] Unexpected sign len prefix detected: %s", sign_len_prefix)
         raise HTTPException(status_code=401, detail="Invalid token signature")
