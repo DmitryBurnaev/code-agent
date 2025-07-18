@@ -6,12 +6,12 @@ from starlette.requests import Request
 from wtforms import Form, StringField, URLField, BooleanField
 
 from src.modules.admin.views.base import FormDataType, BaseModelView
+from src.modules.encrypt.encryption import VendorKeyEncryption
 from src.constants import RENDER_KW, RENDER_KW_REQ
 from src.db.models import BaseModel, Vendor
 from src.db.repositories import VendorRepository
 from src.db.services import SASessionUOW
 from src.utils import admin_get_link, simple_slugify
-from src.modules.auth.encryption import VendorKeyEncryption
 
 __all__ = ("VendorAdminView",)
 logger = logging.getLogger(__name__)
