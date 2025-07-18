@@ -8,7 +8,7 @@ from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column,
 from src.exceptions import VendorEncryptionError
 from src.utils import utcnow
 from src.modules.auth.hashers import PBKDF2PasswordHasher
-from src.modules.auth.encryption import VendorKeyEncryption
+from src.modules.encrypt.encryption import VendorKeyEncryption
 from src.settings import get_app_settings
 
 logger = logging.getLogger(__name__)

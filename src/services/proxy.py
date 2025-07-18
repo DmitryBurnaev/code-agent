@@ -3,11 +3,13 @@ import logging
 import urllib.parse
 from enum import Enum
 from dataclasses import dataclass
+from sitecustomize import long_prefix
 from types import TracebackType
-from typing import Self, AsyncIterator, Any
+from typing import Self, AsyncIterator, Any, Callable
 
 import httpx
 from httpx import Headers
+from sqlalchemy.util import await_only
 from starlette.responses import StreamingResponse, Response
 
 from src.constants import VENDOR_ID_SEPARATOR
@@ -168,8 +170,12 @@ class ProxyService:
 
         try:
             httpx_response = await self._http_client.send(request, stream=is_streaming)
+            bad_response = not httpx_response.is_success
 
-            if is_streaming:
+            if bad_response:
+                log_prefix = f"error response (stream={is_streaming})"
+                # log_body =
+            elif is_streaming:
                 log_prefix = "streaming response"
                 log_body = "--"
             else:
@@ -216,6 +222,59 @@ class ProxyService:
             error_msg = "Stream timeout" if is_streaming else "Request timeout"
             raise VendorProxyError(error_msg) from exc
 
+    async def _read_response_body(self, httpx_response: httpx.Response, is_streaming: bool) -> str:
+        # TODO: use stream_wrapper like:
+        #       content = b"".join(await self._stream_wrapper(httpx_response, vendor=""))
+
+        return httpx_response.text
+
+    # async def _log_response(self, httpx_response: httpx.Response, is_streaming: bool) -> None:
+    #
+    #     if httpx_response.status_code != 200:
+    #         log_prefix = f"error response (stream={is_streaming})"
+    #
+    #     elif is_streaming:
+    #         log_prefix = "streaming response"
+    #         log_body = "--"
+    #     else:
+    #         log_prefix = "regular response"
+    #         log_body = f"{httpx_response.text[:128]}..."
+    #
+    #     if logger.isEnabledFor(logging.DEBUG):
+    #         logger.debug(
+    #             "ProxyService[%(vendor)s]: %(prefix)s %(url)s\n "
+    #             "headers: %(headers)s\n body: %(log_body)s\n length: %(length)s bytes",
+    #             {
+    #                 "vendor": llm_vendor.slug,
+    #                 "prefix": log_prefix,
+    #                 "headers": dict(httpx_response.headers),
+    #                 "log_body": log_body,
+    #                 "url": url,
+    #                 "length": len(httpx_response.text) if not is_streaming else "??",
+    #             },
+    #         )
+    async def _stream_wrapper(
+        self,
+        httpx_response: httpx.Response,
+        vendor: str,
+        on_chunk_callback: Callable[[bytes], None] | None = None,
+    ) -> AsyncIterator[bytes]:
+        try:
+            async for chunk in httpx_response.aiter_bytes():
+                if on_chunk_callback is not None:
+                    on_chunk_callback(chunk)
+                yield chunk
+
+        except httpx.TimeoutException as exc:
+            raise VendorProxyError(f"ProxyService[{vendor}]: Stream timeout") from exc
+
+        else:
+            logger.info("ProxyService[%s]: stream iterations completed", vendor)
+
+        finally:
+            # Ensure service cleanup
+            await self.aclose()
+
     async def _handle_stream(
         self,
         httpx_response: httpx.Response,
@@ -225,26 +284,33 @@ class ProxyService:
         """Wraps the response in a StreamingResponse for correct closing connection"""
 
         logger.debug("ProxyService[%s]: stream iterations started", vendor)
+        vendor_saved = False
 
-        async def stream_wrapper() -> AsyncIterator[bytes]:
-            try:
-                vendor_saved = False
-                async for chunk in httpx_response.aiter_bytes():
-                    if not vendor_saved:
-                        self._save_vendor(chunk, vendor=vendor, endpoint=endpoint)
-                        vendor_saved = True
+        def save_vendor_callback(chunk: bytes) -> None:
+            nonlocal vendor_saved
+            if not vendor_saved:
+                self._save_vendor(chunk, vendor=vendor, endpoint=endpoint)
+                vendor_saved = True
 
-                    yield chunk
-
-            except httpx.TimeoutException as exc:
-                raise VendorProxyError("Stream timeout") from exc
-
-            else:
-                logger.info("ProxyService[%s]: stream iterations completed", vendor)
-
-            finally:
-                # Ensure service cleanup
-                await self.aclose()
+        # async def stream_wrapper() -> AsyncIterator[bytes]:
+        #     try:
+        #         vendor_saved = False
+        #         async for chunk in httpx_response.aiter_bytes():
+        #             if not vendor_saved:
+        #                 self._save_vendor(chunk, vendor=vendor, endpoint=endpoint)
+        #                 vendor_saved = True
+        #
+        #             yield chunk
+        #
+        #     except httpx.TimeoutException as exc:
+        #         raise VendorProxyError("Stream timeout") from exc
+        #
+        #     else:
+        #         logger.info("ProxyService[%s]: stream iterations completed", vendor)
+        #
+        #     finally:
+        #         # Ensure service cleanup
+        #         await self.aclose()
 
         response_headers = dict(httpx_response.headers)
         response_headers.update(
@@ -255,7 +321,11 @@ class ProxyService:
             }
         )
         result_response = StreamingResponse(
-            content=stream_wrapper(),
+            content=self._stream_wrapper(
+                httpx_response,
+                vendor=vendor,
+                on_chunk_callback=save_vendor_callback,
+            ),
             status_code=httpx_response.status_code,
             headers=response_headers,
         )

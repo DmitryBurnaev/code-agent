@@ -132,6 +132,37 @@ Note: Make sure your domain's DNS records are properly configured and pointing t
    make test
    ```
 
+
+## CLI usages
+
+1. Simple AI Client
+   ```bash   
+   usage: simple_ai_client.py [-h] [--vendor VENDOR] [--vendor-url VENDOR_URL] [--model MODEL] [--token TOKEN] [--stream] [--prompt PROMPT]
+
+   CLI for interacting with AI models (DeepSeek/OpenAI compatible API)
+
+   options:
+   -h, --help            show this help message and exit
+   --vendor VENDOR       AI vendor (deepseek, ...)
+   --vendor-url VENDOR_URL
+                           AI vendor URL (https://api.deepseek.com/v1, ...)
+   --model MODEL         Model name (e.g. deepseek-chat)
+   --token TOKEN         Authorization token (or environment variable)
+   --stream              Stream mode
+   --prompt PROMPT       Prompt text
+
+   # Example of running simple_ai_client via CLI
+   python -m src.cli.simple_ai_client --vendor openai --prompt "Hi, how are you?" --user-id 1
+
+   # Example with additional parameters
+   python -m src.cli.simple_ai_client --vendor openai --prompt "Tell me a joke" \
+     --user-id 1 --model gpt-3.5-turbo --temperature 0.7
+
+   # To get help on all available options
+   python -m src.cli.simple_ai_client --help
+   ```
+
+
 ## Swagger Documentation
 
 When enabled, the Swagger documentation is available at `/docs` and ReDoc at `/redoc`.

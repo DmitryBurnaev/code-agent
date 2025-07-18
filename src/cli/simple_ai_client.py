@@ -13,12 +13,13 @@ from typing import Any, Optional, ContextManager
 
 
 DEFAULT_VENDOR_URL = "https://api.deepseek.com/v1"
-DEFAULT_VENDOR = "deepseek"
+DEFAULT_VENDOR = "code-agent"
 DEFAULT_MODEL = "deepseek-chat"
 VENDOR_URLS: dict[str, str] = {
     "openai": "https://api.openai.com/v1",
     "deepseek": "https://api.deepseek.com/v1",
     "custom": "https://custom-vendor/v1",
+    "code-agent": "http://localhost:8003/api/ai-proxy",
 }
 
 
@@ -36,7 +37,7 @@ def call_ai_model(
         print("[error] Authorization token is not set (use --token or env 'AI_API_TOKEN')")
         sys.exit(1)
 
-    url = vendor_url + "/chat/completions"
+    url = vendor_url.removesuffix("/") + "/chat/completions"
     print(f"Sending request to {url}")
     headers = {"Authorization": f"Bearer {token}"}
     data = {
@@ -161,8 +162,8 @@ def main() -> None:
     args = parser.parse_args()
 
     token = args.token or os.environ.get("CLI_AI_API_TOKEN", "")
-    vendor_url = args.vendor_url or DEFAULT_VENDOR_URL
     vendor = args.vendor or DEFAULT_VENDOR
+    vendor_url = args.vendor_url
     if not vendor_url:
         if not vendor:
             print("[error] Either --vendor or --vendor-url must be provided")
