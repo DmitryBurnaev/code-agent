@@ -21,6 +21,9 @@ VENDOR_URLS: dict[str, str] = {
     "custom": "https://custom-vendor/v1",
     "code-agent": "http://localhost:8003/api/ai-proxy",
 }
+TEMPERATURE = float(os.getenv("CLI_AI_TEMPERATURE", "0.7"))
+MAX_TOKENS = int(os.getenv("CLI_AI_MAX_TOKENS", "1000"))
+TIMEOUT = int(os.getenv("CLI_AI_TIMEOUT", "3600"))
 
 
 def call_ai_model(
@@ -41,24 +44,23 @@ def call_ai_model(
     print(f"Sending request to {url}")
     headers = {"Authorization": f"Bearer {token}"}
     data = {
-        "max_tokens": 1000,
+        "max_tokens": MAX_TOKENS,
         "messages": [
             {"content": "You are a helpful assistant. Make response in russian", "role": "system"},
             {"content": prompt, "role": "user"},
         ],
         "model": model_name,
         "stream": stream,
-        "temperature": 0.7,
+        "temperature": TEMPERATURE,
     }
     try:
         if stream:
-            client = httpx.Client(timeout=3600)
+            client = httpx.Client(timeout=TIMEOUT)
             # Return context manager for streaming
             return client.stream("POST", url, headers=headers, json=data)
 
         else:
-            response = httpx.post(url, headers=headers, json=data, timeout=3600)
-            response.raise_for_status()
+            response = httpx.post(url, headers=headers, json=data, timeout=TIMEOUT)
             return response
 
     except Exception as exc:
@@ -87,6 +89,20 @@ def process_stream_response(response_cm: ContextManager[httpx.Response]) -> str:
     """
     result = []
     with response_cm as r:
+        if not r.is_success:
+            response_text = ""
+            for line in r.iter_lines():
+                if not line:
+                    continue
+                if isinstance(line, bytes):
+                    line = line.decode("utf-8")
+                response_text += line
+
+            print("[invalid response from AI model]")
+            print(f"    status code: {r.status_code} {r.reason_phrase}")
+            print(f"    response text: '{response_text}'")
+            raise ValueError(f"Invalid response from AI model: {r.status_code} {r.reason_phrase}")
+
         for index, line in enumerate(r.iter_lines()):
             if not line:
                 continue
@@ -121,6 +137,14 @@ def process_full_response(response: httpx.Response) -> str:
     """
     Processes non-streaming response and returns concatenated text.
     """
+    if not response.is_success:
+        print("[invalid response from AI model]")
+        print(f"    status code: {response.status_code} {response.reason_phrase}")
+        print(f"    response text: '{response.text}'")
+        raise ValueError(
+            f"Invalid response from AI model: {response.status_code} {response.reason_phrase}"
+        )
+
     try:
         data = response.json()
         print_header(data)
