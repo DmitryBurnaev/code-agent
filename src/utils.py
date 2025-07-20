@@ -64,6 +64,9 @@ async def universal_exception_handler(request: Request, exc: Exception) -> JSONR
 
     else:
         log_message = f"Internal server error: {exc}"
+        log_data |= {
+            "detail": "An internal error has been detected. We apologize for the inconvenience."
+        }
 
     exc_info = exc if logger.isEnabledFor(logging.DEBUG) else None
     # Log the error
@@ -115,3 +118,28 @@ def simple_slugify(value: str) -> str:
     Simple helper function to generate a slugified version of a string
     """
     return value.lower().strip().replace(" ", "-")
+
+
+def cut_string(value: str, max_length: int = 128, placeholder: str = "...") -> str:
+    """
+    Simple helper function to cut a string with placeholder
+
+    :param value: String to cut
+    :param max_length: Maximum length of the string
+    :param placeholder: Placeholder to add if the string is cut
+    :return: Cut string
+
+    >>> cut_string("Hello, world!")
+    'Hello, world!'
+
+    >>> cut_string("Hello, world!", max_length=5)
+    'Hello...'
+
+    >>> cut_string("Hello, world!", max_length=5, placeholder="")
+    'Hello'
+
+    """
+    if not value:
+        return value
+
+    return value[:max_length] + placeholder if len(value) > max_length else value
