@@ -131,11 +131,12 @@ def decode_api_token(token: str, settings: SettingsDep) -> JWTPayload:
     Returns:
         PayloadTokenInfo - payload of the token
     """
+    logger.debug("[auth] Decoding token: '%s'", token)
     just_for_header_token = jwt_encode(payload=JWTPayload(sub="example"), settings=settings)
     header_part, _, _ = just_for_header_token.split(".")
     token, sign_len_prefix = token[:-3], token[-3:]  # last 3 symbols contain len of signature
     if not sign_len_prefix.isnumeric():
-        logger.error("[auth] Unexpected sign len prefix detected: %s", sign_len_prefix)
+        logger.error("[auth] Unexpected sign len prefix detected: '%s'", sign_len_prefix)
         raise HTTPException(status_code=401, detail="Invalid token signature")
 
     signature_length = int(sign_len_prefix)

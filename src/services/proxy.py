@@ -3,13 +3,11 @@ import logging
 import urllib.parse
 from enum import Enum
 from dataclasses import dataclass
-from sitecustomize import long_prefix
 from types import TracebackType
 from typing import Self, AsyncIterator, Any, Callable
 
 import httpx
 from httpx import Headers
-from sqlalchemy.util import await_only
 from starlette.responses import StreamingResponse, Response
 
 from src.constants import VENDOR_ID_SEPARATOR
@@ -20,6 +18,7 @@ from src.exceptions import VendorProxyError
 from src.models import ChatRequest, LLMVendor
 from src.services.http import VendorHTTPClient
 from src.settings import AppSettings
+from src.utils import cut_string
 
 logger = logging.getLogger(__name__)
 
@@ -170,20 +169,25 @@ class ProxyService:
 
         try:
             httpx_response = await self._http_client.send(request, stream=is_streaming)
-            bad_response = not httpx_response.is_success
+            is_bad_response = not httpx_response.is_success
+            plain_response_content = await self._read_response(
+                httpx_response,
+                vendor=llm_vendor.slug,
+                stream=is_streaming,
+            )
+            log_body = cut_string(plain_response_content, max_length=1024)
 
-            if bad_response:
+            if is_bad_response:
                 log_prefix = f"error response (stream={is_streaming})"
-                # log_body =
             elif is_streaming:
                 log_prefix = "streaming response"
-                log_body = "--"
             else:
                 log_prefix = "regular response"
-                log_body = f"{httpx_response.text[:128]}..."
 
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(
+            if logger.isEnabledFor(logging.DEBUG) or is_bad_response:
+                log_level = logging.WARNING if is_bad_response else logging.WARNING
+                logger.log(
+                    log_level,
                     "ProxyService[%(vendor)s]: %(prefix)s %(url)s\n "
                     "headers: %(headers)s\n body: %(log_body)s\n length: %(length)s bytes",
                     {
@@ -196,7 +200,7 @@ class ProxyService:
                     },
                 )
 
-            if is_streaming:
+            if not is_bad_response and is_streaming:
                 return await self._handle_stream(
                     httpx_response,
                     vendor=llm_vendor.slug,
@@ -213,7 +217,7 @@ class ProxyService:
                 not in {"transfer-encoding", "content-encoding", "content-length", "connection"}
             }
             return Response(
-                content=httpx_response.content,
+                content=plain_response_content,
                 status_code=httpx_response.status_code,
                 headers=safe_headers,
             )
@@ -222,37 +226,22 @@ class ProxyService:
             error_msg = "Stream timeout" if is_streaming else "Request timeout"
             raise VendorProxyError(error_msg) from exc
 
-    async def _read_response_body(self, httpx_response: httpx.Response, is_streaming: bool) -> str:
-        # TODO: use stream_wrapper like:
-        #       content = b"".join(await self._stream_wrapper(httpx_response, vendor=""))
+    async def _read_response(
+        self, httpx_response: httpx.Response, vendor: str, stream: bool
+    ) -> str:
+        if stream:
+            if httpx_response.is_success:
+                # must be iterated in the StreamResponse later in our proxy logic
+                plain_response_content = "--"
+            else:
+                body_iterator = self._stream_wrapper(httpx_response, vendor=vendor)
+                content = b"".join([chunk async for chunk in body_iterator])
+                plain_response_content = content.decode("utf-8")
+        else:
+            plain_response_content = httpx_response.content.decode("utf-8")
 
-        return httpx_response.text
+        return plain_response_content
 
-    # async def _log_response(self, httpx_response: httpx.Response, is_streaming: bool) -> None:
-    #
-    #     if httpx_response.status_code != 200:
-    #         log_prefix = f"error response (stream={is_streaming})"
-    #
-    #     elif is_streaming:
-    #         log_prefix = "streaming response"
-    #         log_body = "--"
-    #     else:
-    #         log_prefix = "regular response"
-    #         log_body = f"{httpx_response.text[:128]}..."
-    #
-    #     if logger.isEnabledFor(logging.DEBUG):
-    #         logger.debug(
-    #             "ProxyService[%(vendor)s]: %(prefix)s %(url)s\n "
-    #             "headers: %(headers)s\n body: %(log_body)s\n length: %(length)s bytes",
-    #             {
-    #                 "vendor": llm_vendor.slug,
-    #                 "prefix": log_prefix,
-    #                 "headers": dict(httpx_response.headers),
-    #                 "log_body": log_body,
-    #                 "url": url,
-    #                 "length": len(httpx_response.text) if not is_streaming else "??",
-    #             },
-    #         )
     async def _stream_wrapper(
         self,
         httpx_response: httpx.Response,
@@ -291,26 +280,6 @@ class ProxyService:
             if not vendor_saved:
                 self._save_vendor(chunk, vendor=vendor, endpoint=endpoint)
                 vendor_saved = True
-
-        # async def stream_wrapper() -> AsyncIterator[bytes]:
-        #     try:
-        #         vendor_saved = False
-        #         async for chunk in httpx_response.aiter_bytes():
-        #             if not vendor_saved:
-        #                 self._save_vendor(chunk, vendor=vendor, endpoint=endpoint)
-        #                 vendor_saved = True
-        #
-        #             yield chunk
-        #
-        #     except httpx.TimeoutException as exc:
-        #         raise VendorProxyError("Stream timeout") from exc
-        #
-        #     else:
-        #         logger.info("ProxyService[%s]: stream iterations completed", vendor)
-        #
-        #     finally:
-        #         # Ensure service cleanup
-        #         await self.aclose()
 
         response_headers = dict(httpx_response.headers)
         response_headers.update(
