@@ -2,7 +2,7 @@
 
 import datetime
 import pytest
-from typing import Tuple
+from typing import Any, Generator, NamedTuple
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import HTTPException
 from pydantic import SecretStr
@@ -12,9 +12,6 @@ from src.modules.auth.tokens import (
     decode_api_token,
     hash_token,
     verify_api_token,
-    JWTPayload,
-    jwt_encode,
-    jwt_decode,
 )
 from src.modules.auth.hashers import (
     PBKDF2PasswordHasher,
@@ -22,19 +19,8 @@ from src.modules.auth.hashers import (
     get_random_hash,
 )
 from src.settings import AppSettings
-
-
-# Module-level fixtures
-@pytest.fixture
-def test_settings() -> AppSettings:
-    """Return test settings."""
-    return AppSettings(
-        api_token=SecretStr("test-token"),
-        admin_username="test-username",
-        admin_password=SecretStr("test-password"),
-        secret_key=SecretStr("test-secret-key-for-edge-cases"),
-        jwt_algorithm="HS256",
-    )
+from src.tests.units.auth.conftest import GenMockPair
+from src.utils import utcnow
 
 
 @pytest.fixture
@@ -46,7 +32,7 @@ def mock_request() -> MagicMock:
 
 
 @pytest.fixture
-def mock_make_token() -> MagicMock:
+def mock_make_token() -> Generator[MagicMock, Any, None]:
     """Mock make_api_token function."""
     with patch("src.modules.auth.dependencies.make_api_token") as mock:
         mock.return_value = MagicMock(value="test-token-value", hashed_value="test-hash")
@@ -54,7 +40,7 @@ def mock_make_token() -> MagicMock:
 
 
 @pytest.fixture
-def mock_decode_token() -> MagicMock:
+def mock_decode_token() -> Generator[MagicMock, Any, None]:
     """Mock decode_api_token function."""
     with patch("src.modules.auth.dependencies.decode_api_token") as mock:
         mock.return_value = MagicMock(sub="test-user-id")
@@ -62,7 +48,7 @@ def mock_decode_token() -> MagicMock:
 
 
 @pytest.fixture
-def mock_hash_token() -> MagicMock:
+def mock_hash_token() -> Generator[MagicMock, Any, None]:
     """Mock hash_token function."""
     with patch("src.modules.auth.dependencies.hash_token") as mock:
         mock.return_value = "test-hash"
@@ -70,7 +56,7 @@ def mock_hash_token() -> MagicMock:
 
 
 @pytest.fixture
-def mock_session_uow() -> Tuple[MagicMock, AsyncMock]:
+def mock_session_uow() -> GenMockPair:
     """Mock SASessionUOW context manager."""
     with patch("src.modules.auth.dependencies.SASessionUOW") as mock_uow:
         mock_session = AsyncMock()
@@ -79,7 +65,7 @@ def mock_session_uow() -> Tuple[MagicMock, AsyncMock]:
 
 
 @pytest.fixture
-def mock_token_repository_active() -> Tuple[MagicMock, AsyncMock]:
+def mock_token_repository_active() -> GenMockPair:
     """Mock TokenRepository with active token and user."""
     with patch("src.modules.auth.dependencies.TokenRepository") as mock_repo_class:
         mock_repo = AsyncMock()
@@ -94,186 +80,131 @@ def mock_token_repository_active() -> Tuple[MagicMock, AsyncMock]:
 class TestTokenEdgeCases:
     """Tests for token edge cases and special scenarios."""
 
-    def test_token_with_empty_secret_key(self) -> None:
-        """Test token generation with empty secret key."""
-        empty_settings = AppSettings(
+    @pytest.mark.parametrize(
+        "secret_key",
+        (
+            "",
+            "a" * 1000,
+            "!@#$%^&*()_+-=[]{}|;:,.<>?`~",
+            "секретный-ключ",
+        ),
+        ids=(
+            "empty",
+            "long",
+            "special-characters",
+            "unicode",
+        ),
+    )
+    def test_token_with_various_secret_key(self, secret_key: str) -> None:
+        app_settings = AppSettings(
             api_token=SecretStr("test-token"),
             admin_username="test-username",
             admin_password=SecretStr("test-password"),
-            secret_key=SecretStr(""),
+            secret_key=SecretStr(secret_key),
+            vendor_encryption_key=SecretStr(""),
             jwt_algorithm="HS256",
         )
 
-        # Should still work with empty secret key
-        generated = make_api_token(expires_at=None, settings=empty_settings)
-        decoded = decode_api_token(generated.value, empty_settings)
+        generated = make_api_token(expires_at=None, settings=app_settings)
+        assert isinstance(generated, NamedTuple)
+        assert isinstance(generated.value, str)
+        assert isinstance(generated.hashed_value, str)
 
+        decoded = decode_api_token(generated.value, app_settings)
         assert decoded.sub is not None
 
-    def test_token_with_very_long_secret_key(self) -> None:
-        """Test token generation with very long secret key."""
-        long_secret = "a" * 1000  # Very long secret key
-        long_settings = AppSettings(
-            api_token=SecretStr("test-token"),
-            admin_username="test-username",
-            admin_password=SecretStr("test-password"),
-            secret_key=SecretStr(long_secret),
-            jwt_algorithm="HS256",
-        )
-
-        generated = make_api_token(expires_at=None, settings=long_settings)
-        decoded = decode_api_token(generated.value, long_settings)
-
-        assert decoded.sub is not None
-
-    def test_token_with_special_characters_in_secret(self) -> None:
-        """Test token generation with special characters in secret key."""
-        special_secret = "!@#$%^&*()_+-=[]{}|;:,.<>?`~"
-        special_settings = AppSettings(
-            api_token=SecretStr("test-token"),
-            admin_username="test-username",
-            admin_password=SecretStr("test-password"),
-            secret_key=SecretStr(special_secret),
-            jwt_algorithm="HS256",
-        )
-
-        generated = make_api_token(expires_at=None, settings=special_settings)
-        decoded = decode_api_token(generated.value, special_settings)
-
-        assert decoded.sub is not None
-
-    def test_token_with_unicode_secret_key(self) -> None:
-        """Test token generation with unicode characters in secret key."""
-        unicode_secret = "секретный-ключ-с-юникодом-тест"
-        unicode_settings = AppSettings(
-            api_token=SecretStr("test-token"),
-            admin_username="test-username",
-            admin_password=SecretStr("test-password"),
-            secret_key=SecretStr(unicode_secret),
-            jwt_algorithm="HS256",
-        )
-
-        generated = make_api_token(expires_at=None, settings=unicode_settings)
-        decoded = decode_api_token(generated.value, unicode_settings)
-
-        assert decoded.sub is not None
-
-    def test_token_with_minimal_expiration(self, test_settings: AppSettings) -> None:
-        """Test token with minimal expiration time."""
-        minimal_exp = datetime.datetime.now() + datetime.timedelta(microseconds=1)
-        generated = make_api_token(expires_at=minimal_exp, settings=test_settings)
+    def test_token_with_minimal_expiration(self, app_settings_test: AppSettings) -> None:
+        minimal_exp = utcnow(skip_tz=False) + datetime.timedelta(microseconds=1)
+        generated = make_api_token(expires_at=minimal_exp, settings=app_settings_test)
 
         # Should be decodable immediately
-        decoded = decode_api_token(generated.value, test_settings)
+        decoded = decode_api_token(generated.value, app_settings_test)
         assert decoded.exp == minimal_exp
 
-    def test_token_with_maximum_expiration(self, test_settings: AppSettings) -> None:
-        """Test token with maximum expiration time."""
+    def test_token_with_maximum_expiration(self, app_settings_test: AppSettings) -> None:
         max_exp = datetime.datetime.max
-        generated = make_api_token(expires_at=max_exp, settings=test_settings)
+        generated = make_api_token(expires_at=max_exp, settings=app_settings_test)
 
-        decoded = decode_api_token(generated.value, test_settings)
+        decoded = decode_api_token(generated.value, app_settings_test)
         assert decoded.exp == max_exp
 
-    def test_token_with_negative_expiration(self, test_settings: AppSettings) -> None:
-        """Test token with negative expiration time (past time)."""
-        past_time = datetime.datetime.now() - datetime.timedelta(hours=1)
-        generated = make_api_token(expires_at=past_time, settings=test_settings)
+    def test_token_with_negative_expiration(self, app_settings_test: AppSettings) -> None:
+        past_time = utcnow(skip_tz=False) - datetime.timedelta(hours=1)
+        generated = make_api_token(expires_at=past_time, settings=app_settings_test)
 
         # Should raise exception when decoding
         with pytest.raises(HTTPException) as exc_info:
-            decode_api_token(generated.value, test_settings)
+            decode_api_token(generated.value, app_settings_test)
 
         assert exc_info.value.status_code == 401
         assert "Token expired" in str(exc_info.value.detail)
 
-    def test_token_with_exactly_current_time_expiration(self, test_settings: AppSettings) -> None:
-        """Test token with expiration exactly at current time."""
-        current_time = datetime.datetime.now()
-        generated = make_api_token(expires_at=current_time, settings=test_settings)
+    def test_token_with_exactly_current_time_expiration(
+        self, app_settings_test: AppSettings
+    ) -> None:
+        current_time = utcnow(skip_tz=False)
+        generated = make_api_token(expires_at=current_time, settings=app_settings_test)
 
         # Should raise exception when decoding (expired)
         with pytest.raises(HTTPException) as exc_info:
-            decode_api_token(generated.value, test_settings)
+            decode_api_token(generated.value, app_settings_test)
 
         assert exc_info.value.status_code == 401
         assert "Token expired" in str(exc_info.value.detail)
 
-    def test_token_with_very_short_token_string(self, test_settings: AppSettings) -> None:
-        """Test decoding with very short token string."""
+    @pytest.mark.parametrize(
+        "token_string,expected_detail_contains",
+        [
+            ("123", None),  # Very short token
+            ("payload-signature-abc", "Invalid token signature"),  # Non-numeric length prefix
+            ("payload-signature999", None),  # Invalid length prefix
+            ("invalid-payload123", None),  # Malformed payload
+            ("payload-signature001", None),  # Wrong signature length
+        ],
+        ids=[
+            "very_short_token",
+            "non_numeric_length_prefix",
+            "invalid_length_prefix",
+            "malformed_payload",
+            "wrong_signature_length",
+        ],
+    )
+    def test_token_with_malformed_inputs(
+        self,
+        app_settings_test: AppSettings,
+        token_string: str,
+        expected_detail_contains: str | None,
+    ) -> None:
         with pytest.raises(HTTPException) as exc_info:
-            decode_api_token("123", test_settings)
+            decode_api_token(token_string, app_settings_test)
 
         assert exc_info.value.status_code == 401
 
-    def test_token_with_non_numeric_length_prefix(self, test_settings: AppSettings) -> None:
-        """Test decoding with non-numeric length prefix."""
-        with pytest.raises(HTTPException) as exc_info:
-            decode_api_token("payloadsignatureabc", test_settings)
+        if expected_detail_contains:
+            assert expected_detail_contains in str(exc_info.value.detail)
 
-        assert exc_info.value.status_code == 401
-        assert "Invalid token signature" in str(exc_info.value.detail)
-
-    def test_token_with_invalid_length_prefix(self, test_settings: AppSettings) -> None:
-        """Test decoding with invalid length prefix."""
-        with pytest.raises(HTTPException) as exc_info:
-            decode_api_token("payloadsignature999", test_settings)
-
-        assert exc_info.value.status_code == 401
-
-    def test_token_with_malformed_payload(self, test_settings: AppSettings) -> None:
-        """Test decoding with malformed payload."""
-        with pytest.raises(HTTPException) as exc_info:
-            decode_api_token("invalidpayload123", test_settings)
-
-        assert exc_info.value.status_code == 401
-
-    def test_token_with_wrong_signature_length(self, test_settings: AppSettings) -> None:
-        """Test decoding with wrong signature length."""
-        # Create a token with wrong signature length in prefix
-        with pytest.raises(HTTPException) as exc_info:
-            decode_api_token("payloadsignature001", test_settings)
-
-        assert exc_info.value.status_code == 401
-
-    def test_hash_token_with_empty_string(self) -> None:
-        """Test hashing empty string."""
-        hashed = hash_token("")
+    @pytest.mark.parametrize(
+        "input_string,description",
+        [
+            ("", "empty string"),
+            ("a" * 10000, "very long string"),
+            ("тест-строка-测试字符串", "unicode string"),
+            ("!@#$%^&*()_+-=[]{}|;:,.<>?`~", "special characters"),
+            ("\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09", "binary-like string"),
+        ],
+        ids=[
+            "empty_string",
+            "very_long_string",
+            "unicode_string",
+            "special_characters",
+            "binary_like_string",
+        ],
+    )
+    def test_hash_token_edge_cases(self, input_string: str, description: str) -> None:
+        hashed = hash_token(input_string)
 
         assert isinstance(hashed, str)
         assert len(hashed) == 128  # SHA-512 hex digest length
-
-    def test_hash_token_with_very_long_string(self) -> None:
-        """Test hashing very long string."""
-        long_string = "a" * 10000
-        hashed = hash_token(long_string)
-
-        assert isinstance(hashed, str)
-        assert len(hashed) == 128
-
-    def test_hash_token_with_unicode_string(self) -> None:
-        """Test hashing unicode string."""
-        unicode_string = "тест-строка-с-юникодом-测试字符串"
-        hashed = hash_token(unicode_string)
-
-        assert isinstance(hashed, str)
-        assert len(hashed) == 128
-
-    def test_hash_token_with_special_characters(self) -> None:
-        """Test hashing string with special characters."""
-        special_string = "!@#$%^&*()_+-=[]{}|;:,.<>?`~"
-        hashed = hash_token(special_string)
-
-        assert isinstance(hashed, str)
-        assert len(hashed) == 128
-
-    def test_hash_token_with_binary_like_string(self) -> None:
-        """Test hashing string that looks like binary data."""
-        binary_like = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09"
-        hashed = hash_token(binary_like)
-
-        assert isinstance(hashed, str)
-        assert len(hashed) == 128
 
 
 class TestPasswordHasherEdgeCases:
@@ -284,223 +215,195 @@ class TestPasswordHasherEdgeCases:
         """Return PBKDF2PasswordHasher instance."""
         return PBKDF2PasswordHasher()
 
-    def test_encode_empty_password(self, hasher: PBKDF2PasswordHasher) -> None:
-        """Test encoding empty password."""
-        encoded = hasher.encode("")
+    @pytest.mark.parametrize(
+        "password,description",
+        [
+            ("", "empty password"),
+            ("a" * 10000, "very long password"),
+            ("тест-пароль-с-юникодом-测试密码", "unicode password"),
+            ("!@#$%^&*()_+-=[]{}|;:,.<>?`~", "special characters"),
+            ("password\x00with\x00nulls", "null bytes"),
+        ],
+        ids=[
+            "empty_password",
+            "very_long_password",
+            "unicode_password",
+            "special_characters",
+            "null_bytes",
+        ],
+    )
+    def test_encode_password_edge_cases(
+        self, hasher: PBKDF2PasswordHasher, password: str, description: str
+    ) -> None:
+        encoded = hasher.encode(password)
 
         assert isinstance(encoded, str)
         assert encoded.startswith("pbkdf2_sha256$")
 
-    def test_encode_very_long_password(self, hasher: PBKDF2PasswordHasher) -> None:
-        """Test encoding very long password."""
-        long_password = "a" * 10000
-        encoded = hasher.encode(long_password)
-
-        assert isinstance(encoded, str)
-        assert encoded.startswith("pbkdf2_sha256$")
-
-    def test_encode_unicode_password(self, hasher: PBKDF2PasswordHasher) -> None:
-        """Test encoding unicode password."""
-        unicode_password = "тест-пароль-с-юникодом-测试密码"
-        encoded = hasher.encode(unicode_password)
-
-        assert isinstance(encoded, str)
-        assert encoded.startswith("pbkdf2_sha256$")
-
-    def test_encode_password_with_special_characters(self, hasher: PBKDF2PasswordHasher) -> None:
-        """Test encoding password with special characters."""
-        special_password = "!@#$%^&*()_+-=[]{}|;:,.<>?`~"
-        encoded = hasher.encode(special_password)
-
-        assert isinstance(encoded, str)
-        assert encoded.startswith("pbkdf2_sha256$")
-
-    def test_encode_password_with_null_bytes(self, hasher: PBKDF2PasswordHasher) -> None:
-        """Test encoding password with null bytes."""
-        null_password = "password\x00with\x00nulls"
-        encoded = hasher.encode(null_password)
-
-        assert isinstance(encoded, str)
-        assert encoded.startswith("pbkdf2_sha256$")
-
-    def test_verify_empty_password_against_empty_encoded(
-        self, hasher: PBKDF2PasswordHasher
+    @pytest.mark.parametrize(
+        "password,encoded_password,expected_valid,expected_message_contains,description",
+        [
+            ("", None, True, "", "empty password against empty encoded"),
+            ("wrong", None, False, "", "wrong password against empty encoded"),
+            ("", "normal-password-encoded", False, "", "empty password against normal encoded"),
+            (
+                "test-password",
+                "pbkdf2_sha256$180000$salt",
+                False,
+                "incompatible format",
+                "missing hash part",
+            ),
+            (
+                "test-password",
+                "pbkdf2_sha256$180000$salt$hash$extra",
+                False,
+                "incompatible format",
+                "extra parts",
+            ),
+            ("test-password", "pbkdf2_sha256$999999$salt$hash", False, "", "wrong iterations"),
+            (
+                "test-password",
+                "pbkdf2_sha256$invalid$salt$hash",
+                False,
+                "incompatible format",
+                "non-numeric iterations",
+            ),
+        ],
+        ids=[
+            "empty_vs_empty",
+            "wrong_vs_empty",
+            "empty_vs_normal",
+            "missing_hash_part",
+            "extra_parts",
+            "wrong_iterations",
+            "non_numeric_iterations",
+        ],
+    )
+    def test_verify_password_edge_cases(
+        self,
+        hasher: PBKDF2PasswordHasher,
+        password: str,
+        encoded_password: str | None,
+        expected_valid: bool,
+        expected_message_contains: str,
+        description: str,
     ) -> None:
-        """Test verifying empty password against empty encoded password."""
-        encoded = hasher.encode("")
-        is_valid, message = hasher.verify("", encoded)
+        if encoded_password is None:
+            # For tests that need to encode empty password first
+            encoded = hasher.encode("")
+        else:
+            encoded = encoded_password
 
-        assert is_valid is True
-        assert message == ""
+        is_valid, message = hasher.verify(password, encoded)
 
-    def test_verify_wrong_password_against_empty_encoded(
-        self, hasher: PBKDF2PasswordHasher
+        assert is_valid is expected_valid
+        if expected_message_contains:
+            assert expected_message_contains in message
+        else:
+            assert message == ""
+
+    @pytest.mark.parametrize(
+        "length,expected_length,description",
+        [
+            (0, 0, "zero length"),
+            (100, 100, "very long length"),
+        ],
+        ids=[
+            "zero_length",
+            "very_long_length",
+        ],
+    )
+    def test_salt_generation_edge_cases(
+        self, length: int, expected_length: int, description: str
     ) -> None:
-        """Test verifying wrong password against empty encoded password."""
-        encoded = hasher.encode("")
-        is_valid, message = hasher.verify("wrong", encoded)
+        salt = get_salt(length=length)
 
-        assert is_valid is False
-        assert message == ""
+        if expected_length == 0:
+            assert salt == ""
+        else:
+            assert len(salt) == expected_length
+            assert salt.isalnum()
 
-    def test_verify_empty_password_against_normal_encoded(
-        self, hasher: PBKDF2PasswordHasher
-    ) -> None:
-        """Test verifying empty password against normal encoded password."""
-        encoded = hasher.encode("normal-password")
-        is_valid, message = hasher.verify("", encoded)
+    @pytest.mark.parametrize(
+        "size,expected_size,description",
+        [
+            (0, 0, "zero size"),
+            (1000, 1000, "very large size"),
+        ],
+        ids=[
+            "zero_size",
+            "very_large_size",
+        ],
+    )
+    def test_random_hash_edge_cases(self, size: int, expected_size: int, description: str) -> None:
+        hash_result = get_random_hash(size=size)
 
-        assert is_valid is False
-        assert message == ""
-
-    def test_verify_with_malformed_encoded_password_missing_parts(
-        self, hasher: PBKDF2PasswordHasher
-    ) -> None:
-        """Test verifying with malformed encoded password missing parts."""
-        password = "test-password"
-        malformed_encoded = "pbkdf2_sha256$180000$salt"  # Missing hash part
-
-        is_valid, message = hasher.verify(password, malformed_encoded)
-
-        assert is_valid is False
-        assert "incompatible format" in message
-
-    def test_verify_with_malformed_encoded_password_extra_parts(
-        self, hasher: PBKDF2PasswordHasher
-    ) -> None:
-        """Test verifying with malformed encoded password with extra parts."""
-        password = "test-password"
-        malformed_encoded = "pbkdf2_sha256$180000$salt$hash$extra"
-
-        is_valid, message = hasher.verify(password, malformed_encoded)
-
-        assert is_valid is False
-        assert "incompatible format" in message
-
-    def test_verify_with_wrong_iterations(self, hasher: PBKDF2PasswordHasher) -> None:
-        """Test verifying with wrong iterations in encoded password."""
-        password = "test-password"
-        wrong_iterations_encoded = "pbkdf2_sha256$999999$salt$hash"
-
-        is_valid, message = hasher.verify(password, wrong_iterations_encoded)
-
-        assert is_valid is False
-        assert message == ""
-
-    def test_verify_with_non_numeric_iterations(self, hasher: PBKDF2PasswordHasher) -> None:
-        """Test verifying with non-numeric iterations in encoded password."""
-        password = "test-password"
-        non_numeric_iterations_encoded = "pbkdf2_sha256$invalid$salt$hash"
-
-        is_valid, message = hasher.verify(password, non_numeric_iterations_encoded)
-
-        assert is_valid is False
-        assert "incompatible format" in message
-
-    def test_salt_generation_edge_cases(self) -> None:
-        """Test salt generation edge cases."""
-        # Test with zero length
-        salt_zero = get_salt(length=0)
-        assert salt_zero == ""
-
-        # Test with very long length
-        salt_long = get_salt(length=100)
-        assert len(salt_long) == 100
-        assert salt_long.isalnum()
-
-    def test_random_hash_edge_cases(self) -> None:
-        """Test random hash generation edge cases."""
-        # Test with zero size
-        hash_zero = get_random_hash(size=0)
-        assert hash_zero == ""
-
-        # Test with very large size
-        hash_large = get_random_hash(size=1000)
-        assert len(hash_large) == 1000
-        assert all(c in "0123456789abcdef" for c in hash_large)
+        if expected_size == 0:
+            assert hash_result == ""
+        else:
+            assert len(hash_result) == expected_size
+            assert all(c in "0123456789abcdef" for c in hash_result)
 
 
 class TestAuthDependencyEdgeCases:
     """Tests for authentication dependency edge cases."""
 
+    @pytest.mark.parametrize(
+        "auth_token,should_raise,expected_detail_contains,description",
+        [
+            ("   ", True, "Not authenticated", "whitespace only token"),
+            ("\tBearer\t", True, "Not authenticated", "tab characters"),
+            ("Bearer\n", True, "Not authenticated", "newline characters"),
+            ("\u2003Bearer\u2003", True, "Not authenticated", "unicode whitespace"),
+        ],
+        ids=[
+            "whitespace_only",
+            "tab_characters",
+            "newline_characters",
+            "unicode_whitespace",
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_verify_api_token_with_whitespace_only_token(
-        self, test_settings: AppSettings, mock_request: MagicMock
+    async def test_verify_api_token_with_whitespace_edge_cases(
+        self,
+        app_settings_test: AppSettings,
+        mock_request: MagicMock,
+        auth_token: str,
+        should_raise: bool,
+        expected_detail_contains: str,
+        description: str,
     ) -> None:
-        """Test verification with whitespace-only token."""
-        with pytest.raises(HTTPException) as exc_info:
-            await verify_api_token(mock_request, test_settings, auth_token="   ")
+        if should_raise:
+            with pytest.raises(HTTPException) as exc_info:
+                await verify_api_token(mock_request, app_settings_test, auth_token=auth_token)
 
-        assert exc_info.value.status_code == 401
-        assert "Not authenticated" in str(exc_info.value.detail)
+            assert exc_info.value.status_code == 401
+            assert expected_detail_contains in str(exc_info.value.detail)
 
-    @pytest.mark.asyncio
-    async def test_verify_api_token_with_tab_characters(
-        self, test_settings: AppSettings, mock_request: MagicMock
-    ) -> None:
-        """Test verification with token containing tab characters."""
-        with pytest.raises(HTTPException) as exc_info:
-            await verify_api_token(mock_request, test_settings, auth_token="\tBearer\t")
-
-        assert exc_info.value.status_code == 401
-        assert "Not authenticated" in str(exc_info.value.detail)
-
-    @pytest.mark.asyncio
-    async def test_verify_api_token_with_newline_characters(
-        self, test_settings: AppSettings, mock_request: MagicMock
-    ) -> None:
-        """Test verification with token containing newline characters."""
-        with pytest.raises(HTTPException) as exc_info:
-            await verify_api_token(mock_request, test_settings, auth_token="Bearer\n")
-
-        assert exc_info.value.status_code == 401
-        assert "Not authenticated" in str(exc_info.value.detail)
-
-    @pytest.mark.asyncio
-    async def test_verify_api_token_with_unicode_whitespace(
-        self, test_settings: AppSettings, mock_request: MagicMock
-    ) -> None:
-        """Test verification with token containing unicode whitespace."""
-        with pytest.raises(HTTPException) as exc_info:
-            await verify_api_token(
-                mock_request, test_settings, auth_token="\u2003Bearer\u2003"
-            )  # Em space
-
-        assert exc_info.value.status_code == 401
-        assert "Not authenticated" in str(exc_info.value.detail)
-
+    @pytest.mark.parametrize(
+        "auth_token,description",
+        [
+            ("bearer test-token-value", "lowercase bearer"),
+            ("BeArEr test-token-value", "mixed case bearer"),
+        ],
+        ids=[
+            "lowercase_bearer",
+            "mixed_case_bearer",
+        ],
+    )
     @pytest.mark.asyncio
     async def test_verify_api_token_with_case_insensitive_bearer(
         self,
-        test_settings: AppSettings,
+        app_settings_test: AppSettings,
         mock_request: MagicMock,
         mock_make_token: MagicMock,
         mock_decode_token: MagicMock,
         mock_hash_token: MagicMock,
-        mock_session_uow: Tuple[MagicMock, AsyncMock],
-        mock_token_repository_active: Tuple[MagicMock, AsyncMock],
+        mock_session_uow: GenMockPair,
+        mock_token_repository_active: GenMockPair,
+        auth_token: str,
+        description: str,
     ) -> None:
-        """Test verification with case-insensitive Bearer prefix."""
-        # Test with lowercase bearer
-        auth_token = "bearer test-token-value"
-        result = await verify_api_token(mock_request, test_settings, auth_token=auth_token)
-
-        assert result == auth_token
-
-    @pytest.mark.asyncio
-    async def test_verify_api_token_with_mixed_case_bearer(
-        self,
-        test_settings: AppSettings,
-        mock_request: MagicMock,
-        mock_make_token: MagicMock,
-        mock_decode_token: MagicMock,
-        mock_hash_token: MagicMock,
-        mock_session_uow: Tuple[MagicMock, AsyncMock],
-        mock_token_repository_active: Tuple[MagicMock, AsyncMock],
-    ) -> None:
-        """Test verification with mixed case Bearer prefix."""
-        # Test with mixed case bearer
-        auth_token = "BeArEr test-token-value"
-        result = await verify_api_token(mock_request, test_settings, auth_token=auth_token)
+        result = await verify_api_token(mock_request, app_settings_test, auth_token=auth_token)
 
         assert result == auth_token

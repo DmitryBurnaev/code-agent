@@ -45,9 +45,7 @@ def jwt_encode(
     """
     Generates signed JWT token with specified expiration datetime.
     """
-    if expires_at is not None:
-        payload.exp = expires_at
-
+    payload.exp = expires_at or datetime.datetime.max
     encrypted_token = jwt.encode(
         payload.as_dict(),
         key=settings.secret_key.get_secret_value(),
@@ -152,9 +150,6 @@ def decode_api_token(token: str, settings: SettingsDep) -> JWTPayload:
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    if payload.exp is None:
-        raise HTTPException(status_code=401, detail="Token has no expiration time")
-
     logger.debug("[auth] Got payload: %s", payload)
     return payload
 
@@ -189,7 +184,7 @@ async def verify_api_token(
 
     logger.debug("[auth] Authentication: input auth token: %s", auth_token)
 
-    auth_token = auth_token.replace("Bearer ", "").strip()
+    auth_token = auth_token.replace("Bearer", "").strip()
     decoded_payload = decode_api_token(auth_token, settings=settings)
     raw_token_identity = decoded_payload.sub
     if not raw_token_identity:
