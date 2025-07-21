@@ -3,19 +3,22 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 from pydantic import SecretStr
+from starlette.exceptions import HTTPException
 
 from src.settings import AppSettings
 
+type GenMockPair = Generator[tuple[MagicMock, AsyncMock], Any, None]
 
-# Module-level fixtures
+
 @pytest.fixture
-def test_settings() -> AppSettings:
-    """Return test settings."""
+def app_settings_test() -> AppSettings:
+    """Return test settings with secret keys."""
     return AppSettings(
         api_token=SecretStr("test-token"),
         admin_username="test-username",
         admin_password=SecretStr("test-password"),
-        secret_key=SecretStr("test-secret-key-for-dependencies"),
+        secret_key=SecretStr("test-secret-key-for-jwt-encoding"),
+        vendor_encryption_key=SecretStr("test-vendor-encryption-key"),
         jwt_algorithm="HS256",
     )
 
@@ -45,7 +48,7 @@ def mock_decode_token() -> Generator[MagicMock, Any, None]:
 
 
 @pytest.fixture
-def mock_hash_token() -> Generator[tuple[MagicMock | AsyncMock], Any, None]:
+def mock_hash_token() -> Generator[MagicMock, Any, None]:
     """Mock hash_token function."""
     with patch("src.modules.auth.dependencies.hash_token") as mock:
         mock.return_value = "test-hash"
@@ -53,7 +56,7 @@ def mock_hash_token() -> Generator[tuple[MagicMock | AsyncMock], Any, None]:
 
 
 @pytest.fixture
-def mock_session_uow() -> Generator[tuple[MagicMock | AsyncMock], Any, None]:
+def mock_session_uow() -> GenMockPair:
     """Mock SASessionUOW context manager."""
     with patch("src.modules.auth.dependencies.SASessionUOW") as mock_uow:
         mock_session = AsyncMock()
@@ -62,7 +65,7 @@ def mock_session_uow() -> Generator[tuple[MagicMock | AsyncMock], Any, None]:
 
 
 @pytest.fixture
-def mock_token_repository_active() -> Generator[tuple[MagicMock | AsyncMock], Any, None]:
+def mock_token_repository_active() -> GenMockPair:
     """Mock TokenRepository with active token and user."""
     with patch("src.modules.auth.dependencies.TokenRepository") as mock_repo_class:
         mock_repo = AsyncMock()
@@ -75,7 +78,7 @@ def mock_token_repository_active() -> Generator[tuple[MagicMock | AsyncMock], An
 
 
 @pytest.fixture
-def mock_token_repository_inactive_token() -> Generator[tuple[MagicMock | AsyncMock], Any, None]:
+def mock_token_repository_inactive_token() -> GenMockPair:
     """Mock TokenRepository with inactive token."""
     with patch("src.modules.auth.dependencies.TokenRepository") as mock_repo_class:
         mock_repo = AsyncMock()
@@ -87,7 +90,7 @@ def mock_token_repository_inactive_token() -> Generator[tuple[MagicMock | AsyncM
 
 
 @pytest.fixture
-def mock_token_repository_inactive_user() -> Generator[tuple[MagicMock | AsyncMock], Any, None]:
+def mock_token_repository_inactive_user() -> GenMockPair:
     """Mock TokenRepository with inactive user."""
     with patch("src.modules.auth.dependencies.TokenRepository") as mock_repo_class:
         mock_repo = AsyncMock()
@@ -100,7 +103,7 @@ def mock_token_repository_inactive_user() -> Generator[tuple[MagicMock | AsyncMo
 
 
 @pytest.fixture
-def mock_token_repository_unknown_token() -> Generator[tuple[MagicMock | AsyncMock], Any, None]:
+def mock_token_repository_unknown_token() -> GenMockPair:
     """Mock TokenRepository with unknown token."""
     with patch("src.modules.auth.dependencies.TokenRepository") as mock_repo_class:
         mock_repo = AsyncMock()
@@ -110,7 +113,7 @@ def mock_token_repository_unknown_token() -> Generator[tuple[MagicMock | AsyncMo
 
 
 @pytest.fixture
-def mock_decode_token_no_identity() -> MagicMock:
+def mock_decode_token_no_identity() -> Generator[MagicMock, Any, None]:
     """Mock decode_api_token function with no identity."""
     with patch("src.modules.auth.dependencies.decode_api_token") as mock:
         mock.return_value = MagicMock(sub="")
@@ -118,7 +121,7 @@ def mock_decode_token_no_identity() -> MagicMock:
 
 
 @pytest.fixture
-def mock_decode_token_none_identity() -> MagicMock:
+def mock_decode_token_none_identity() -> Generator[MagicMock, Any, None]:
     """Mock decode_api_token function with None identity."""
     with patch("src.modules.auth.dependencies.decode_api_token") as mock:
         mock.return_value = MagicMock(sub=None)
@@ -126,7 +129,7 @@ def mock_decode_token_none_identity() -> MagicMock:
 
 
 @pytest.fixture
-def mock_decode_token_error() -> MagicMock:
+def mock_decode_token_error() -> Generator[MagicMock, Any, None]:
     """Mock decode_api_token function that raises error."""
     with patch("src.modules.auth.dependencies.decode_api_token") as mock:
         mock.side_effect = HTTPException(status_code=401, detail="Invalid token")
@@ -134,7 +137,7 @@ def mock_decode_token_error() -> MagicMock:
 
 
 @pytest.fixture
-def mock_session_uow_error() -> MagicMock:
+def mock_session_uow_error() -> Generator[MagicMock, Any, None]:
     """Mock SASessionUOW context manager that raises error."""
     with patch("src.modules.auth.dependencies.SASessionUOW") as mock_uow:
         mock_uow.side_effect = Exception("Database error")

@@ -14,7 +14,8 @@ from src.main import make_app
 from src.services.vendors import VendorService
 from src.settings import AppSettings, get_app_settings
 from src.constants import VendorSlug
-from src.models import LLMVendor, User, Token
+from src.db.models import User, Token
+from src.models import LLMVendor
 from pydantic import SecretStr
 
 
