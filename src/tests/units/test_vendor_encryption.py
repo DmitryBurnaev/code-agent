@@ -3,7 +3,7 @@
 import pytest
 from pydantic import SecretStr
 
-from src.modules.auth.encryption import VendorKeyEncryption
+from src.modules.encrypt.encryption import VendorKeyEncryption
 
 
 class TestVendorKeyEncryption:

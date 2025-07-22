@@ -1,11 +1,9 @@
-"""Edge cases and special scenarios tests for authentication module."""
-
 import datetime
 import pytest
-from typing import Any, Generator, NamedTuple
+from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import HTTPException
 from pydantic import SecretStr
+from starlette.exceptions import HTTPException
 
 from src.modules.auth.tokens import (
     make_api_token,
@@ -106,7 +104,6 @@ class TestTokenEdgeCases:
         )
 
         generated = make_api_token(expires_at=None, settings=app_settings)
-        assert isinstance(generated, NamedTuple)
         assert isinstance(generated.value, str)
         assert isinstance(generated.hashed_value, str)
 
