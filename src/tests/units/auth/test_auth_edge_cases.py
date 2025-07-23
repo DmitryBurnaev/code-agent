@@ -80,18 +80,12 @@ class TestTokenEdgeCases:
 
     @pytest.mark.parametrize(
         "secret_key",
-        (
-            "",
-            "a" * 1000,
-            "!@#$%^&*()_+-=[]{}|;:,.<>?`~",
-            "секретный-ключ",
-        ),
-        ids=(
-            "empty",
-            "long",
-            "special-characters",
-            "unicode",
-        ),
+        [
+            pytest.param("", id="empty"),
+            pytest.param("a" * 1000, id="long"),
+            pytest.param("!@#$%^&*()_+-=[]{}|;:,.<>?`~", id="special-characters"),
+            pytest.param("секретный-ключ", id="unicode"),
+        ],
     )
     def test_token_with_various_secret_key(self, secret_key: str) -> None:
         app_settings = AppSettings(
@@ -111,19 +105,19 @@ class TestTokenEdgeCases:
         assert decoded.sub is not None
 
     def test_token_with_minimal_expiration(self, app_settings_test: AppSettings) -> None:
-        minimal_exp = utcnow(skip_tz=False) + datetime.timedelta(microseconds=1)
+        minimal_exp = utcnow(skip_tz=False) + datetime.timedelta(seconds=1)
         generated = make_api_token(expires_at=minimal_exp, settings=app_settings_test)
 
         # Should be decodable immediately
         decoded = decode_api_token(generated.value, app_settings_test)
-        assert decoded.exp == minimal_exp
+        assert decoded.exp == minimal_exp.replace(microsecond=0)
 
     def test_token_with_maximum_expiration(self, app_settings_test: AppSettings) -> None:
         max_exp = datetime.datetime.max
         generated = make_api_token(expires_at=max_exp, settings=app_settings_test)
 
         decoded = decode_api_token(generated.value, app_settings_test)
-        assert decoded.exp == max_exp
+        assert decoded.exp == max_exp.replace(microsecond=0, tzinfo=datetime.timezone.utc)
 
     def test_token_with_negative_expiration(self, app_settings_test: AppSettings) -> None:
         past_time = utcnow(skip_tz=False) - datetime.timedelta(hours=1)
@@ -152,18 +146,13 @@ class TestTokenEdgeCases:
     @pytest.mark.parametrize(
         "token_string,expected_detail_contains",
         [
-            ("123", None),  # Very short token
-            ("payload-signature-abc", "Invalid token signature"),  # Non-numeric length prefix
-            ("payload-signature999", None),  # Invalid length prefix
-            ("invalid-payload123", None),  # Malformed payload
-            ("payload-signature001", None),  # Wrong signature length
-        ],
-        ids=[
-            "very_short_token",
-            "non_numeric_length_prefix",
-            "invalid_length_prefix",
-            "malformed_payload",
-            "wrong_signature_length",
+            pytest.param("123", None, id="very_short_token"),
+            pytest.param(
+                "payload-signature-abc", "Invalid token signature", id="non_numeric_length_prefix"
+            ),
+            pytest.param("payload-signature999", None, id="invalid_length_prefix"),
+            pytest.param("invalid-payload123", None, id="malformed_payload"),
+            pytest.param("payload-signature001", None, id="wrong_signature_length"),
         ],
     )
     def test_token_with_malformed_inputs(
@@ -181,23 +170,19 @@ class TestTokenEdgeCases:
             assert expected_detail_contains in str(exc_info.value.detail)
 
     @pytest.mark.parametrize(
-        "input_string,description",
+        "input_string",
         [
-            ("", "empty string"),
-            ("a" * 10000, "very long string"),
-            ("тест-строка-测试字符串", "unicode string"),
-            ("!@#$%^&*()_+-=[]{}|;:,.<>?`~", "special characters"),
-            ("\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09", "binary-like string"),
-        ],
-        ids=[
-            "empty_string",
-            "very_long_string",
-            "unicode_string",
-            "special_characters",
-            "binary_like_string",
+            pytest.param("", id="empty_string"),
+            pytest.param("a" * 10000, id="very_long_string"),
+            pytest.param("тест-строка-测试字符串", id="unicode_string"),
+            pytest.param("!@#$%^&*()_+-=[]{}|;:,.<>?`~", id="special_characters"),
+            pytest.param(
+                "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09",
+                id="binary_like_string",
+            ),
         ],
     )
-    def test_hash_token_edge_cases(self, input_string: str, description: str) -> None:
+    def test_hash_token_edge_cases(self, input_string: str) -> None:
         hashed = hash_token(input_string)
 
         assert isinstance(hashed, str)
@@ -213,67 +198,81 @@ class TestPasswordHasherEdgeCases:
         return PBKDF2PasswordHasher()
 
     @pytest.mark.parametrize(
-        "password,description",
+        "password",
         [
-            ("", "empty password"),
-            ("a" * 10000, "very long password"),
-            ("тест-пароль-с-юникодом-测试密码", "unicode password"),
-            ("!@#$%^&*()_+-=[]{}|;:,.<>?`~", "special characters"),
-            ("password\x00with\x00nulls", "null bytes"),
-        ],
-        ids=[
-            "empty_password",
-            "very_long_password",
-            "unicode_password",
-            "special_characters",
-            "null_bytes",
+            pytest.param("", id="empty_password"),
+            pytest.param(None, id="null_password"),
         ],
     )
-    def test_encode_password_edge_cases(
-        self, hasher: PBKDF2PasswordHasher, password: str, description: str
+    def test_encode_empty_password(
+        self, hasher: PBKDF2PasswordHasher, password: str | None
     ) -> None:
+        with pytest.raises(ValueError) as exc_info:
+            hasher.encode(password=password)  # type: ignore
+
+        assert exc_info.value.args[0] == "Password is required"
+
+    @pytest.mark.parametrize(
+        "password",
+        [
+            pytest.param("a" * 10000, id="very_long_password"),
+            pytest.param("тест-пароль-с-юникодом-测试密码", id="unicode_char"),
+            pytest.param("!@#$%^&*()_+-=[]{}|;:,.<>?`~", id="special_char"),
+            pytest.param("password\x00with\x00nulls", id="null_bytes"),
+        ],
+    )
+    def test_encode_password_edge_cases(self, hasher: PBKDF2PasswordHasher, password: str) -> None:
         encoded = hasher.encode(password)
 
         assert isinstance(encoded, str)
         assert encoded.startswith("pbkdf2_sha256$")
 
     @pytest.mark.parametrize(
-        "password,encoded_password,expected_valid,expected_message_contains,description",
+        "password,encoded_password,expected_valid,expected_message_contains",
         [
-            ("", None, True, "", "empty password against empty encoded"),
-            ("wrong", None, False, "", "wrong password against empty encoded"),
-            ("", "normal-password-encoded", False, "", "empty password against normal encoded"),
-            (
+            pytest.param("", None, True, "", id="empty_vs_empty"),
+            pytest.param(
+                "wrong",
+                None,
+                False,
+                "",
+                id="wrong_vs_empty",
+            ),
+            pytest.param(
+                "",
+                "normal-password-encoded",
+                False,
+                "",
+                id="empty_vs_normal",
+            ),
+            pytest.param(
                 "test-password",
                 "pbkdf2_sha256$180000$salt",
                 False,
-                "incompatible format",
                 "missing hash part",
+                id="missing_hash_part",
             ),
-            (
+            pytest.param(
                 "test-password",
                 "pbkdf2_sha256$180000$salt$hash$extra",
                 False,
-                "incompatible format",
                 "extra parts",
+                id="extra_parts",
             ),
-            ("test-password", "pbkdf2_sha256$999999$salt$hash", False, "", "wrong iterations"),
-            (
+            pytest.param(
+                "test-password",
+                "pbkdf2_sha256$999999$salt$hash",
+                False,
+                "",
+                id="wrong_iterations",
+            ),
+            pytest.param(
                 "test-password",
                 "pbkdf2_sha256$invalid$salt$hash",
                 False,
                 "incompatible format",
-                "non-numeric iterations",
+                id="incompatible_format",
             ),
-        ],
-        ids=[
-            "empty_vs_empty",
-            "wrong_vs_empty",
-            "empty_vs_normal",
-            "missing_hash_part",
-            "extra_parts",
-            "wrong_iterations",
-            "non_numeric_iterations",
         ],
     )
     def test_verify_password_edge_cases(
@@ -283,7 +282,6 @@ class TestPasswordHasherEdgeCases:
         encoded_password: str | None,
         expected_valid: bool,
         expected_message_contains: str,
-        description: str,
     ) -> None:
         if encoded_password is None:
             # For tests that need to encode empty password first
@@ -302,12 +300,8 @@ class TestPasswordHasherEdgeCases:
     @pytest.mark.parametrize(
         "length,expected_length,description",
         [
-            (0, 0, "zero length"),
-            (100, 100, "very long length"),
-        ],
-        ids=[
-            "zero_length",
-            "very_long_length",
+            pytest.param(0, 0, "zero length", id="zero_length"),
+            pytest.param(100, 100, "very long length", id="very_long_length"),
         ],
     )
     def test_salt_generation_edge_cases(
@@ -324,12 +318,8 @@ class TestPasswordHasherEdgeCases:
     @pytest.mark.parametrize(
         "size,expected_size,description",
         [
-            (0, 0, "zero size"),
-            (1000, 1000, "very large size"),
-        ],
-        ids=[
-            "zero_size",
-            "very_large_size",
+            pytest.param(0, 0, "zero size", id="zero_size"),
+            pytest.param(1000, 1000, "very large size", id="very_large_size"),
         ],
     )
     def test_random_hash_edge_cases(self, size: int, expected_size: int, description: str) -> None:
@@ -346,18 +336,12 @@ class TestAuthDependencyEdgeCases:
     """Tests for authentication dependency edge cases."""
 
     @pytest.mark.parametrize(
-        "auth_token,should_raise,expected_detail_contains,description",
+        "auth_token,should_raise,expected_detail_contains",
         [
-            ("   ", True, "Not authenticated", "whitespace only token"),
-            ("\tBearer\t", True, "Not authenticated", "tab characters"),
-            ("Bearer\n", True, "Not authenticated", "newline characters"),
-            ("\u2003Bearer\u2003", True, "Not authenticated", "unicode whitespace"),
-        ],
-        ids=[
-            "whitespace_only",
-            "tab_characters",
-            "newline_characters",
-            "unicode_whitespace",
+            pytest.param("   ", True, "Not authenticated", id="whitespace_only"),
+            pytest.param("\tBearer\t", True, "Not authenticated", id="tab_characters"),
+            pytest.param("Bearer\n", True, "Not authenticated", id="newline_characters"),
+            pytest.param("\u2003Bearer\u2003", True, "Not authenticated", id="unicode_whitespace"),
         ],
     )
     @pytest.mark.asyncio
@@ -368,7 +352,6 @@ class TestAuthDependencyEdgeCases:
         auth_token: str,
         should_raise: bool,
         expected_detail_contains: str,
-        description: str,
     ) -> None:
         if should_raise:
             with pytest.raises(HTTPException) as exc_info:
@@ -380,12 +363,8 @@ class TestAuthDependencyEdgeCases:
     @pytest.mark.parametrize(
         "auth_token,description",
         [
-            ("bearer test-token-value", "lowercase bearer"),
-            ("BeArEr test-token-value", "mixed case bearer"),
-        ],
-        ids=[
-            "lowercase_bearer",
-            "mixed_case_bearer",
+            pytest.param("bearer test-token-value", "lowercase bearer", id="lowercase_bearer"),
+            pytest.param("BeArEr test-token-value", "mixed case bearer", id="mixed_case_bearer"),
         ],
     )
     @pytest.mark.asyncio

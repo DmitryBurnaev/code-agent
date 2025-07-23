@@ -173,7 +173,7 @@ class TestMakeAPIToken:
         # Token should be decodable
         decoded = decode_api_token(result.value, app_settings_test)
         assert decoded.exp is not None
-        assert decoded.exp == int(exp_time.timestamp())
+        assert decoded.exp == exp_time.replace(microsecond=0)
 
     def test_make_api_token_custom_format(self, app_settings_test: AppSettings) -> None:
         result = make_api_token(expires_at=None, settings=app_settings_test)
