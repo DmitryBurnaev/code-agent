@@ -3,7 +3,7 @@ import uuid
 import random
 import hashlib
 import datetime
-from typing import NamedTuple, cast
+from typing import NamedTuple
 
 import jwt
 from fastapi import Security
@@ -63,10 +63,13 @@ def jwt_decode(jwt_token: str, settings: SettingsDep) -> JWTPayload:
         settings.secret_key.get_secret_value(),
         algorithms=[settings.jwt_algorithm],
     )
+    exp = payload["exp"]
+    if not isinstance(exp, (int, float)):
+        raise ValueError(f"Unsupported expiration time detected: {exp!r}")
 
     return JWTPayload(
         sub=str(payload["sub"]),
-        exp=cast(datetime.datetime, payload["exp"]),
+        exp=datetime.datetime.fromtimestamp(exp, tz=datetime.timezone.utc),
     )
 
 
