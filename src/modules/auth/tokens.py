@@ -182,13 +182,12 @@ async def verify_api_token(
     if request.method == "OPTIONS":
         return ""
 
-    auth_token = auth_token.strip() if auth_token else None
+    auth_token = (auth_token or "").replace("Bearer", "").strip()
     if not auth_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     logger.debug("[auth] Authentication: input auth token: %s", auth_token)
 
-    auth_token = auth_token.replace("Bearer", "").strip()
     decoded_payload = decode_api_token(auth_token, settings=settings)
     raw_token_identity = decoded_payload.sub
     if not raw_token_identity:

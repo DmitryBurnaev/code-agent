@@ -50,6 +50,8 @@ class PBKDF2PasswordHasher:
         """Check if the given password is correct."""
         try:
             algorithm, _, salt, _ = encoded.split("$", 3)
+            self._validate_input(password, salt)
+
         except ValueError as exc:
             err_message = f"Encoded password has incompatible format: {exc}"
             logger.warning(err_message)
@@ -76,7 +78,9 @@ class PBKDF2PasswordHasher:
         """Validate the given password and salt."""
         if not password:
             raise ValueError("Password is required")
+
         if not salt:
             raise ValueError("Salt is required")
+
         if "$" in salt:
             raise ValueError("Salt has incompatible format")
