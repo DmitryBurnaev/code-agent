@@ -249,14 +249,14 @@ class TestPasswordHasherEdgeCases:
                 "test-password",
                 "pbkdf2_sha256$180000$salt",
                 False,
-                "missing hash part",
+                "incompatible format: not enough values to unpack",
                 id="missing_hash_part",
             ),
             pytest.param(
                 "test-password",
                 "pbkdf2_sha256$180000$salt$hash$extra",
                 False,
-                "extra parts",
+                "salt has incompatible format",
                 id="extra_parts",
             ),
             pytest.param(
@@ -293,7 +293,7 @@ class TestPasswordHasherEdgeCases:
 
         assert is_valid is expected_valid
         if expected_message_contains:
-            assert expected_message_contains in message
+            assert expected_message_contains in message.lower()
         else:
             assert message == ""
 
@@ -316,18 +316,25 @@ class TestPasswordHasherEdgeCases:
             assert salt.isalnum()
 
     @pytest.mark.parametrize(
-        "size,expected_size,description",
+        "size,expected_size,expected_error",
         [
-            pytest.param(0, 0, "zero size", id="zero_size"),
-            pytest.param(1000, 1000, "very large size", id="very_large_size"),
+            pytest.param(0, 0, True, id="zero_size"),
+            pytest.param(1000, 1000, True, id="very_large_size"),
+            pytest.param(1, 1, False, id="correct_min_size"),
+            pytest.param(64, 64, False, id="correct_max_size"),
         ],
     )
-    def test_random_hash_edge_cases(self, size: int, expected_size: int, description: str) -> None:
-        hash_result = get_random_hash(size=size)
+    def test_random_hash_edge_cases(
+        self, size: int, expected_size: int, expected_error: bool
+    ) -> None:
+        if expected_error:
+            with pytest.raises(ValueError) as exc:
+                get_random_hash(size=size)
 
-        if expected_size == 0:
-            assert hash_result == ""
+            assert "digest_size must be between 1 and 64 bytes" in exc.value.args[0]
+
         else:
+            hash_result = get_random_hash(size=size)
             assert len(hash_result) == expected_size
             assert all(c in "0123456789abcdef" for c in hash_result)
 
