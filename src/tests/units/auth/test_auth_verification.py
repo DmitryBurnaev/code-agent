@@ -11,7 +11,7 @@ from starlette.exceptions import HTTPException
 from src.modules.auth.dependencies import verify_api_token
 from src.modules.auth.tokens import make_api_token
 from src.settings import AppSettings
-from src.tests.units.auth.conftest import GenMockPair
+from src.tests.units.auth.conftest import GenMockPair, MockToken
 from src.utils import utcnow
 
 
@@ -114,10 +114,11 @@ class TestVerifyAPIToken:
         mock_request: MagicMock,
         mock_decode_token: MagicMock,
         mock_hash_token: MagicMock,
-        mock_session_uow: Tuple[MagicMock, AsyncMock],
-        mock_token_repository_inactive_token: Tuple[MagicMock, AsyncMock],
+        mock_token: MockToken,
     ) -> None:
         """Test verification with inactive token."""
+        mock_token.is_active = False
+
         with pytest.raises(HTTPException) as exc_info:
             await verify_api_token(mock_request, app_settings_test, auth_token="test-token")
 
@@ -131,10 +132,11 @@ class TestVerifyAPIToken:
         mock_request: MagicMock,
         mock_decode_token: MagicMock,
         mock_hash_token: MagicMock,
-        mock_session_uow: Tuple[MagicMock, AsyncMock],
-        mock_token_repository_inactive_user: Tuple[MagicMock, AsyncMock],
+        mock_token: MockToken,
     ) -> None:
         """Test verification with inactive user."""
+        mock_token.is_active = True
+        mock_token.user.is_active = False
         with pytest.raises(HTTPException) as exc_info:
             await verify_api_token(mock_request, app_settings_test, auth_token="test-token")
 
@@ -148,15 +150,16 @@ class TestVerifyAPIToken:
         mock_request: MagicMock,
         mock_decode_token: MagicMock,
         mock_hash_token: MagicMock,
-        mock_session_uow: Tuple[MagicMock, AsyncMock],
-        mock_token_repository_unknown_token: Tuple[MagicMock, AsyncMock],
+        mock_unknown_token: AsyncMock,
     ) -> None:
         """Test verification with unknown token."""
+
         with pytest.raises(HTTPException) as exc_info:
             await verify_api_token(mock_request, app_settings_test, auth_token="test-token")
 
         assert exc_info.value.status_code == 401
         assert "unknown token" in str(exc_info.value.detail)
+        mock_unknown_token.assert_awaited_with(mock_hash_token.return_value)
 
     @pytest.mark.asyncio
     async def test_verify_api_token_no_identity(
@@ -193,7 +196,7 @@ class TestVerifyAPIToken:
         mock_request: MagicMock,
         mock_decode_token: MagicMock,
         mock_hash_token: MagicMock,
-        mock_session_uow_error: MagicMock,
+        mock_repository_db_error: AsyncMock,
     ) -> None:
         """Test verification when database operation fails."""
         with pytest.raises(Exception) as exc_info:

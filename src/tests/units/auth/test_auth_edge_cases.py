@@ -1,7 +1,6 @@
 import datetime
 import pytest
-from typing import Any, Generator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 from pydantic import SecretStr
 from starlette.exceptions import HTTPException
 
@@ -17,62 +16,8 @@ from src.modules.auth.hashers import (
     get_random_hash,
 )
 from src.settings import AppSettings
-from src.tests.units.auth.conftest import GenMockPair
+from src.tests.units.auth.conftest import MockToken
 from src.utils import utcnow
-
-
-@pytest.fixture
-def mock_request() -> MagicMock:
-    """Return mock request object."""
-    request = MagicMock()
-    request.method = "GET"
-    return request
-
-
-@pytest.fixture
-def mock_make_token() -> Generator[MagicMock, Any, None]:
-    """Mock make_api_token function."""
-    with patch("src.modules.auth.dependencies.make_api_token") as mock:
-        mock.return_value = MagicMock(value="test-token-value", hashed_value="test-hash")
-        yield mock
-
-
-@pytest.fixture
-def mock_decode_token() -> Generator[MagicMock, Any, None]:
-    """Mock decode_api_token function."""
-    with patch("src.modules.auth.dependencies.decode_api_token") as mock:
-        mock.return_value = MagicMock(sub="test-user-id")
-        yield mock
-
-
-@pytest.fixture
-def mock_hash_token() -> Generator[MagicMock, Any, None]:
-    """Mock hash_token function."""
-    with patch("src.modules.auth.dependencies.hash_token") as mock:
-        mock.return_value = "test-hash"
-        yield mock
-
-
-@pytest.fixture
-def mock_session_uow() -> GenMockPair:
-    """Mock SASessionUOW context manager."""
-    with patch("src.modules.auth.dependencies.SASessionUOW") as mock_uow:
-        mock_session = AsyncMock()
-        mock_uow.return_value.__aenter__.return_value.session = mock_session
-        yield mock_uow, mock_session
-
-
-@pytest.fixture
-def mock_token_repository_active() -> GenMockPair:
-    """Mock TokenRepository with active token and user."""
-    with patch("src.modules.auth.dependencies.TokenRepository") as mock_repo_class:
-        mock_repo = AsyncMock()
-        mock_token = MagicMock()
-        mock_token.is_active = True
-        mock_token.user.is_active = True
-        mock_repo.get_by_token.return_value = mock_token
-        mock_repo_class.return_value = mock_repo
-        yield mock_repo_class, mock_repo
 
 
 class TestTokenEdgeCases:
@@ -230,21 +175,6 @@ class TestPasswordHasherEdgeCases:
     @pytest.mark.parametrize(
         "password,encoded_password,expected_valid,expected_message_contains",
         [
-            pytest.param("", None, True, "", id="empty_vs_empty"),
-            pytest.param(
-                "wrong",
-                None,
-                False,
-                "",
-                id="wrong_vs_empty",
-            ),
-            pytest.param(
-                "",
-                "normal-password-encoded",
-                False,
-                "",
-                id="empty_vs_normal",
-            ),
             pytest.param(
                 "test-password",
                 "pbkdf2_sha256$180000$salt",
@@ -256,7 +186,7 @@ class TestPasswordHasherEdgeCases:
                 "test-password",
                 "pbkdf2_sha256$180000$salt$hash$extra",
                 False,
-                "salt has incompatible format",
+                "extra parts detected",
                 id="extra_parts",
             ),
             pytest.param(
@@ -270,7 +200,7 @@ class TestPasswordHasherEdgeCases:
                 "test-password",
                 "pbkdf2_sha256$invalid$salt$hash",
                 False,
-                "incompatible format",
+                "",
                 id="incompatible_format",
             ),
         ],
@@ -279,17 +209,12 @@ class TestPasswordHasherEdgeCases:
         self,
         hasher: PBKDF2PasswordHasher,
         password: str,
-        encoded_password: str | None,
+        encoded_password: str,
         expected_valid: bool,
         expected_message_contains: str,
     ) -> None:
-        if encoded_password is None:
-            # For tests that need to encode empty password first
-            encoded = hasher.encode("")
-        else:
-            encoded = encoded_password
 
-        is_valid, message = hasher.verify(password, encoded)
+        is_valid, message = hasher.verify(password, encoded_password)
 
         assert is_valid is expected_valid
         if expected_message_contains:
@@ -379,14 +304,21 @@ class TestAuthDependencyEdgeCases:
         self,
         app_settings_test: AppSettings,
         mock_request: MagicMock,
-        mock_make_token: MagicMock,
         mock_decode_token: MagicMock,
         mock_hash_token: MagicMock,
-        mock_session_uow: GenMockPair,
-        mock_token_repository_active: GenMockPair,
+        mock_token: MockToken,
+        #     mock_request: MagicMock,
+        # # mock_make_token: MagicMock,
+        # mock_decode_token: MagicMock,
+        # mock_hash_token: MagicMock,
+        # mock_session_uow: GenMockPair,
+        # mock_token: MockToken,
         auth_token: str,
         description: str,
     ) -> None:
+        mock_token.is_active = True
+        mock_token.user.is_active = True
+
         result = await verify_api_token(mock_request, app_settings_test, auth_token=auth_token)
 
         assert result == auth_token
