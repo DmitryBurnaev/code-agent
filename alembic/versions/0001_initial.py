@@ -53,7 +53,7 @@ def _add_initial_admin(connection: sa.Connection) -> None:
         "username": app_settings.admin_username,
         "password": PBKDF2PasswordHasher().encode(app_settings.admin_password.get_secret_value()),
         "is_admin": True,
-        "is_active": False,
+        "is_active": True,
         "created_at": utcnow(),
     }
     connection.execute(sa.text(query), users_data)

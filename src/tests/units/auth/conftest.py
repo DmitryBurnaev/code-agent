@@ -1,3 +1,4 @@
+import dataclasses
 from typing import Any, Generator
 from unittest.mock import MagicMock, patch, AsyncMock
 
@@ -85,6 +86,42 @@ def mock_token_repository_active(mock_session_uow: GenMockPair) -> Generator[Mag
         mock_token.is_active = True
         mock_token.user.is_active = True
         mock_get_by_token.return_value = mock_token
+        yield mock_get_by_token
+
+
+@dataclasses.dataclass
+class MockUser:
+    is_active: bool = False
+
+
+@dataclasses.dataclass
+class MockToken:
+    is_active: bool
+    user: MockUser
+
+
+@pytest.fixture
+def mock_token() -> Generator[MockToken, Any, None]:
+    """Mock TokenRepository with inactive token."""
+    with patch("src.db.repositories.TokenRepository.get_by_token") as mock_get_by_token:
+        mock_token = MockToken(is_active=False, user=MockUser(is_active=False))
+        mock_get_by_token.return_value = mock_token
+        yield mock_token
+
+
+@pytest.fixture
+def mock_unknown_token() -> Generator[AsyncMock, Any, None]:
+    """Mock TokenRepository with inactive token."""
+    with patch("src.db.repositories.TokenRepository.get_by_token") as mock_get_by_token:
+        mock_get_by_token.return_value = None
+        yield mock_get_by_token
+
+
+@pytest.fixture
+def mock_repository_db_error() -> Generator[AsyncMock, Any, None]:
+    """Mock TokenRepository with inactive token."""
+    with patch("src.db.repositories.TokenRepository.get_by_token") as mock_get_by_token:
+        mock_get_by_token.side_effect = RuntimeError("Database error")
         yield mock_get_by_token
 
 

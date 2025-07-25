@@ -49,6 +49,9 @@ class PBKDF2PasswordHasher:
     def verify(self, password: str, encoded: str) -> tuple[bool, str]:
         """Check if the given password is correct."""
         try:
+            if len(encoded.split("$")) > 4:
+                raise ValueError("Extra parts detected")
+
             algorithm, _, salt, _ = encoded.split("$", 3)
             self._validate_input(password, salt)
 
