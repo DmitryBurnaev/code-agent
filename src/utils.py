@@ -7,6 +7,7 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
+from starlette.exceptions import HTTPException
 
 from src.exceptions import BaseApplicationError
 from src.models import ErrorResponse
@@ -60,6 +61,13 @@ async def universal_exception_handler(request: Request, exc: Exception) -> JSONR
         log_level = logging.WARNING
         log_message = f"Validation error: {str(exc)}"
         status_code = 422
+        log_data |= {"error": log_message}
+
+    elif isinstance(exc, HTTPException):
+        log_level = logging.WARNING
+        status_code = exc.status_code
+        log_message = "Auth problem" if status_code == 401 else "Some http-related error"
+        log_message = f"{log_message}: {exc.detail}"
         log_data |= {"error": log_message}
 
     else:
