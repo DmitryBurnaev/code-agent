@@ -3,7 +3,6 @@
 from datetime import timedelta
 
 import pytest
-from typing import Tuple
 from unittest.mock import AsyncMock, MagicMock
 
 from starlette.exceptions import HTTPException
@@ -76,8 +75,6 @@ class TestVerifyAPIToken:
         mock_request: MagicMock,
         mock_token_repository_active: GenMockPair,
     ) -> None:
-        """Test verification with Bearer prefix in token."""
-        # TODO: reuse making token logic in fixtures
         auth_token = make_api_token(
             expires_at=utcnow() + timedelta(minutes=10),
             settings=app_settings_test,
@@ -98,13 +95,11 @@ class TestVerifyAPIToken:
         mock_make_token: MagicMock,
         mock_decode_token: MagicMock,
         mock_hash_token: MagicMock,
-        mock_session_uow: Tuple[MagicMock, AsyncMock],
-        mock_token_repository_active: Tuple[MagicMock, AsyncMock],
+        mock_session_uow: tuple[MagicMock, AsyncMock],
+        mock_token_repository_active: tuple[MagicMock, AsyncMock],
     ) -> None:
-        """Test verification without Bearer prefix in token."""
         auth_token = "test-token-value"
         result = await verify_api_token(mock_request, app_settings_test, auth_token=auth_token)
-
         assert result == auth_token
 
     @pytest.mark.asyncio
