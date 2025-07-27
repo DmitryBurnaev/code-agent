@@ -18,15 +18,19 @@ from src.db.models import User, Token
 from src.models import LLMVendor
 from pydantic import SecretStr
 
+type GenMockPair = Generator[tuple[MagicMock, AsyncMock], Any, None]
+
 
 @pytest.fixture
-def mock_settings() -> AppSettings:
+def mock_settings(auth_test_token: str) -> AppSettings:
     """Return mock settings."""
     return AppSettings(
-        api_token=SecretStr("test-token"),
+        api_token=SecretStr(auth_test_token),
+        http_proxy_url=None,
         admin_username="test-username",
         admin_password=SecretStr("test-password"),
         secret_key=SecretStr("test-secret"),
+        vendor_encryption_key=SecretStr("test-key"),
     )
 
 
@@ -36,7 +40,88 @@ def auth_test_token() -> str:
 
 
 @pytest.fixture
-def auth_test_header(auth_test_token: str) -> dict[str, str]:
+def mock_request() -> MagicMock:
+    """Return mock request object."""
+    request = MagicMock()
+    request.method = "GET"
+    return request
+
+
+@pytest.fixture
+def mock_make_token() -> Generator[MagicMock, Any, None]:
+    """Mock make_api_token function."""
+    with patch("src.modules.auth.tokens.make_api_token") as mock:
+        mock.return_value = MagicMock(value="test-token-value", hashed_value="test-hash")
+        yield mock
+
+
+@pytest.fixture
+def mock_decode_token() -> Generator[MagicMock, Any, None]:
+    """Mock decode_api_token function."""
+    with patch("src.modules.auth.tokens.decode_api_token") as mock:
+        mock.return_value = MagicMock(sub="test-user-id")
+        yield mock
+
+
+@pytest.fixture
+def mock_hash_token() -> Generator[MagicMock, Any, None]:
+    """Mock hash_token function."""
+    with patch("src.modules.auth.tokens.hash_token") as mock:
+        mock.return_value = "test-hash"
+        yield mock
+
+
+@pytest.fixture
+def mock_session_uow() -> GenMockPair:
+    """Mock SASessionUOW context manager."""
+    with patch("src.db.services.SASessionUOW") as mock_uow:
+        mock_session = AsyncMock()
+        mock_uow.return_value.__aenter__.return_value.session = mock_session
+        yield mock_uow, mock_session
+
+
+@pytest.fixture
+def mock_token_repository_active(mock_session_uow: GenMockPair) -> Generator[MagicMock, Any, None]:
+    """Mock TokenRepository with active token and user."""
+    with patch("src.db.repositories.TokenRepository.get_by_token") as mock_get_by_token:
+        mock_token = MagicMock()
+        mock_token.is_active = True
+        mock_token.user.is_active = True
+        mock_get_by_token.return_value = mock_token
+        yield mock_get_by_token
+
+
+@dataclasses.dataclass
+class MockUser:
+    is_active: bool = False
+
+
+@dataclasses.dataclass
+class MockToken:
+    is_active: bool
+    user: MockUser
+
+
+@pytest.fixture
+def mock_token() -> Generator[MockToken, Any, None]:
+    """Mock TokenRepository with inactive token."""
+    with patch("src.db.repositories.TokenRepository.get_by_token") as mock_get_by_token:
+        mock_token = MockToken(is_active=False, user=MockUser(is_active=False))
+        mock_get_by_token.return_value = mock_token
+        yield mock_token
+
+
+@pytest.fixture
+def auth_token(
+    mock_decode_token: MagicMock,
+    mock_hash_token: MagicMock,
+    mock_token: MockToken,
+) -> Generator[str, Any, None]:
+    yield "test-auth-token"
+
+
+@pytest.fixture
+def auth_test_header(auth_token: str) -> dict[str, str]:
     return {
         "Authorization": f"Bearer {auth_test_token}",
     }
@@ -54,23 +139,14 @@ def vendors() -> list[LLMVendor]:
 
 @pytest.fixture
 def client(
-    auth_test_token: str,
+    mock_settings: AppSettings,
     vendors: list[LLMVendor],
-    auth_test_header: dict[str, str],
+    auth_test_token: str,
 ) -> TestClient:
     """Create a test client with mocked settings."""
-    test_settings = AppSettings(
-        api_token=SecretStr(auth_test_token),
-        http_proxy_url=None,
-        admin_username="test-username",
-        admin_password=SecretStr("test-password"),
-        secret_key=SecretStr("test-secret"),
-    )
-    test_app = make_app(settings=test_settings)
-    test_app.dependency_overrides = {
-        get_app_settings: lambda: test_settings,
-    }
-    return TestClient(test_app, headers=auth_test_header)
+    test_app = make_app(settings=mock_settings)
+    test_app.dependency_overrides = {get_app_settings: lambda: mock_settings}
+    return TestClient(test_app, headers={"Authorization": f"Bearer {auth_test_token}"})
 
 
 @dataclasses.dataclass
@@ -157,32 +233,34 @@ def mock_user() -> User:
     return user
 
 
-@pytest.fixture
-def mock_token(mock_user: User) -> Token:
-    """Return mock token object."""
-    token = MagicMock(spec=Token)
-    token.id = 1
-    token.token_hash = "test-hash"
-    token.is_active = True
-    token.user = mock_user
-    return token
-
-
-@pytest.fixture
-def mock_request() -> MagicMock:
-    """Return mock request object."""
-    request = MagicMock()
-    request.method = "GET"
-    return request
-
-
-@pytest.fixture
-def mock_session_uow() -> Generator[tuple[MagicMock, AsyncMock], None, None]:
-    """Mock SASessionUOW context manager."""
-    with patch("src.modules.auth.tokens.SASessionUOW") as mock_uow:
-        mock_session = AsyncMock()
-        mock_uow.return_value.__aenter__.return_value.session = mock_session
-        yield mock_uow, mock_session
+#
+# @pytest.fixture
+# def mock_token(mock_user: User) -> Token:
+#     """Return mock token object."""
+#     token = MagicMock(spec=Token)
+#     token.id = 1
+#     token.token_hash = "test-hash"
+#     token.is_active = True
+#     token.user = mock_user
+#     return token
+#
+#
+# @pytest.fixture
+# def mock_request() -> MagicMock:
+#     """Return mock request object."""
+#     request = MagicMock()
+#     request.method = "GET"
+#     return request
+#
+#
+# @pytest.fixture
+# def mock_session_uow() -> Generator[tuple[MagicMock, AsyncMock], None, None]:
+#     """Mock SASessionUOW context manager."""
+#     with patch("src.modules.auth.tokens.SASessionUOW") as mock_uow:
+#         mock_session = AsyncMock()
+#         mock_uow.return_value.__aenter__.return_value.session = mock_session
+#         yield mock_uow, mock_session
+#
 
 
 @pytest.fixture
@@ -234,57 +312,58 @@ def mock_token_repository_unknown_token() -> Generator[tuple[MagicMock, AsyncMoc
         yield mock_repo_class, mock_repo
 
 
-@pytest.fixture
-def mock_make_token() -> Generator[MagicMock, None, None]:
-    """Mock make_api_token function."""
-    with patch("src.modules.auth.dependencies.make_api_token") as mock:
-        mock.return_value = MagicMock(value="test-token-value", hashed_value="test-hash")
-        yield mock
+#
+# @pytest.fixture
+# def mock_make_token() -> Generator[MagicMock, None, None]:
+#     """Mock make_api_token function."""
+#     with patch("src.modules.auth.dependencies.make_api_token") as mock:
+#         mock.return_value = MagicMock(value="test-token-value", hashed_value="test-hash")
+#         yield mock
+#
+#
+# @pytest.fixture
+# def mock_decode_token() -> Generator[MagicMock, None, None]:
+#     """Mock decode_api_token function."""
+#     with patch("src.modules.auth.dependencies.decode_api_token") as mock:
+#         mock.return_value = MagicMock(sub="test-user-id")
+#         yield mock
+#
+#
+# @pytest.fixture
+# def mock_hash_token() -> Generator[MagicMock, None, None]:
+#     """Mock hash_token function."""
+#     with patch("src.modules.auth.dependencies.hash_token") as mock:
+#         mock.return_value = "test-hash"
+#         yield mock
 
-
-@pytest.fixture
-def mock_decode_token() -> Generator[MagicMock, None, None]:
-    """Mock decode_api_token function."""
-    with patch("src.modules.auth.dependencies.decode_api_token") as mock:
-        mock.return_value = MagicMock(sub="test-user-id")
-        yield mock
-
-
-@pytest.fixture
-def mock_hash_token() -> Generator[MagicMock, None, None]:
-    """Mock hash_token function."""
-    with patch("src.modules.auth.dependencies.hash_token") as mock:
-        mock.return_value = "test-hash"
-        yield mock
-
-
-@pytest.fixture
-def mock_decode_token_no_identity() -> Generator[MagicMock, None, None]:
-    """Mock decode_api_token function with no identity."""
-    with patch("src.modules.auth.dependencies.decode_api_token") as mock:
-        mock.return_value = MagicMock(sub="")
-        yield mock
-
-
-@pytest.fixture
-def mock_decode_token_none_identity() -> Generator[MagicMock, None, None]:
-    """Mock decode_api_token function with None identity."""
-    with patch("src.modules.auth.dependencies.decode_api_token") as mock:
-        mock.return_value = MagicMock(sub=None)
-        yield mock
-
-
-@pytest.fixture
-def mock_decode_token_error() -> Generator[MagicMock, None, None]:
-    """Mock decode_api_token function that raises error."""
-    with patch("src.modules.auth.dependencies.decode_api_token") as mock:
-        mock.side_effect = Exception("Invalid token")
-        yield mock
-
-
-@pytest.fixture
-def mock_session_uow_error() -> Generator[MagicMock, None, None]:
-    """Mock SASessionUOW context manager that raises error."""
-    with patch("src.modules.auth.dependencies.SASessionUOW") as mock_uow:
-        mock_uow.side_effect = Exception("Database error")
-        yield mock_uow
+#
+# @pytest.fixture
+# def mock_decode_token_no_identity() -> Generator[MagicMock, None, None]:
+#     """Mock decode_api_token function with no identity."""
+#     with patch("src.modules.auth.dependencies.decode_api_token") as mock:
+#         mock.return_value = MagicMock(sub="")
+#         yield mock
+#
+#
+# @pytest.fixture
+# def mock_decode_token_none_identity() -> Generator[MagicMock, None, None]:
+#     """Mock decode_api_token function with None identity."""
+#     with patch("src.modules.auth.dependencies.decode_api_token") as mock:
+#         mock.return_value = MagicMock(sub=None)
+#         yield mock
+#
+#
+# @pytest.fixture
+# def mock_decode_token_error() -> Generator[MagicMock, None, None]:
+#     """Mock decode_api_token function that raises error."""
+#     with patch("src.modules.auth.dependencies.decode_api_token") as mock:
+#         mock.side_effect = Exception("Invalid token")
+#         yield mock
+#
+#
+# @pytest.fixture
+# def mock_session_uow_error() -> Generator[MagicMock, None, None]:
+#     """Mock SASessionUOW context manager that raises error."""
+#     with patch("src.modules.auth.dependencies.SASessionUOW") as mock_uow:
+#         mock_uow.side_effect = Exception("Database error")
+#         yield mock_uow

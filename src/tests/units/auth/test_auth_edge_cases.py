@@ -307,12 +307,6 @@ class TestAuthDependencyEdgeCases:
         mock_decode_token: MagicMock,
         mock_hash_token: MagicMock,
         mock_token: MockToken,
-        #     mock_request: MagicMock,
-        # # mock_make_token: MagicMock,
-        # mock_decode_token: MagicMock,
-        # mock_hash_token: MagicMock,
-        # mock_session_uow: GenMockPair,
-        # mock_token: MockToken,
         auth_token: str,
         description: str,
     ) -> None:

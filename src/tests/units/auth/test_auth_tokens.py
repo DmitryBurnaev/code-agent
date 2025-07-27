@@ -20,17 +20,17 @@ from src.tests.units.auth.conftest import GenMockPair
 from src.utils import utcnow
 
 
-@pytest.fixture
-def app_settings_test() -> AppSettings:
-    """Return test settings with secret keys."""
-    return AppSettings(
-        api_token=SecretStr("test-token"),
-        admin_username="test-username",
-        admin_password=SecretStr("test-password"),
-        secret_key=SecretStr("test-secret-key-for-jwt-encoding"),
-        vendor_encryption_key=SecretStr("test-vendor-encryption-key"),
-        jwt_algorithm="HS256",
-    )
+# @pytest.fixture
+# def app_settings_test() -> AppSettings:
+#     """Return test settings with secret keys."""
+#     return AppSettings(
+#         api_token=SecretStr("test-token"),
+#         admin_username="test-username",
+#         admin_password=SecretStr("test-password"),
+#         secret_key=SecretStr("test-secret-key-for-jwt-encoding"),
+#         vendor_encryption_key=SecretStr("test-vendor-encryption-key"),
+#         jwt_algorithm="HS256",
+#     )
 
 
 @pytest.fixture

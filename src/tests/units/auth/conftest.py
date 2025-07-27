@@ -11,17 +11,18 @@ from src.settings import AppSettings
 type GenMockPair = Generator[tuple[MagicMock, AsyncMock], Any, None]
 
 
-@pytest.fixture
-def app_settings_test() -> AppSettings:
-    """Return test settings with secret keys."""
-    return AppSettings(
-        api_token=SecretStr("test-token"),
-        admin_username="test-username",
-        admin_password=SecretStr("test-password"),
-        secret_key=SecretStr("test-secret-key-for-jwt-encoding"),
-        vendor_encryption_key=SecretStr("test-vendor-encryption-key"),
-        jwt_algorithm="HS256",
-    )
+# @pytest.fixture
+# def app_settings_test() -> AppSettings:
+#     """Return test settings with secret keys."""
+#     return AppSettings(
+#         api_token=SecretStr("test-token"),
+#         admin_username="test-username",
+#         admin_password=SecretStr("test-password"),
+#         secret_key=SecretStr("test-secret-key-for-jwt-encoding"),
+#         vendor_encryption_key=SecretStr("test-vendor-encryption-key"),
+#         jwt_algorithm="HS256",
+#     )
+#
 
 
 @pytest.fixture
@@ -63,19 +64,6 @@ def mock_session_uow() -> GenMockPair:
         mock_session = AsyncMock()
         mock_uow.return_value.__aenter__.return_value.session = mock_session
         yield mock_uow, mock_session
-
-
-@pytest.fixture
-def mock_token_repository_active__old() -> GenMockPair:
-    """Mock TokenRepository with active token and user."""
-    with patch("src.db.repositories.TokenRepository") as mock_repo_class:
-        mock_repo = AsyncMock()
-        mock_token = MagicMock()
-        mock_token.is_active = True
-        mock_token.user.is_active = True
-        mock_repo.get_by_token.return_value = mock_token
-        mock_repo_class.return_value = mock_repo
-        yield mock_repo_class, mock_repo
 
 
 @pytest.fixture
