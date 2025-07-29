@@ -1,8 +1,7 @@
 import datetime
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 from starlette.exceptions import HTTPException
-from pydantic import SecretStr
 
 from src.modules.auth.tokens import (
     JWTPayload,
@@ -15,96 +14,12 @@ from src.modules.auth.tokens import (
     GeneratedToken,
 )
 from src.settings import AppSettings
-from src.db.models import Token, User
 from src.tests.units.auth.conftest import GenMockPair
 from src.utils import utcnow
 
 
-# @pytest.fixture
-# def app_settings_test() -> AppSettings:
-#     """Return test settings with secret keys."""
-#     return AppSettings(
-#         api_token=SecretStr("test-token"),
-#         admin_username="test-username",
-#         admin_password=SecretStr("test-password"),
-#         secret_key=SecretStr("test-secret-key-for-jwt-encoding"),
-#         vendor_encryption_key=SecretStr("test-vendor-encryption-key"),
-#         jwt_algorithm="HS256",
-#     )
-
-
-@pytest.fixture
-def mock_user() -> User:
-    """Return a mock user object."""
-    user = MagicMock(spec=User)
-    user.is_active = True
-    return user
-
-
-@pytest.fixture
-def mock_token(mock_user: User) -> Token:
-    """Return mock token object."""
-    token = MagicMock(spec=Token)
-    token.is_active = True
-    token.user = mock_user
-    return token
-
-
-@pytest.fixture
-def mock_session_uow() -> GenMockPair:
-    """Mock SASessionUOW context manager."""
-    with patch("src.modules.auth.tokens.SASessionUOW") as mock_uow:
-        mock_session = AsyncMock()
-        mock_uow.return_value.__aenter__.return_value.session = mock_session
-        yield mock_uow, mock_session
-
-
-@pytest.fixture
-def mock_token_repository(mock_token: Token) -> GenMockPair:
-    """Mock TokenRepository with active token."""
-    with patch("src.modules.auth.tokens.TokenRepository") as mock_repo_class:
-        mock_repo = AsyncMock()
-        mock_repo.get_by_token.return_value = mock_token
-        mock_repo_class.return_value = mock_repo
-        yield mock_repo_class, mock_repo
-
-
-@pytest.fixture
-def mock_token_repository_inactive_token(mock_user: User) -> GenMockPair:
-    """Mock TokenRepository with inactive token."""
-    with patch("src.modules.auth.tokens.TokenRepository") as mock_repo_class:
-        mock_repo = AsyncMock()
-        mock_token = MagicMock()
-        mock_token.is_active = False
-        mock_repo.get_by_token.return_value = mock_token
-        mock_repo_class.return_value = mock_repo
-        yield mock_repo_class, mock_repo
-
-
-@pytest.fixture
-def mock_token_repository_inactive_user(mock_user: User) -> GenMockPair:
-    """Mock TokenRepository with inactive user."""
-    with patch("src.modules.auth.tokens.TokenRepository") as mock_repo_class:
-        mock_repo = AsyncMock()
-        mock_token = MagicMock()
-        mock_token.is_active = True
-        mock_token.user.is_active = False
-        mock_repo.get_by_token.return_value = mock_token
-        mock_repo_class.return_value = mock_repo
-        yield mock_repo_class, mock_repo
-
-
-@pytest.fixture
-def mock_token_repository_unknown_token() -> GenMockPair:
-    """Mock TokenRepository with unknown token."""
-    with patch("src.modules.auth.tokens.TokenRepository") as mock_repo_class:
-        mock_repo = AsyncMock()
-        mock_repo.get_by_token.return_value = None
-        mock_repo_class.return_value = mock_repo
-        yield mock_repo_class, mock_repo
-
-
 class TestJWTPayload:
+
     def test_jwt_payload_creation(self) -> None:
         payload = JWTPayload(sub="test-user")
         assert payload.sub == "test-user"
@@ -126,6 +41,7 @@ class TestJWTPayload:
 
 
 class TestJWTEncodeDecode:
+
     def test_jwt_encode_basic(self, app_settings_test: AppSettings) -> None:
         payload = JWTPayload(sub="test-user")
         token = jwt_encode(payload, app_settings_test)
@@ -157,6 +73,7 @@ class TestJWTEncodeDecode:
 
 
 class TestMakeAPIToken:
+
     def test_make_api_token_basic(self, app_settings_test: AppSettings) -> None:
         result = make_api_token(expires_at=None, settings=app_settings_test)
 
@@ -190,6 +107,7 @@ class TestMakeAPIToken:
 
 
 class TestDecodeAPIToken:
+
     def test_decode_api_token_valid(self, app_settings_test: AppSettings) -> None:
         # Generate a token first
         generated = make_api_token(expires_at=None, settings=app_settings_test)
@@ -228,6 +146,7 @@ class TestDecodeAPIToken:
 
 
 class TestHashToken:
+
     def test_hash_token_basic(self) -> None:
         token = "test-token-123"
         hashed = hash_token(token)
@@ -259,15 +178,9 @@ class TestHashToken:
         assert len(hashed) == 128
 
 
+@pytest.mark.asyncio
 class TestVerifyAPIToken:
-    @pytest.fixture
-    def mock_request(self) -> MagicMock:
-        """Return mock request object."""
-        request = MagicMock()
-        request.method = "GET"
-        return request
 
-    @pytest.mark.asyncio
     async def test_verify_api_token_options_method(
         self, app_settings_test: AppSettings, mock_request: MagicMock
     ) -> None:
@@ -277,7 +190,6 @@ class TestVerifyAPIToken:
 
         assert result == ""
 
-    @pytest.mark.asyncio
     async def test_verify_api_token_no_token(
         self, app_settings_test: AppSettings, mock_request: MagicMock
     ) -> None:
@@ -287,13 +199,11 @@ class TestVerifyAPIToken:
         assert exc_info.value.status_code == 401
         assert "Not authenticated" in str(exc_info.value.detail)
 
-    @pytest.mark.asyncio
     async def test_verify_api_token_with_bearer_prefix(
         self,
         app_settings_test: AppSettings,
         mock_request: MagicMock,
         mock_session_uow: GenMockPair,
-        mock_token_repository: GenMockPair,
     ) -> None:
         # Generate valid token
         generated = make_api_token(expires_at=None, settings=app_settings_test)
@@ -303,7 +213,6 @@ class TestVerifyAPIToken:
 
         assert result == generated.value
 
-    @pytest.mark.asyncio
     async def test_verify_api_token_inactive_token(
         self,
         app_settings_test: AppSettings,
@@ -320,7 +229,6 @@ class TestVerifyAPIToken:
         assert exc_info.value.status_code == 401
         assert "inactive token" in str(exc_info.value.detail)
 
-    @pytest.mark.asyncio
     async def test_verify_api_token_inactive_user(
         self,
         app_settings_test: AppSettings,
@@ -337,7 +245,6 @@ class TestVerifyAPIToken:
         assert exc_info.value.status_code == 401
         assert "user is not active" in str(exc_info.value.detail)
 
-    @pytest.mark.asyncio
     async def test_verify_api_token_unknown_token(
         self,
         app_settings_test: AppSettings,

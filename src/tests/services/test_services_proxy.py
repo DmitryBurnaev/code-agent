@@ -92,10 +92,10 @@ def mock_http_client(mock_response: AsyncMock) -> AsyncMock:
 
 @pytest.fixture
 async def proxy_service(
-    mock_settings: AppSettings, mock_http_client: AsyncMock
+    app_settings_test: AppSettings, mock_http_client: AsyncMock
 ) -> AsyncGenerator[ProxyService, Any]:
     """Return proxy service instance."""
-    async with ProxyService(mock_settings, mock_http_client) as service:
+    async with ProxyService(app_settings_test, mock_http_client) as service:
         yield service
 
 
@@ -110,10 +110,10 @@ def mock_stream_http_client(mock_stream_response: AsyncMock) -> AsyncMock:
 
 @pytest.fixture
 async def stream_proxy_service(
-    mock_settings: AppSettings, mock_stream_http_client: AsyncMock
+    app_settings_test: AppSettings, mock_stream_http_client: AsyncMock
 ) -> AsyncGenerator[ProxyService, Any]:
     """Return proxy service instance."""
-    async with ProxyService(mock_settings, mock_stream_http_client) as service:
+    async with ProxyService(app_settings_test, mock_stream_http_client) as service:
         yield service
 
 

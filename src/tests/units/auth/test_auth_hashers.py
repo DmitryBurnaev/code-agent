@@ -10,6 +10,7 @@ from src.modules.auth.hashers import (
 
 
 class TestGetSalt:
+
     def test_get_salt_default_length(self) -> None:
         salt = get_salt()
 
@@ -40,6 +41,7 @@ class TestGetSalt:
 
 
 class TestGetRandomHash:
+
     def test_get_random_hash_default_size(self) -> None:
         hash_value = get_random_hash(size=32)
 
@@ -68,6 +70,7 @@ class TestGetRandomHash:
 
 
 class TestPBKDF2PasswordHasher:
+
     @pytest.fixture
     def hasher(self) -> PBKDF2PasswordHasher:
         """Return PBKDF2PasswordHasher instance."""
