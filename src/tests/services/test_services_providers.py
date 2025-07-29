@@ -7,7 +7,7 @@ import pytest
 from unittest.mock import AsyncMock
 
 from src.services.vendors import VendorService, VendorClient
-from src.models import AIModel
+from src.models import AIModel, LLMVendor
 from src.settings import AppSettings
 from src.constants import VendorSlug
 
@@ -65,39 +65,40 @@ def mock_httpx_for_models_client(mock_models: MOCK_MODELS_TYPE) -> MockHTTPxClie
 
 @pytest.fixture
 def service(
-    mock_settings: AppSettings,
+    app_settings_test: AppSettings,
     mock_httpx_for_models_client: MockHTTPxClient,
 ) -> VendorService:
     """Return a vendor service instance."""
-    return VendorService(mock_settings, cast(httpx.AsyncClient, mock_httpx_for_models_client))
+    return VendorService(app_settings_test, cast(httpx.AsyncClient, mock_httpx_for_models_client))
 
 
 class TestVendorService:
     """Tests for VendorService."""
 
-    async def test_get_client(self, service: VendorService, mock_settings: AppSettings) -> None:
+    async def test_get_client(
+        self,
+        service: VendorService,
+        app_settings_test: AppSettings,
+        llm_vendors: list[LLMVendor],
+    ) -> None:
         """Test getting vendor client."""
-        vendor = mock_settings.vendors[0]
+        vendor = llm_vendors[0]
         client = service.get_client(vendor)
         assert isinstance(client, VendorClient)
-        # Check client reuse
         assert service.get_client(vendor) is client
 
     async def test_get_list_models_cached(
         self,
-        mock_settings: AppSettings,
+        app_settings_test: AppSettings,
         service: VendorService,
         mock_httpx_for_models_client: MockHTTPxClient,
     ) -> None:
         """Test getting models' list with cache."""
-
-        # Set cache for the first vendor
         service._cache_set_data(
             VendorSlug.OPENAI,
             [AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4")],
         )
 
-        # get models and check results
         models = await service.get_list_models()
 
         expected_model_pairs = [
@@ -145,7 +146,7 @@ class TestVendorService:
     async def test_get_list_models_error_handling(
         self,
         service: VendorService,
-        mock_settings: AppSettings,
+        app_settings_test: AppSettings,
         mock_httpx_for_models_client: AsyncMock,
     ) -> None:
         """Test error handling when getting models' list."""

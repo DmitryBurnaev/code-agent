@@ -15,13 +15,12 @@ from src.modules.auth.hashers import (
     get_salt,
     get_random_hash,
 )
-from src.settings import AppSettings
-from src.tests.units.auth.conftest import MockToken
 from src.utils import utcnow
+from src.settings import AppSettings
+from src.tests.conftest import MockAPIToken
 
 
 class TestTokenEdgeCases:
-    """Tests for token edge cases and special scenarios."""
 
     @pytest.mark.parametrize(
         "secret_key",
@@ -135,11 +134,8 @@ class TestTokenEdgeCases:
 
 
 class TestPasswordHasherEdgeCases:
-    """Tests for password hasher edge cases."""
-
     @pytest.fixture
     def hasher(self) -> PBKDF2PasswordHasher:
-        """Return PBKDF2PasswordHasher instance."""
         return PBKDF2PasswordHasher()
 
     @pytest.mark.parametrize(
@@ -213,7 +209,6 @@ class TestPasswordHasherEdgeCases:
         expected_valid: bool,
         expected_message_contains: str,
     ) -> None:
-
         is_valid, message = hasher.verify(password, encoded_password)
 
         assert is_valid is expected_valid
@@ -265,8 +260,6 @@ class TestPasswordHasherEdgeCases:
 
 
 class TestAuthDependencyEdgeCases:
-    """Tests for authentication dependency edge cases."""
-
     @pytest.mark.parametrize(
         "auth_token,should_raise,expected_detail_contains",
         [
@@ -306,12 +299,12 @@ class TestAuthDependencyEdgeCases:
         mock_request: MagicMock,
         mock_decode_token: MagicMock,
         mock_hash_token: MagicMock,
-        mock_token: MockToken,
+        mock_api_token_inactive: MockAPIToken,
         auth_token: str,
         description: str,
     ) -> None:
-        mock_token.is_active = True
-        mock_token.user.is_active = True
+        mock_api_token_inactive.is_active = True
+        mock_api_token_inactive.user.is_active = True
 
         result = await verify_api_token(mock_request, app_settings_test, auth_token=auth_token)
 
