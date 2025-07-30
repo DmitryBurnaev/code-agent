@@ -11,14 +11,6 @@ type GenMockPair = Generator[tuple[MagicMock, AsyncMock], Any, None]
 
 
 @pytest.fixture
-def mock_request() -> MagicMock:
-    """Return mock request object."""
-    request = MagicMock()
-    request.method = "GET"
-    return request
-
-
-@pytest.fixture
 def mock_make_token() -> Generator[MagicMock, Any, None]:
     """Mock make_api_token function."""
     with patch("src.modules.auth.tokens.make_api_token") as mock:
@@ -78,7 +70,16 @@ def mock_token_repository_active(mock_session_uow: GenMockPair) -> Generator[Mag
 def mock_api_token_inactive() -> Generator[MockAPIToken, Any, None]:
     """Mock TokenRepository with inactive token."""
     with patch("src.db.repositories.TokenRepository.get_by_token") as mock_get_by_token:
-        mock_token = MockAPIToken(is_active=False, user=MockUser(id=1, is_active=False))
+        mock_token = MockAPIToken(is_active=False, user=MockUser(id=1, is_active=True))
+        mock_get_by_token.return_value = mock_token
+        yield mock_token
+
+
+@pytest.fixture
+def mock_api_token_user_inactive() -> Generator[MockAPIToken, Any, None]:
+    """Mock TokenRepository with inactive token."""
+    with patch("src.db.repositories.TokenRepository.get_by_token") as mock_get_by_token:
+        mock_token = MockAPIToken(is_active=True, user=MockUser(id=1, is_active=False))
         mock_get_by_token.return_value = mock_token
         yield mock_token
 

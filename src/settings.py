@@ -25,7 +25,6 @@ class AppSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     docs_enabled: bool = False
-    api_token: SecretStr = Field(description="API token")
     secret_key: SecretStr = Field(description="Secret key")
     app_host: str = "0.0.0.0"
     app_port: int = 8003
