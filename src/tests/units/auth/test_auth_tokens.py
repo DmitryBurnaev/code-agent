@@ -203,22 +203,21 @@ class TestVerifyAPIToken:
         self,
         app_settings_test: AppSettings,
         mock_request: MagicMock,
-        mock_session_uow: GenMockPair,
+        mock_token_repository_active: MagicMock,
     ) -> None:
-        # Generate valid token
-        generated = make_api_token(expires_at=None, settings=app_settings_test)
-        auth_token = f"Bearer {generated.value}"
-
-        result = await verify_api_token(mock_request, app_settings_test, auth_token=auth_token)
-
-        assert result == generated.value
+        generated_token = make_api_token(expires_at=None, settings=app_settings_test)
+        result = await verify_api_token(
+            mock_request,
+            app_settings_test,
+            auth_token=f"Bearer {generated_token.value}",
+        )
+        assert result == generated_token.value
 
     async def test_verify_api_token_inactive_token(
         self,
         app_settings_test: AppSettings,
         mock_request: MagicMock,
-        mock_session_uow: GenMockPair,
-        mock_token_repository_inactive_token: GenMockPair,
+        mock_api_token_inactive: GenMockPair,
     ) -> None:
         generated = make_api_token(expires_at=None, settings=app_settings_test)
         auth_token = f"Bearer {generated.value}"
@@ -233,8 +232,7 @@ class TestVerifyAPIToken:
         self,
         app_settings_test: AppSettings,
         mock_request: MagicMock,
-        mock_session_uow: GenMockPair,
-        mock_token_repository_inactive_user: GenMockPair,
+        mock_api_token_user_inactive: GenMockPair,
     ) -> None:
         generated = make_api_token(expires_at=None, settings=app_settings_test)
         auth_token = f"Bearer {generated.value}"

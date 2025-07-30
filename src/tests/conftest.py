@@ -41,10 +41,9 @@ class MockAPIToken:
 
 
 @pytest.fixture
-def app_settings_test(auth_test_token: str) -> AppSettings:
+def app_settings_test() -> AppSettings:
     """Return mock settings."""
     return AppSettings(
-        api_token=SecretStr(auth_test_token),
         http_proxy_url=None,
         admin_username="test-username",
         admin_password=SecretStr("test-password"),
