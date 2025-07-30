@@ -3,28 +3,25 @@
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 
+from src.main import CodeAgentAPP
 from src.modules.admin.views.vendors import VendorAdminView
+from src.modules.encrypt.encryption import VendorKeyEncryption
 from src.settings import AppSettings
 
 
 class TestVendorAdminEncryption:
-    """Tests for VendorAdminView encryption."""
 
-    def test_encrypt_api_key_encrypts_data(self, app_settings_test: AppSettings) -> None:
-        """Test that _encrypt_api_key encrypts the API key."""
-        # Mock settings
-        # mock_settings = MagicMock(spec=AppSettings)
-        # mock_settings.vendor_encryption_key.get_secret_value.return_value = (
-        #     "test-secret-key-32-chars-long"
-        # )
-        # mock_get_settings.return_value = mock_settings
-
+    def test_encrypt_api_key_encrypts_data(self, test_app: CodeAgentAPP) -> None:
+        encryption_key = test_app.settings.vendor_encryption_key
         original_key = "sk-test123456789"
-        encrypted = VendorAdminView()._encrypt_api_key(original_key)
 
-        # Check that the encrypted key is different from original
+        admin_view = VendorAdminView()
+        admin_view.app = test_app
+        encrypted = admin_view._encrypt_api_key(original_key)
         assert encrypted != original_key
-        assert len(encrypted) > len(original_key)
+
+        encryption = VendorKeyEncryption(encryption_key)
+        assert original_key == encryption.decrypt(encrypted)
 
     def test_encrypt_api_key_empty_raises_error(self) -> None:
         """Test that _encrypt_api_key with empty key raises ValueError."""
