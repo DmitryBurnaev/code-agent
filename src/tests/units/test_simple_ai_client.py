@@ -6,9 +6,10 @@ default_json_type = dict[str, Any]
 
 
 class MockResponse:
-    def __init__(self, json_data: default_json_type) -> None:
+    def __init__(self, json_data: default_json_type, is_success: bool = True) -> None:
         self._json = json_data
         self.text: str = str(json_data)
+        self.is_success = is_success
 
     def json(self) -> default_json_type:
         return self._json
@@ -16,8 +17,9 @@ class MockResponse:
 
 # Mock response for streaming mode
 class MockStreamResponse:
-    def __init__(self, lines: list[bytes]) -> None:
+    def __init__(self, lines: list[bytes], is_success: bool = True) -> None:
         self._lines = lines
+        self.is_success = is_success
 
     def __enter__(self) -> "MockStreamResponse":
         return self
@@ -43,11 +45,11 @@ def test_extract_text_from_response_full() -> None:
 
 
 def test_process_full_response_prints_content(capsys: Any) -> None:
-    resp = MockResponse({"choices": [{"message": {"content": "Ответ!"}}]})
+    resp = MockResponse({"choices": [{"message": {"content": "Answer!"}}]})
     out = simple_ai_client.process_full_response(resp)  # type: ignore
     captured = capsys.readouterr()
-    assert "Ответ!" in captured.out
-    assert out == "Ответ!"
+    assert "Answer!" in captured.out
+    assert out == "Answer!"
 
 
 def test_process_stream_response_prints_content(capsys: Any) -> None:
