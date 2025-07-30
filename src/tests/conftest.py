@@ -10,7 +10,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.main import make_app
+from src.main import make_app, CodeAgentAPP
 from src.modules.auth.tokens import make_api_token
 from src.services.vendors import VendorService
 from src.settings import AppSettings, get_app_settings
@@ -53,7 +53,7 @@ def app_settings_test() -> AppSettings:
 
 
 @pytest.fixture
-def test_app(app_settings_test: AppSettings) -> FastAPI:
+def test_app(app_settings_test: AppSettings) -> CodeAgentAPP:
     """Return FastAPI application for testing."""
     return make_app(app_settings_test)
 
