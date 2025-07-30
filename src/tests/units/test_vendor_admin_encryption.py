@@ -10,18 +10,17 @@ from src.settings import AppSettings
 class TestVendorAdminEncryption:
     """Tests for VendorAdminView encryption."""
 
-    @patch("src.modules.admin.views.vendors.get_app_settings")
-    def test_encrypt_api_key_encrypts_data(self, mock_get_settings: MagicMock) -> None:
+    def test_encrypt_api_key_encrypts_data(self, app_settings_test: AppSettings) -> None:
         """Test that _encrypt_api_key encrypts the API key."""
         # Mock settings
-        mock_settings = MagicMock(spec=AppSettings)
-        mock_settings.vendor_encryption_key.get_secret_value.return_value = (
-            "test-secret-key-32-chars-long"
-        )
-        mock_get_settings.return_value = mock_settings
+        # mock_settings = MagicMock(spec=AppSettings)
+        # mock_settings.vendor_encryption_key.get_secret_value.return_value = (
+        #     "test-secret-key-32-chars-long"
+        # )
+        # mock_get_settings.return_value = mock_settings
 
         original_key = "sk-test123456789"
-        encrypted = VendorAdminView._encrypt_api_key(original_key)
+        encrypted = VendorAdminView()._encrypt_api_key(original_key)
 
         # Check that the encrypted key is different from original
         assert encrypted != original_key
@@ -30,7 +29,7 @@ class TestVendorAdminEncryption:
     def test_encrypt_api_key_empty_raises_error(self) -> None:
         """Test that _encrypt_api_key with empty key raises ValueError."""
         with pytest.raises(ValueError, match="API key cannot be empty"):
-            VendorAdminView._encrypt_api_key("")
+            VendorAdminView()._encrypt_api_key("")
 
     @patch("src.modules.admin.views.vendors.get_app_settings")
     def test_encrypt_api_key_encryption_error(self, mock_get_settings: MagicMock) -> None:
@@ -43,7 +42,7 @@ class TestVendorAdminEncryption:
         mock_get_settings.return_value = mock_settings
 
         with pytest.raises(ValueError, match="Failed to encrypt API key"):
-            VendorAdminView._encrypt_api_key("sk-test123456789")
+            VendorAdminView()._encrypt_api_key("sk-test123456789")
 
     @patch("src.modules.admin.views.vendors.VendorAdminView._encrypt_api_key")
     @patch("src.modules.admin.views.vendors.VendorAdminView._validate")
