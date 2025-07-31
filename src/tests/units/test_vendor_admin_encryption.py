@@ -1,114 +1,114 @@
-"""Tests for vendor admin view encryption functionality."""
-
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 
+from src.exceptions import VendorEncryptionError
 from src.main import CodeAgentAPP
 from src.modules.admin.views.vendors import VendorAdminView
 from src.modules.encrypt.encryption import VendorKeyEncryption
-from src.settings import AppSettings
+
+
+@pytest.fixture
+def vendor_admin_view(test_app: CodeAgentAPP) -> VendorAdminView:
+    admin_view = VendorAdminView()
+    admin_view.app = test_app
+    return admin_view
 
 
 class TestVendorAdminEncryption:
-
-    def test_encrypt_api_key_encrypts_data(self, test_app: CodeAgentAPP) -> None:
+    def test_encrypt_api_key_encrypts_data(
+        self, test_app: CodeAgentAPP, vendor_admin_view: VendorAdminView
+    ) -> None:
         encryption_key = test_app.settings.vendor_encryption_key
         original_key = "sk-test123456789"
 
-        admin_view = VendorAdminView()
-        admin_view.app = test_app
-        encrypted = admin_view._encrypt_api_key(original_key)
+        encrypted = vendor_admin_view._encrypt_api_key(original_key)
         assert encrypted != original_key
 
         encryption = VendorKeyEncryption(encryption_key)
         assert original_key == encryption.decrypt(encrypted)
 
-    def test_encrypt_api_key_empty_raises_error(self) -> None:
-        """Test that _encrypt_api_key with empty key raises ValueError."""
+    def test_encrypt_api_key_empty_raises_error(self, vendor_admin_view: VendorAdminView) -> None:
         with pytest.raises(ValueError, match="API key cannot be empty"):
-            VendorAdminView()._encrypt_api_key("")
+            vendor_admin_view._encrypt_api_key("")
 
-    @patch("src.modules.admin.views.vendors.get_app_settings")
-    def test_encrypt_api_key_encryption_error(self, mock_get_settings: MagicMock) -> None:
-        """Test that _encrypt_api_key handles encryption errors."""
-        # Mock settings to cause encryption error
-        mock_settings = MagicMock(spec=AppSettings)
-        mock_settings.vendor_encryption_key.get_secret_value.side_effect = Exception(
-            "Encryption error"
-        )
-        mock_get_settings.return_value = mock_settings
+    @patch("src.modules.encrypt.encryption.VendorKeyEncryption.encrypt")
+    def test_encrypt_api_key_encryption_error(
+        self, mocked_encrypt: MagicMock, vendor_admin_view: VendorAdminView
+    ) -> None:
+        mocked_encrypt.side_effect = RuntimeError("Oops! Encryption error.")
+        with pytest.raises(VendorEncryptionError, match="Failed to encrypt API key"):
+            vendor_admin_view._encrypt_api_key("sk-test123456789")
 
-        with pytest.raises(ValueError, match="Failed to encrypt API key"):
-            VendorAdminView()._encrypt_api_key("sk-test123456789")
-
-    @patch("src.modules.admin.views.vendors.VendorAdminView._encrypt_api_key")
+    @patch("sqladmin.models.ModelView.insert_model")
     @patch("src.modules.admin.views.vendors.VendorAdminView._validate")
     async def test_insert_model_encrypts_api_key(
-        self, mock_validate: AsyncMock, mock_encrypt: MagicMock
+        self,
+        mock_validate: AsyncMock,
+        mock_base_insert: MagicMock,
+        vendor_admin_view: VendorAdminView,
+        mock_request: MagicMock,
     ) -> None:
-        """Test that insert_model encrypts API key before saving."""
-        # Mock dependencies
-        mock_validate.return_value = {"api_key": "sk-test123456789", "slug": "test"}
-        mock_encrypt.return_value = "encrypted-key-here"
+        original_key = "sk-test123456789"
+        mock_validate.return_value = {"new_api_key": original_key, "slug": "test"}
 
-        # Mock super().insert_model
-        with patch.object(VendorAdminView, "__bases__", (MagicMock,)):
-            view = VendorAdminView()
-            view.insert_model = AsyncMock()
+        await vendor_admin_view.insert_model(
+            mock_request, data={"new_api_key": original_key, "slug": "test"}
+        )
+        mock_base_insert.assert_awaited_once()
+        encrypted_api_key = mock_base_insert.call_args_list[0].args[1]["api_key"]
+        assert encrypted_api_key != original_key
 
-            request = MagicMock()
-            data = {"api_key": "sk-test123456789", "slug": "test"}
+        encryption = VendorKeyEncryption(vendor_admin_view.app.settings.vendor_encryption_key)
+        assert original_key == encryption.decrypt(encrypted_api_key)
 
-            await view.insert_model(request, data)
-
-            # Check that encryption was called
-            mock_encrypt.assert_called_once_with("sk-test123456789")
-
-            # Check that data was updated with encrypted key
-            assert data["api_key"] == "encrypted-key-here"
-
-    @patch("src.modules.admin.views.vendors.VendorAdminView._encrypt_api_key")
+    @patch("sqladmin.models.ModelView.update_model")
     @patch("src.modules.admin.views.vendors.VendorAdminView._validate")
     async def test_update_model_encrypts_api_key(
-        self, mock_validate: AsyncMock, mock_encrypt: MagicMock
+        self,
+        mock_validate: AsyncMock,
+        mock_base_update: MagicMock,
+        vendor_admin_view: VendorAdminView,
+        mock_request: MagicMock,
     ) -> None:
-        """Test that update_model encrypts API key before saving."""
-        # Mock dependencies
-        mock_validate.return_value = {"api_key": "sk-test123456789", "slug": "test"}
-        mock_encrypt.return_value = "encrypted-key-here"
+        original_key = "sk-test123456789"
+        mock_validate.return_value = {"new_api_key": original_key, "slug": "test"}
 
-        # Mock super().update_model
-        with patch.object(VendorAdminView, "__bases__", (MagicMock,)):
-            view = VendorAdminView()
-            view.update_model = AsyncMock()
+        await vendor_admin_view.update_model(
+            mock_request, "1", data={"new_api_key": original_key, "slug": "test"}
+        )
+        mock_base_update.assert_awaited_once()
+        encrypted_api_key = mock_base_update.call_args_list[0].args[2]["api_key"]
+        assert encrypted_api_key != original_key
 
-            request = MagicMock()
-            pk = "1"
-            data = {"api_key": "sk-test123456789", "slug": "test"}
+        encryption = VendorKeyEncryption(vendor_admin_view.app.settings.vendor_encryption_key)
+        assert original_key == encryption.decrypt(encrypted_api_key)
 
-            await view.update_model(request, pk, data)
-
-            # Check that encryption was called
-            mock_encrypt.assert_called_once_with("sk-test123456789")
-
-            # Check that data was updated with encrypted key
-            assert data["api_key"] == "encrypted-key-here"
-
+    @patch("sqladmin.models.ModelView.insert_model")
     @patch("src.modules.admin.views.vendors.VendorAdminView._validate")
-    async def test_insert_model_no_api_key_skips_encryption(self, mock_validate: AsyncMock) -> None:
-        """Test that insert_model skips encryption when no API key provided."""
-        # Mock dependencies
-        mock_validate.return_value = {"slug": "test"}
+    async def test_insert_model_no_new_api_key_skips_encryption(
+        self,
+        mock_validate: AsyncMock,
+        mock_base_insert: MagicMock,
+        vendor_admin_view: VendorAdminView,
+        mock_request: MagicMock,
+    ) -> None:
+        mock_validate.return_value = {"new_api_key": None, "slug": "test"}
 
-        # Mock super().insert_model
-        with patch.object(VendorAdminView, "__bases__", (MagicMock,)):
-            view = VendorAdminView()
-            view.insert_model = AsyncMock()
+        await vendor_admin_view.insert_model(mock_request, data={"slug": "test"})
+        mock_base_insert.assert_awaited_once()
+        assert "api_key" not in mock_base_insert.call_args_list[0].args[1]
 
-            request = MagicMock()
-            data = {"slug": "test"}
+    @patch("sqladmin.models.ModelView.update_model")
+    @patch("src.modules.admin.views.vendors.VendorAdminView._validate")
+    async def test_update_model_no_new_api_key_skips_encryption(
+        self,
+        mock_validate: AsyncMock,
+        mock_base_update: MagicMock,
+        vendor_admin_view: VendorAdminView,
+        mock_request: MagicMock,
+    ) -> None:
+        mock_validate.return_value = {"new_api_key": None, "slug": "test"}
 
-            await view.insert_model(request, data)
-
-            # Check that data was not modified
-            assert "api_key" not in data
+        await vendor_admin_view.update_model(mock_request, "1", data={"slug": "test"})
+        mock_base_update.assert_awaited_once()
+        assert "api_key" not in mock_base_update.call_args_list[0].args[2]
