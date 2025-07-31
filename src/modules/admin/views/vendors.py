@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from starlette.requests import Request
 from wtforms import Form, StringField, URLField, BooleanField
 
+from src.exceptions import VendorEncryptionError
 from src.modules.admin.views.base import FormDataType, BaseModelView
 from src.modules.encrypt.encryption import VendorKeyEncryption
 from src.constants import RENDER_KW, RENDER_KW_REQ
@@ -86,8 +87,8 @@ class VendorAdminView(BaseModelView, model=Vendor):
             return encryption.encrypt(plaintext_key)
 
         except Exception as exc:
-            logger.error("Failed to encrypt API key: %s", exc)
-            raise ValueError("Failed to encrypt API key") from exc
+            logger.exception("Failed to encrypt vendor API key: %s", exc)
+            raise VendorEncryptionError("Failed to encrypt API key") from exc
 
     @classmethod
     async def _validate(cls, data: FormDataType, vendor_id: int | None = None) -> FormDataType:
