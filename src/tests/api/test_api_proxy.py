@@ -6,11 +6,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import Headers
-from pydantic import SecretStr
 from fastapi.testclient import TestClient
 from starlette.responses import Response, StreamingResponse
 
-from src.settings import AppSettings
 from src.services.vendors import VendorService
 from src.models import ChatRequest, Message, AIModel
 from src.services.proxy import ProxyService, ProxyRequestData, ProxyEndpoint
@@ -37,16 +35,17 @@ def mock_proxy_service() -> Generator[AsyncMock, Any, None]:
         yield service
 
 
-@pytest.fixture
-def mock_settings() -> AppSettings:
-    """Return mock settings for testing."""
-    return AppSettings(
-        api_token=SecretStr("test-token"),
-        admin_username="test-username",
-        admin_password=SecretStr("test-password"),
-        secret_key=SecretStr("test-secret"),
-        http_proxy_url=None,
-    )
+#
+# @pytest.fixture
+# def mock_settings() -> AppSettings:
+#     """Return mock settings for testing."""
+#     return AppSettings(
+#         api_token=SecretStr("test-token"),
+#         admin_username="test-username",
+#         admin_password=SecretStr("test-password"),
+#         secret_key=SecretStr("test-secret"),
+#         http_proxy_url=None,
+#     )
 
 
 class TestProxyAPI:

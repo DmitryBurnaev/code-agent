@@ -179,6 +179,7 @@ async def verify_api_token(
     Dependency for authentication by API token (placed in the header 'Authorization').
     Skip verification for OPTIONS methods.
     """
+
     if request.method == "OPTIONS":
         return ""
 
@@ -186,7 +187,7 @@ async def verify_api_token(
     if not auth_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    logger.debug("[auth] Authentication: input auth token: %s", auth_token)
+    logger.info("[auth] Authentication: input auth token: %s", auth_token)
 
     decoded_payload = decode_api_token(auth_token, settings=settings)
     raw_token_identity = decoded_payload.sub

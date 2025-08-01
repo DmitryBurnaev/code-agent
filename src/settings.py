@@ -117,9 +117,10 @@ def get_db_settings() -> DBSettings:
     return _get_settings(DBSettings)
 
 
-def _app_settings() -> AppSettings:
-    """Simple access to settings from controllers"""
-    return get_app_settings()
+# TODO: do we really need this?
+# def _app_settings() -> AppSettings:
+#     """Simple access to settings from controllers"""
+#     return get_app_settings()
 
 
-SettingsDep = Annotated[AppSettings, Depends(_app_settings)]
+SettingsDep = Annotated[AppSettings, Depends(get_app_settings)]
