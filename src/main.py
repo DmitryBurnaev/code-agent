@@ -1,5 +1,6 @@
 import logging.config
 import sys
+from typing import Any, Callable
 
 import uvicorn
 from fastapi import FastAPI, Depends
@@ -17,6 +18,7 @@ class CodeAgentAPP(FastAPI):
     """Some extra fields above FastAPI Application"""
 
     _settings: AppSettings
+    dependency_overrides: dict[Any, Callable[[], Any]]
 
     def set_settings(self, settings: AppSettings) -> None:
         self._settings = settings
@@ -39,20 +41,21 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPP:
     logging.config.dictConfig(settings.log_config)
     logging.captureWarnings(capture=True)
 
-    logger.debug("Setting up application...")
+    logger.info("Setting up application...")
     app = CodeAgentAPP(
         title="Code Agent API",
         description="API for retrieving system information",
         docs_url="/api/docs/" if settings.docs_enabled else None,
         redoc_url="/api/redoc/" if settings.docs_enabled else None,
     )
+    logger.info("Setting up application settings...")
     app.set_settings(settings)
 
-    logger.debug("Setting up api...")
+    logger.info("Setting up routes...")
     app.include_router(system_router, prefix="/api", dependencies=[Depends(verify_api_token)])
     app.include_router(proxy_router, prefix="/api", dependencies=[Depends(verify_api_token)])
 
-    logger.info("Application configured")
+    logger.info("Application configured!")
     return app
 
 

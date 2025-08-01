@@ -71,3 +71,8 @@ migrate: ## Apply DB migrations
 downgrade: ## Downgrade (unapply) DB migration (last revision)
 	@echo Migrations: downgrade last revisions...
 	uv run alembic downgrade -1
+
+.PHONY: encryption-key
+encryption-key:
+	@echo Encryption: creating new key
+	uv run python -m src.cli.encryption_key

@@ -7,8 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from starlette.testclient import TestClient
 
 from src.main import make_app, CodeAgentAPP
 from src.modules.auth.tokens import make_api_token
@@ -46,8 +45,8 @@ def app_settings_test() -> AppSettings:
     return AppSettings(
         http_proxy_url=None,
         admin_username="test-username",
-        admin_password=SecretStr("test-password"),
-        secret_key=SecretStr("test-secret"),
+        admin_password=SecretStr("test-password-oKcqO3rPCxt2"),
+        secret_key=SecretStr("example-1111UStLb8mds9K"),  # example-zUomEUSyOVT
         vendor_encryption_key=SecretStr("test-key"),
     )
 
@@ -55,7 +54,8 @@ def app_settings_test() -> AppSettings:
 @pytest.fixture
 def test_app(app_settings_test: AppSettings) -> CodeAgentAPP:
     """Return FastAPI application for testing."""
-    return make_app(app_settings_test)
+    test_app = make_app(settings=app_settings_test)
+    return test_app
 
 
 @pytest.fixture
@@ -81,6 +81,17 @@ def mock_session_uow() -> GenMockPair:
 
 
 @pytest.fixture
+def mock_db_token__active() -> Generator[MagicMock, Any, None]:
+    """Mock TokenRepository with active token and user."""
+    with patch("src.db.repositories.TokenRepository.get_by_token") as mock_get_by_token:
+        mock_token = MockAPIToken(
+            user=MockUser(id=1, is_active=True, username="test-user"), is_active=True
+        )
+        mock_get_by_token.return_value = mock_token
+        yield mock_get_by_token
+
+
+@pytest.fixture
 def llm_vendors() -> list[LLMVendor]:
     return [
         LLMVendor(
@@ -92,17 +103,19 @@ def llm_vendors() -> list[LLMVendor]:
 
 @pytest.fixture
 def client(
-    app_settings_test: AppSettings,
+    test_app: CodeAgentAPP,
+    mock_db_token__active: MagicMock,
     llm_vendors: list[LLMVendor],
     auth_test_token: str,
-) -> TestClient:
-    """Create a test client with mocked settings."""
-    test_app = make_app(settings=app_settings_test)
-    test_app.dependency_overrides = {get_app_settings: lambda: app_settings_test}
+) -> Generator[TestClient, Any, None]:
+    test_app.dependency_overrides[get_app_settings] = lambda: test_app.settings
     headers = {
         "Authorization": f"Bearer {auth_test_token}",
     }
-    return TestClient(test_app, headers=headers)
+    with TestClient(test_app, headers=headers) as client:
+        yield client
+
+    test_app.dependency_overrides.clear()
 
 
 @dataclasses.dataclass
