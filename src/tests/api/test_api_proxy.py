@@ -67,6 +67,7 @@ class TestProxyAPI:
     def test_create_chat_completion(
         self,
         client: TestClient,
+        auth_test_token: str,
         mock_proxy_service: AsyncMock,
     ) -> None:
         """Test POST /ai-proxy/chat/completions endpoint."""
@@ -102,7 +103,7 @@ class TestProxyAPI:
                     "accept": "*/*",
                     "accept-encoding": "gzip, deflate",
                     "connection": "keep-alive",
-                    "authorization": "Bearer test-auth-token",
+                    "authorization": f"Bearer {auth_test_token}",
                     "user-agent": "testclient",
                     "content-length": "197",
                     "content-type": "application/json",
@@ -123,7 +124,11 @@ class TestProxyAPI:
         ),
     )
     def test_create_chat_completion__streaming(
-        self, client: TestClient, mock_proxy_service: AsyncMock, stream_words: list[str]
+        self,
+        client: TestClient,
+        auth_test_token: str,
+        mock_proxy_service: AsyncMock,
+        stream_words: list[str],
     ) -> None:
         """Test POST /ai-proxy/chat/completions endpoint with stream=True."""
         chat_request = ChatRequest(
@@ -182,7 +187,7 @@ class TestProxyAPI:
                     "host": "testserver",
                     "accept-encoding": "gzip, deflate",
                     "connection": "keep-alive",
-                    "authorization": "Bearer test-auth-token",
+                    "authorization": f"Bearer {auth_test_token}",
                     "user-agent": "testclient",
                     "accept": "text/event-stream",
                     "content-length": "196",
@@ -199,6 +204,7 @@ class TestProxyAPI:
     def test_cancel_chat_completion(
         self,
         client: TestClient,
+        auth_test_token: str,
         mock_proxy_service: AsyncMock,
     ) -> None:
         """Test DELETE /ai-proxy/chat/completions/{completion_id} endpoint."""
@@ -225,7 +231,7 @@ class TestProxyAPI:
                     "accept": "*/*",
                     "accept-encoding": "gzip, deflate",
                     "connection": "keep-alive",
-                    "authorization": "Bearer test-auth-token",
+                    "authorization": f"Bearer {auth_test_token}",
                     "user-agent": "testclient",
                 },
                 query_params={},

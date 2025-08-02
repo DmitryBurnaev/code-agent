@@ -102,6 +102,16 @@ def llm_vendors() -> list[LLMVendor]:
 
 
 @pytest.fixture
+def mock_db_vendors(llm_vendors: list[LLMVendor]) -> Generator[MagicMock, Any, None]:
+    with patch("src.db.repositories.VendorRepository.all") as mock_get_vendors:
+        mock_token = MockAPIToken(
+            user=MockUser(id=1, is_active=True, username="test-user"), is_active=True
+        )
+        mock_get_vendors.return_value = mock_token
+        yield mock_get_vendors
+
+
+@pytest.fixture
 def client(
     test_app: CodeAgentAPP,
     mock_db_token__active: MagicMock,

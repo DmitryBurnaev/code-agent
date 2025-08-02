@@ -4,6 +4,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from src.db.models import Vendor
+from src.modules.encrypt.encryption import VendorKeyEncryption
 from src.settings import AppSettings
 
 
@@ -22,9 +23,6 @@ class TestVendorEncryption:
 
         vendor = Vendor()
         original_key = "sk-test123456789"
-
-        # Set encrypted key directly
-        from src.modules.auth.encryption import VendorKeyEncryption
 
         encryption = VendorKeyEncryption(mock_settings.vendor_encryption_key)
         vendor.api_key = encryption.encrypt(original_key)
