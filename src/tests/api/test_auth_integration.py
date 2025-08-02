@@ -5,9 +5,11 @@ import pytest
 from typing import Tuple
 from unittest.mock import AsyncMock, MagicMock
 from pydantic import SecretStr
+from starlette.exceptions import HTTPException
 
 from src.settings import AppSettings
 from src.modules.auth.tokens import make_api_token, decode_api_token, hash_token
+from src.utils import utcnow
 
 
 # # Module-level fixtures
@@ -83,7 +85,7 @@ class TestAuthIntegration:
     def test_full_token_lifecycle(self, app_settings_test: AppSettings) -> None:
         """Test complete token lifecycle: generation -> decoding -> verification."""
         # Step 1: Generate token
-        expires_at = datetime.datetime.now() + datetime.timedelta(hours=1)
+        expires_at = utcnow() + datetime.timedelta(hours=1)
         generated = make_api_token(expires_at=expires_at, settings=app_settings_test)
 
         assert isinstance(generated.value, str)
@@ -96,7 +98,7 @@ class TestAuthIntegration:
 
         assert decoded.sub is not None
         assert decoded.exp is not None
-        assert decoded.exp == expires_at
+        assert decoded.exp == expires_at.replace(tzinfo=datetime.timezone.utc, microsecond=0)
 
         # Step 3: Verify token hash
         expected_hash = hash_token(decoded.sub)
@@ -134,11 +136,10 @@ class TestAuthIntegration:
     def test_token_expiration_handling(self, app_settings_test: AppSettings) -> None:
         """Test token expiration handling."""
         # Generate token with past expiration
-        past_time = datetime.datetime.now() - datetime.timedelta(hours=1)
+        past_time = utcnow() - datetime.timedelta(hours=1)
         generated = make_api_token(expires_at=past_time, settings=app_settings_test)
 
-        # Should raise exception when decoding expired token
-        with pytest.raises(Exception):  # HTTPException
+        with pytest.raises(HTTPException, match="Token expired"):
             decode_api_token(generated.value, app_settings_test)
 
     @pytest.mark.asyncio
@@ -317,4 +318,6 @@ class TestAuthIntegration:
         decoded = decode_api_token(token.value, app_settings_test)
 
         assert decoded.exp is not None
-        assert decoded.exp == datetime.datetime.max
+        assert decoded.exp == datetime.datetime.max.replace(
+            tzinfo=datetime.timezone.utc, microsecond=0
+        )

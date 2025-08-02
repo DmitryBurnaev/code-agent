@@ -101,14 +101,23 @@ def llm_vendors() -> list[LLMVendor]:
     ]
 
 
+@dataclasses.dataclass
+class MockVendor:
+    id: int
+    name: str
+    slug: str
+    is_active: bool = True
+
+
 @pytest.fixture
-def mock_db_vendors(llm_vendors: list[LLMVendor]) -> Generator[MagicMock, Any, None]:
+def mock_db_vendors() -> Generator[list[MockVendor], Any, None]:
     with patch("src.db.repositories.VendorRepository.all") as mock_get_vendors:
-        mock_token = MockAPIToken(
-            user=MockUser(id=1, is_active=True, username="test-user"), is_active=True
-        )
-        mock_get_vendors.return_value = mock_token
-        yield mock_get_vendors
+        mocked_vendors = [
+            MockVendor(id=1, slug=VendorSlug.OPENAI, name=VendorSlug.OPENAI),
+            MockVendor(id=2, slug=VendorSlug.DEEPSEEK, name=VendorSlug.DEEPSEEK),
+        ]
+        mock_get_vendors.return_value = mocked_vendors
+        yield mocked_vendors
 
 
 @pytest.fixture
