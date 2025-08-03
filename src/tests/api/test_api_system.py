@@ -4,7 +4,6 @@ from datetime import datetime
 
 from starlette.testclient import TestClient
 
-from src.models import LLMVendor
 from src.tests.conftest import MockVendor
 
 

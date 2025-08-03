@@ -54,18 +54,6 @@ def mock_token_repository_active(mock_session_uow: GenMockPair) -> Generator[Mag
         yield mock_get_by_token
 
 
-#
-# @dataclasses.dataclass
-# class MockUser:
-#     is_active: bool = False
-#
-#
-# @dataclasses.dataclass
-# class MockToken:
-#     is_active: bool
-#     user: MockUser
-
-
 @pytest.fixture
 def mock_api_token_inactive() -> Generator[MockAPIToken, Any, None]:
     """Mock TokenRepository with inactive token."""

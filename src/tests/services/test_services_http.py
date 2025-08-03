@@ -8,8 +8,6 @@ from src.models import LLMVendor
 from src.constants import VendorSlug
 from pydantic import SecretStr
 
-from src.tests.conftest import app_settings_test
-
 
 @pytest.fixture
 def mock_vendor() -> LLMVendor:
