@@ -1,90 +1,18 @@
-"""Integration tests for authentication module."""
-
 import datetime
 import pytest
-from typing import Tuple
-from unittest.mock import AsyncMock, MagicMock
 from pydantic import SecretStr
+from unittest.mock import MagicMock
 from starlette.exceptions import HTTPException
 
-from src.settings import AppSettings
-from src.modules.auth.tokens import make_api_token, decode_api_token, hash_token
 from src.utils import utcnow
-
-
-# # Module-level fixtures
-# @pytest.fixture
-# def app_settings_test() -> AppSettings:
-#     """Return test settings for integration tests."""
-#     return AppSettings(
-#         api_token=SecretStr("test-token"),
-#         admin_username="test-username",
-#         admin_password=SecretStr("test-password"),
-#         secret_key=SecretStr("test-secret-key-for-integration-tests"),
-#         jwt_algorithm="HS256",
-#     )
-#
-#
-# @pytest.fixture
-# def test_app(app_settings_test: AppSettings) -> FastAPI:
-#     """Return FastAPI app with test settings."""
-#     app = make_app(settings=app_settings_test)
-#     app.dependency_overrides[get_app_settings] = lambda: app_settings_test
-#     return app
-#
-#
-# @pytest.fixture
-# def test_client(test_app: FastAPI) -> TestClient:
-#     """Return test client."""
-#     return TestClient(test_app)
-#
-#
-# @pytest.fixture
-# def mock_user() -> User:
-#     """Return mock user for testing."""
-#     user = MagicMock(spec=User)
-#     user.id = 1
-#     user.username = "test-user"
-#     user.is_active = True
-#     return user
-#
-#
-# @pytest.fixture
-# def mock_token(mock_user: User) -> Token:
-#     """Return mock token for testing."""
-#     token = MagicMock(spec=Token)
-#     token.id = 1
-#     token.token_hash = "test-hash"
-#     token.is_active = True
-#     token.user = mock_user
-#     return token
-#
-#
-# @pytest.fixture
-# def mock_session_uow() -> Tuple[MagicMock, AsyncMock]:
-#     """Mock SASessionUOW context manager."""
-#     with patch("src.modules.auth.dependencies.SASessionUOW") as mock_uow:
-#         mock_session = AsyncMock()
-#         mock_uow.return_value.__aenter__.return_value.session = mock_session
-#         yield mock_uow, mock_session
-#
-#
-# @pytest.fixture
-# def mock_token_repository(mock_token: Token) -> Tuple[MagicMock, AsyncMock]:
-#     """Mock TokenRepository with active token."""
-#     with patch("src.modules.auth.dependencies.TokenRepository") as mock_repo_class:
-#         mock_repo = AsyncMock()
-#         mock_repo.get_by_token.return_value = mock_token
-#         mock_repo_class.return_value = mock_repo
-#         yield mock_repo_class, mock_repo
+from src.settings import AppSettings
+from src.modules.auth.tokens import make_api_token, decode_api_token, hash_token, verify_api_token
 
 
 class TestAuthIntegration:
     """Integration tests for authentication flow."""
 
     def test_full_token_lifecycle(self, app_settings_test: AppSettings) -> None:
-        """Test complete token lifecycle: generation -> decoding -> verification."""
-        # Step 1: Generate token
         expires_at = utcnow() + datetime.timedelta(hours=1)
         generated = make_api_token(expires_at=expires_at, settings=app_settings_test)
 
@@ -105,7 +33,6 @@ class TestAuthIntegration:
         assert generated.hashed_value == expected_hash
 
     def test_token_format_consistency(self, app_settings_test: AppSettings) -> None:
-        """Test that token format is consistent across multiple generations."""
         tokens = []
 
         for _ in range(5):
@@ -123,7 +50,6 @@ class TestAuthIntegration:
             assert len(token) > 3
 
     def test_token_uniqueness(self, app_settings_test: AppSettings) -> None:
-        """Test that generated tokens are unique."""
         tokens = set()
 
         for _ in range(10):
@@ -134,8 +60,6 @@ class TestAuthIntegration:
         assert len(tokens) == 10
 
     def test_token_expiration_handling(self, app_settings_test: AppSettings) -> None:
-        """Test token expiration handling."""
-        # Generate token with past expiration
         past_time = utcnow() - datetime.timedelta(hours=1)
         generated = make_api_token(expires_at=past_time, settings=app_settings_test)
 
@@ -145,50 +69,39 @@ class TestAuthIntegration:
     @pytest.mark.asyncio
     async def test_auth_dependency_integration(
         self,
+        mock_request: MagicMock,
         app_settings_test: AppSettings,
-        mock_session_uow: Tuple[MagicMock, AsyncMock],
-        mock_token_repository: Tuple[MagicMock, AsyncMock],
+        mock_token_repository_active: MagicMock,
     ) -> None:
-        """Test authentication dependency with real token."""
-        from src.modules.auth.dependencies import verify_api_token
-
-        # Generate valid token
         generated = make_api_token(expires_at=None, settings=app_settings_test)
-        auth_token = f"Bearer {generated.value}"
-
-        # Mock request
-        request = MagicMock()
-        request.method = "GET"
-
         # Verify token
-        result = await verify_api_token(request, app_settings_test, auth_token=auth_token)
+        result = await verify_api_token(
+            mock_request,
+            app_settings_test,
+            auth_token=f"Bearer {generated.value}",
+        )
 
-        assert result == auth_token
+        assert result == generated.value
 
-    def test_token_with_different_expiration_times(self, app_settings_test: AppSettings) -> None:
-        """Test tokens with different expiration times."""
-        # Token with 1 hour expiration
-        exp_1h = datetime.datetime.now() + datetime.timedelta(hours=1)
-        token_1h = make_api_token(expires_at=exp_1h, settings=app_settings_test)
-
-        # Token with 1 day expiration
-        exp_1d = datetime.datetime.now() + datetime.timedelta(days=1)
-        token_1d = make_api_token(expires_at=exp_1d, settings=app_settings_test)
-
-        # Token with max expiration
-        token_max = make_api_token(expires_at=datetime.datetime.max, settings=app_settings_test)
-
-        # All tokens should be decodable
-        decoded_1h = decode_api_token(token_1h.value, app_settings_test)
-        decoded_1d = decode_api_token(token_1d.value, app_settings_test)
-        decoded_max = decode_api_token(token_max.value, app_settings_test)
-
-        assert decoded_1h.exp == exp_1h
-        assert decoded_1d.exp == exp_1d
-        assert decoded_max.exp == datetime.datetime.max
+    @pytest.mark.parametrize(
+        "expires_at",
+        (
+            pytest.param({"hours": 1}, id="expires_in_1_hour"),
+            pytest.param({"hours": 2}, id="expires_in_2_hours"),
+            pytest.param({"days": 1}, id="expires_in_1_day"),
+        ),
+    )
+    def test_token_with_different_expiration_times(
+        self,
+        app_settings_test: AppSettings,
+        expires_at: dict[str, int],
+    ) -> None:
+        exp = utcnow() + datetime.timedelta(**expires_at)
+        token = make_api_token(expires_at=exp, settings=app_settings_test)
+        decoded = decode_api_token(token.value, app_settings_test)
+        assert decoded.exp == exp.replace(tzinfo=datetime.UTC, microsecond=0)
 
     def test_token_identifier_format(self, app_settings_test: AppSettings) -> None:
-        """Test that token identifier has expected format."""
         generated = make_api_token(expires_at=None, settings=app_settings_test)
         decoded = decode_api_token(generated.value, app_settings_test)
 
@@ -198,7 +111,6 @@ class TestAuthIntegration:
         assert len(token_id) >= 9  # 3 digits + 6 hex chars
 
     def test_token_hash_consistency(self, app_settings_test: AppSettings) -> None:
-        """Test that token hashing is consistent."""
         generated = make_api_token(expires_at=None, settings=app_settings_test)
         decoded = decode_api_token(generated.value, app_settings_test)
 
@@ -213,13 +125,11 @@ class TestAuthIntegration:
     def test_token_with_special_characters_in_settings(
         self, app_settings_test: AppSettings
     ) -> None:
-        """Test token generation with special characters in secret key."""
-        # Create settings with special characters in secret key
         special_settings = AppSettings(
-            api_token=SecretStr("test-token"),
             admin_username="test-username",
             admin_password=SecretStr("test-password"),
             secret_key=SecretStr("test-secret-key-with-special-chars!@#$%^&*()"),
+            vendor_encryption_key=SecretStr("test-vendor-encryption-key"),
             jwt_algorithm="HS256",
         )
 
@@ -229,91 +139,66 @@ class TestAuthIntegration:
         assert decoded.sub is not None
         assert decoded.exp is not None
 
-    def test_token_with_different_algorithms(self, app_settings_test: AppSettings) -> None:
-        """Test token generation with different JWT algorithms."""
-        # Test with HS256
-        hs256_settings = AppSettings(
-            api_token=SecretStr("test-token"),
+    @pytest.mark.parametrize("jwt_algorithm", ("HS256", "HS512"))
+    def test_token_with_different_algorithms(
+        self, app_settings_test: AppSettings, jwt_algorithm: str
+    ) -> None:
+        settings = AppSettings(
             admin_username="test-username",
             admin_password=SecretStr("test-password"),
             secret_key=SecretStr("test-secret-key"),
-            jwt_algorithm="HS256",
+            vendor_encryption_key=SecretStr("test-vendor-encryption-key"),
+            jwt_algorithm=jwt_algorithm,
         )
+        token = make_api_token(expires_at=None, settings=settings)
+        decoded = decode_api_token(token.value, settings)
 
-        token_hs256 = make_api_token(expires_at=None, settings=hs256_settings)
-        decoded_hs256 = decode_api_token(token_hs256.value, hs256_settings)
-
-        assert decoded_hs256.sub is not None
-
-        # Test with HS512
-        hs512_settings = AppSettings(
-            api_token=SecretStr("test-token"),
-            admin_username="test-username",
-            admin_password=SecretStr("test-password"),
-            secret_key=SecretStr("test-secret-key"),
-            jwt_algorithm="HS512",
-        )
-
-        token_hs512 = make_api_token(expires_at=None, settings=hs512_settings)
-        decoded_hs512 = decode_api_token(token_hs512.value, hs512_settings)
-
-        assert decoded_hs512.sub is not None
+        assert decoded.sub is not None
 
     def test_token_edge_cases(self, app_settings_test: AppSettings) -> None:
-        """Test token generation and decoding with edge cases."""
-        # Test with very short expiration
-        short_exp = datetime.datetime.now() + datetime.timedelta(seconds=1)
+        short_exp = utcnow() + datetime.timedelta(seconds=1)
         token_short = make_api_token(expires_at=short_exp, settings=app_settings_test)
 
-        # Should be decodable immediately
         decoded_short = decode_api_token(token_short.value, app_settings_test)
-        assert decoded_short.exp == short_exp
+        assert decoded_short.exp == short_exp.replace(tzinfo=datetime.UTC, microsecond=0)
 
-        # Test with very long expiration
-        long_exp = datetime.datetime.now() + datetime.timedelta(days=365)
+        long_exp = utcnow() + datetime.timedelta(days=365)
         token_long = make_api_token(expires_at=long_exp, settings=app_settings_test)
 
         decoded_long = decode_api_token(token_long.value, app_settings_test)
-        assert decoded_long.exp == long_exp
+        assert decoded_long.exp == long_exp.replace(tzinfo=datetime.UTC, microsecond=0)
 
     @pytest.mark.asyncio
-    async def test_auth_dependency_error_handling(self, app_settings_test: AppSettings) -> None:
-        """Test error handling in authentication dependency."""
-        from src.modules.auth.dependencies import verify_api_token
+    async def test_auth_dependency_error_handling(
+        self,
+        mock_request: MagicMock,
+        app_settings_test: AppSettings,
+    ) -> None:
 
-        request = MagicMock()
-        request.method = "GET"
+        with pytest.raises(HTTPException, match="Invalid token signature"):
+            await verify_api_token(mock_request, app_settings_test, auth_token="malformed-token")
 
-        # Test with malformed token
-        with pytest.raises(Exception):  # HTTPException
-            await verify_api_token(request, app_settings_test, auth_token="malformed-token")
-
-        # Test with expired token
         past_time = datetime.datetime.now() - datetime.timedelta(hours=1)
         expired_token = make_api_token(expires_at=past_time, settings=app_settings_test)
 
-        with pytest.raises(Exception):  # HTTPException
+        with pytest.raises(HTTPException, match="Not authenticated: unknown token"):
             await verify_api_token(
-                request, app_settings_test, auth_token=f"Bearer {expired_token.value}"
+                mock_request, app_settings_test, auth_token=f"Bearer {expired_token.value}"
             )
 
     def test_token_serialization_consistency(self, app_settings_test: AppSettings) -> None:
-        """Test that token serialization is consistent."""
-        # Generate multiple tokens and verify they can all be decoded
         tokens = []
 
         for _ in range(5):
             generated = make_api_token(expires_at=None, settings=app_settings_test)
             tokens.append(generated.value)
 
-        # All tokens should be decodable
         for token in tokens:
             decoded = decode_api_token(token, app_settings_test)
             assert decoded.sub is not None
             assert decoded.exp is not None
 
     def test_token_with_none_expiration(self, app_settings_test: AppSettings) -> None:
-        """Test token generation with None expiration (should use max datetime)."""
         token = make_api_token(expires_at=None, settings=app_settings_test)
         decoded = decode_api_token(token.value, app_settings_test)
 

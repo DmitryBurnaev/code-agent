@@ -190,3 +190,14 @@ def mock_httpx_client() -> MockHTTPxClient:
 def service(app_settings_test: AppSettings, mock_httpx_client: MockHTTPxClient) -> VendorService:
     """Return a vendor's service instance."""
     return VendorService(app_settings_test, cast(httpx.AsyncClient, mock_httpx_client))
+
+
+@pytest.fixture
+def mock_token_repository_active(mock_session_uow: GenMockPair) -> Generator[MagicMock, Any, None]:
+    """Mock TokenRepository with active token and user."""
+    with patch("src.db.repositories.TokenRepository.get_by_token") as mock_get_by_token:
+        mock_token = MagicMock()
+        mock_token.is_active = True
+        mock_token.user.is_active = True
+        mock_get_by_token.return_value = mock_token
+        yield mock_get_by_token
