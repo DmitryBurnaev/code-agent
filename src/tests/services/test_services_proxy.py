@@ -1,7 +1,7 @@
 """Tests for proxy service."""
 
-from typing import Any, AsyncGenerator, AsyncIterator
-from unittest.mock import Mock, AsyncMock
+from typing import Any, AsyncGenerator, AsyncIterator, Generator
+from unittest.mock import Mock, AsyncMock, patch
 
 import json
 import httpx
@@ -27,7 +27,7 @@ def request_data() -> ProxyRequestData:
         query_params={},
         body=ChatRequest(
             messages=[Message(role="user", content="Hello")],
-            model="openai__gpt-4",
+            model="openai:gpt-4",
             stream=False,
         ),
     )
@@ -42,7 +42,7 @@ def stream_request_data() -> ProxyRequestData:
         query_params={},
         body=ChatRequest(
             messages=[Message(role="user", content="Hello")],
-            model="openai__gpt-4",
+            model="openai:gpt-4",
             stream=True,
         ),
     )
@@ -108,6 +108,13 @@ def mock_stream_http_client(mock_stream_response: AsyncMock) -> AsyncMock:
     return mock_client
 
 
+@pytest.fixture(autouse=True)
+def mock_decrypt_vendor_key() -> Generator[None, Any, None]:
+    with patch("src.modules.encrypt.encryption.VendorKeyEncryption.decrypt") as mock_decrypt:
+        mock_decrypt.return_value = "decrypted-vendor-key"
+        yield
+
+
 @pytest.fixture
 async def stream_proxy_service(
     app_settings_test: AppSettings, mock_stream_http_client: AsyncMock
@@ -150,7 +157,7 @@ class TestProxyService:
 
         stream_request_data.body = ChatRequest(
             messages=[Message(role="user", content="Hello")],
-            model="deepseek__deepseek-chat",
+            model="deepseek:deepseek-chat",
             stream=True,
         )
         completion_id = "fdc42f0f-b8ac-434d-b921-018701b8c2ba"
@@ -219,9 +226,9 @@ class TestProxyService:
         proxy_service: ProxyService,
     ) -> None:
         """Test handling request with an unknown vendor."""
-        request_data.body.model = "unknown__gpt-4"  # type: ignore
+        request_data.body.model = "unknown:gpt-4"  # type: ignore
 
-        with pytest.raises(VendorProxyError, match="Unable to extract vendor"):
+        with pytest.raises(VendorProxyError, match="Unable to find vendor 'unknown'"):
             await proxy_service.handle_request(
                 request_data,
                 endpoint=ProxyEndpoint.CHAT_COMPLETION,

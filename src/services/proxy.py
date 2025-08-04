@@ -334,12 +334,13 @@ class ProxyService:
             if not vendor_slug:
                 raise VendorProxyError(f"Unable to find vendor for {completion_id=}")
 
-            model = f"{vendor_slug}__SKIP"
+            model = f"{vendor_slug}:SKIP"
 
         else:
             model = request_data.body.model if request_data.body else ""
 
         try:
+            logger.debug("Extracting vendor model: %s", model)
             vendor_slug, model_name = model.split(VENDOR_ID_SEPARATOR, 1)
             async with SASessionUOW() as uow:
                 slug = vendor_slug.lower().strip()
@@ -425,4 +426,4 @@ class ProxyService:
     def _cache_get_vendor(self, completion_id: str) -> str | None:
         key = f"completion__{completion_id}"
         cached = self._cache.get(key)
-        return str(cached) if not cached else None
+        return str(cached) if cached else None
