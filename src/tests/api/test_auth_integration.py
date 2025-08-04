@@ -178,10 +178,10 @@ class TestAuthIntegration:
         with pytest.raises(HTTPException, match="Invalid token signature"):
             await verify_api_token(mock_request, app_settings_test, auth_token="malformed-token")
 
-        past_time = datetime.datetime.now() - datetime.timedelta(hours=1)
+        past_time = utcnow() - datetime.timedelta(hours=1)
         expired_token = make_api_token(expires_at=past_time, settings=app_settings_test)
 
-        with pytest.raises(HTTPException, match="Not authenticated: unknown token"):
+        with pytest.raises(HTTPException, match="Token expired"):
             await verify_api_token(
                 mock_request, app_settings_test, auth_token=f"Bearer {expired_token.value}"
             )

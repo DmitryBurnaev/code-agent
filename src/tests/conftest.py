@@ -2,6 +2,7 @@
 
 import dataclasses
 import json
+import os
 from typing import Any, Generator, cast, Self
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -18,6 +19,11 @@ from src.models import LLMVendor
 from pydantic import SecretStr
 
 type GenMockPair = Generator[tuple[MagicMock, AsyncMock], Any, None]
+MINIMAL_ENV_VARS = {
+    "SECRET_KEY": "test-key",
+    "ADMIN_PASSWORD": "test-password",
+    "VENDOR_ENCRYPTION_KEY": "test-encryption-key",
+}
 
 
 @dataclasses.dataclass
@@ -49,6 +55,12 @@ def app_settings_test() -> AppSettings:
         secret_key=SecretStr("example-1111UStLb8mds9K"),  # example-zUomEUSyOVT
         vendor_encryption_key=SecretStr("test-key"),
     )
+
+
+@pytest.fixture(autouse=True)
+def minimal_env_vars() -> Generator[None, Any, None]:
+    with patch.dict(os.environ, MINIMAL_ENV_VARS):
+        yield
 
 
 @pytest.fixture
