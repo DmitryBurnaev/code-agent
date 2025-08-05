@@ -11,7 +11,7 @@ from src.models import AIModel, LLMVendor
 from src.settings import AppSettings
 from src.constants import VendorSlug
 
-from src.tests.conftest import MockTestResponse, MockHTTPxClient
+from src.tests.conftest import MockTestResponse, MockHTTPxClient, MockVendor
 
 pytestmark = pytest.mark.asyncio
 type MOCK_MODELS_TYPE = dict[str, dict[str, list[dict[str, str | int]]]]
@@ -87,28 +87,30 @@ class TestVendorService:
         assert isinstance(client, VendorClient)
         assert service.get_client(vendor) is client
 
-    async def test_get_list_models_cached(
+    async def test_get_list_models_partial_cached(
         self,
         app_settings_test: AppSettings,
         service: VendorService,
         mock_httpx_for_models_client: MockHTTPxClient,
+        mock_db_active_vendors: list[MockVendor],
     ) -> None:
         """Test getting models' list with cache."""
         service._cache_set_data(
             VendorSlug.OPENAI,
-            [AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4")],
+            [AIModel(id="openai:gpt-4", vendor="openai", vendor_id="gpt-4")],
         )
 
         models = await service.get_list_models()
 
         expected_model_pairs = [
-            AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4"),
-            AIModel(id="deepseek__deepseek-1", vendor="deepseek", vendor_id="deepseek-1"),
+            AIModel(id="openai:gpt-4", vendor="openai", vendor_id="gpt-4"),
+            AIModel(id="deepseek:deepseek-1", vendor="deepseek", vendor_id="deepseek-1"),
         ]
         assert models == expected_model_pairs
 
         mock_httpx_for_models_client.get.assert_awaited_once_with(
-            "https://api.deepseek.com/v1/models", headers={"Authorization": "Bearer deepseek-key"}
+            "https://api.deepseek.com/v1/models",
+            headers={"Authorization": "Bearer decrypted-deepseek-api-key"},
         )
 
     async def test_get_list_models_force_refresh(
@@ -121,16 +123,16 @@ class TestVendorService:
         # Set cache for the first vendor
         service._cache_set_data(
             VendorSlug.OPENAI,
-            [AIModel(id="openai__old-gpt-4", vendor="openai", vendor_id="old-gpt-4")],
+            [AIModel(id="openai:old-gpt-4", vendor="openai", vendor_id="old-gpt-4")],
         )
 
         # get models and check results
         models = await service.get_list_models(force_refresh=True)
 
         expected_model_pairs = [
-            AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4"),
-            AIModel(id="openai__open-model-e-3", vendor="openai", vendor_id="open-model-e-3"),
-            AIModel(id="deepseek__deepseek-1", vendor="deepseek", vendor_id="deepseek-1"),
+            AIModel(id="openai:gpt-4", vendor="openai", vendor_id="gpt-4"),
+            AIModel(id="openai:open-model-e-3", vendor="openai", vendor_id="open-model-e-3"),
+            AIModel(id="deepseek:deepseek-1", vendor="deepseek", vendor_id="deepseek-1"),
         ]
         assert models == expected_model_pairs
 
