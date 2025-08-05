@@ -145,6 +145,7 @@ class VendorService:
             )
             llm_vendor = LLMVendor.from_vendor(vendor)
             if not force_refresh:
+                print(vendor.slug, self._cache._data)
                 cached = self._cache_get_data(vendor.slug)
                 if cached is not None:
                     all_models.extend(cached)

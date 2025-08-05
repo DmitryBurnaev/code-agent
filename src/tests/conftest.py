@@ -119,14 +119,34 @@ class MockVendor:
     name: str
     slug: str
     is_active: bool = True
+    timeout: int = 10
+
+    @property
+    def api_url(self) -> str:
+        return f"https://api.{self.slug}.com/v1/"
+
+    @property
+    def decrypted_api_key(self) -> str:
+        return f"decrypted-{self.slug}-api-key"
 
 
 @pytest.fixture
-def mock_db_vendors() -> Generator[list[MockVendor], Any, None]:
+def mock_db_all_vendors() -> Generator[list[MockVendor], Any, None]:
     with patch("src.db.repositories.VendorRepository.all") as mock_get_vendors:
         mocked_vendors = [
             MockVendor(id=1, slug=VendorSlug.OPENAI, name=VendorSlug.OPENAI),
-            MockVendor(id=2, slug=VendorSlug.DEEPSEEK, name=VendorSlug.DEEPSEEK),
+            MockVendor(id=2, slug=VendorSlug.DEEPSEEK, name=VendorSlug.DEEPSEEK, is_active=False),
+        ]
+        mock_get_vendors.return_value = mocked_vendors
+        yield mocked_vendors
+
+
+@pytest.fixture
+def mock_db_active_vendors() -> Generator[list[MockVendor], Any, None]:
+    with patch("src.db.repositories.VendorRepository.filter") as mock_get_vendors:
+        mocked_vendors = [
+            MockVendor(id=1, slug=VendorSlug.OPENAI, name=VendorSlug.OPENAI, is_active=True),
+            MockVendor(id=2, slug=VendorSlug.DEEPSEEK, name=VendorSlug.DEEPSEEK, is_active=True),
         ]
         mock_get_vendors.return_value = mocked_vendors
         yield mocked_vendors
