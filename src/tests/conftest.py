@@ -52,8 +52,8 @@ def app_settings_test() -> AppSettings:
         http_proxy_url=None,
         admin_username="test-username",
         admin_password=SecretStr("test-password-oKcqO3rPCxt2"),
-        secret_key=SecretStr("example-1111UStLb8mds9K"),  # example-zUomEUSyOVT
-        vendor_encryption_key=SecretStr("test-key"),
+        secret_key=SecretStr("example-UStLb8mds9K"),
+        vendor_encryption_key=SecretStr("test-encryption-key"),
     )
 
 
@@ -67,6 +67,7 @@ def minimal_env_vars() -> Generator[None, Any, None]:
 def test_app(app_settings_test: AppSettings) -> CodeAgentAPP:
     """Return FastAPI application for testing."""
     test_app = make_app(settings=app_settings_test)
+    test_app.dependency_overrides[get_app_settings] = lambda: test_app.settings
     return test_app
 
 
@@ -159,7 +160,6 @@ def client(
     llm_vendors: list[LLMVendor],
     auth_test_token: str,
 ) -> Generator[TestClient, Any, None]:
-    test_app.dependency_overrides[get_app_settings] = lambda: test_app.settings
     headers = {
         "Authorization": f"Bearer {auth_test_token}",
     }

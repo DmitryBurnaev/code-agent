@@ -1,5 +1,3 @@
-"""Tests for vendor service."""
-
 from typing import cast
 
 import httpx
@@ -51,7 +49,6 @@ def mock_models() -> MOCK_MODELS_TYPE:
 
 @pytest.fixture
 def mock_httpx_for_models_client(mock_models: MOCK_MODELS_TYPE) -> MockHTTPxClient:
-    """Return mock HTTP client."""
 
     async def mocked_response_by_vendor(url: str, *_, **__) -> MockTestResponse:  # type: ignore
         return MockTestResponse(
@@ -68,12 +65,10 @@ def service(
     app_settings_test: AppSettings,
     mock_httpx_for_models_client: MockHTTPxClient,
 ) -> VendorService:
-    """Return a vendor service instance."""
     return VendorService(app_settings_test, cast(httpx.AsyncClient, mock_httpx_for_models_client))
 
 
 class TestVendorService:
-    """Tests for VendorService."""
 
     async def test_get_client(
         self,
@@ -81,7 +76,6 @@ class TestVendorService:
         app_settings_test: AppSettings,
         llm_vendors: list[LLMVendor],
     ) -> None:
-        """Test getting vendor client."""
         vendor = llm_vendors[0]
         client = service.get_client(vendor)
         assert isinstance(client, VendorClient)
@@ -94,7 +88,6 @@ class TestVendorService:
         mock_httpx_for_models_client: MockHTTPxClient,
         mock_db_active_vendors: list[MockVendor],
     ) -> None:
-        """Test getting models' list with cache."""
         service._cache_set_data(
             VendorSlug.OPENAI,
             [AIModel(id="openai:gpt-4", vendor="openai", vendor_id="gpt-4")],
@@ -116,9 +109,9 @@ class TestVendorService:
     async def test_get_list_models_force_refresh(
         self,
         service: VendorService,
+        mock_db_active_vendors: list[MockVendor],
         mock_httpx_for_models_client: AsyncMock,
     ) -> None:
-        """Test getting models list with force refresh."""
 
         # Set cache for the first vendor
         service._cache_set_data(
@@ -149,9 +142,9 @@ class TestVendorService:
         self,
         service: VendorService,
         app_settings_test: AppSettings,
+        mock_db_active_vendors: list[MockVendor],
         mock_httpx_for_models_client: AsyncMock,
     ) -> None:
-        """Test error handling when getting models' list."""
         # Mock error response
         mock_httpx_for_models_client.get = AsyncMock(side_effect=httpx.RequestError("Test error"))
 

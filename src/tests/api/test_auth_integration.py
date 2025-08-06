@@ -10,8 +10,6 @@ from src.modules.auth.tokens import make_api_token, decode_api_token, hash_token
 
 
 class TestAuthIntegration:
-    """Integration tests for authentication flow."""
-
     def test_full_token_lifecycle(self, app_settings_test: AppSettings) -> None:
         expires_at = utcnow() + datetime.timedelta(hours=1)
         generated = make_api_token(expires_at=expires_at, settings=app_settings_test)

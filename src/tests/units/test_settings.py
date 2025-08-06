@@ -1,5 +1,3 @@
-"""Tests for settings."""
-
 import os
 from unittest.mock import patch
 
@@ -17,7 +15,6 @@ MINIMAL_ENV_VARS = {
 
 
 class TestAppSettings:
-    """Tests for AppSettings class."""
 
     @patch.dict(os.environ, MINIMAL_ENV_VARS)
     def test_default_settings(self) -> None:
@@ -65,7 +62,6 @@ class TestAppSettings:
             )
 
     def test_log_config(self) -> None:
-        """Test log configuration."""
         settings = AppSettings(
             secret_key=SecretStr("test-token"),
             admin_username="test-username",
@@ -90,7 +86,6 @@ class TestAppSettings:
 
 
 class TestGetSettings:
-    """Tests for get_app_settings function."""
 
     @patch.dict(
         os.environ,
@@ -103,7 +98,6 @@ class TestGetSettings:
         },
     )
     def test_get_app_settings_from_env(self) -> None:
-        """Test getting settings from environment variables."""
         get_app_settings.cache_clear()
         settings = get_app_settings()
         assert settings.log_level == "DEBUG"
@@ -113,14 +107,12 @@ class TestGetSettings:
 
     @patch.dict(os.environ, MINIMAL_ENV_VARS | {"LOG_LEVEL": "INVALID"})
     def test_get_app_settings_validation_error(self) -> None:
-        """Test validation error when getting settings."""
         get_app_settings.cache_clear()
         with pytest.raises(Exception):
             get_app_settings()
 
     @patch.dict(os.environ, MINIMAL_ENV_VARS)
     def test_get_app_settings_caching(self) -> None:
-        """Test settings caching."""
         get_app_settings.cache_clear()
         settings1 = get_app_settings()
         settings2 = get_app_settings()
