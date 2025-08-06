@@ -1,5 +1,3 @@
-"""Tests for proxy service."""
-
 from typing import Any, AsyncGenerator, AsyncIterator, Generator
 from unittest.mock import Mock, AsyncMock, patch
 
@@ -20,7 +18,6 @@ pytestmark = pytest.mark.asyncio
 
 @pytest.fixture
 def request_data() -> ProxyRequestData:
-    """Return mock request data."""
     return ProxyRequestData(
         method="POST",
         headers={"Content-Type": "application/json"},
@@ -35,7 +32,6 @@ def request_data() -> ProxyRequestData:
 
 @pytest.fixture
 def stream_request_data() -> ProxyRequestData:
-    """Return mock streaming request data."""
     return ProxyRequestData(
         method="POST",
         headers={"Content-Type": "application/json"},
@@ -50,7 +46,6 @@ def stream_request_data() -> ProxyRequestData:
 
 @pytest.fixture
 def mock_response() -> AsyncMock:
-    """Return mock response."""
     mock_response = AsyncMock(spec=httpx.Response)
     mock_response.status_code = 200
     mock_response.content = b'{"response": "Hello!"}'
@@ -60,7 +55,6 @@ def mock_response() -> AsyncMock:
 
 @pytest.fixture
 def mock_stream_response() -> AsyncMock:
-    """Return mock response."""
     default_content = (
         b'data: {"id": "test-1", "choices": [{"delta": {"content": "Hello"}}]}\n\ndata: [DONE]\n\n'
     )
@@ -83,7 +77,6 @@ def mock_stream_response() -> AsyncMock:
 
 @pytest.fixture
 def mock_http_client(mock_response: AsyncMock) -> AsyncMock:
-    """Return mock HTTP client."""
     mock_client = AsyncMock(spec=httpx.AsyncClient)
     mock_client.build_request = Mock(return_value=Mock(spec=httpx.Request))
     mock_client.send = AsyncMock(return_value=mock_response)
@@ -94,14 +87,12 @@ def mock_http_client(mock_response: AsyncMock) -> AsyncMock:
 async def proxy_service(
     app_settings_test: AppSettings, mock_http_client: AsyncMock
 ) -> AsyncGenerator[ProxyService, Any]:
-    """Return proxy service instance."""
     async with ProxyService(app_settings_test, mock_http_client) as service:
         yield service
 
 
 @pytest.fixture
 def mock_stream_http_client(mock_stream_response: AsyncMock) -> AsyncMock:
-    """Return mock HTTP client."""
     mock_client = AsyncMock(spec=httpx.AsyncClient)
     mock_client.build_request = Mock(return_value=Mock(spec=httpx.Request))
     mock_client.send = AsyncMock(return_value=mock_stream_response)
@@ -119,13 +110,11 @@ def mock_decrypt_vendor_key() -> Generator[None, Any, None]:
 async def stream_proxy_service(
     app_settings_test: AppSettings, mock_stream_http_client: AsyncMock
 ) -> AsyncGenerator[ProxyService, Any]:
-    """Return proxy service instance."""
     async with ProxyService(app_settings_test, mock_stream_http_client) as service:
         yield service
 
 
 class TestProxyService:
-    """Tests for ProxyService."""
 
     async def test_handle_request_regular(
         self,
@@ -133,7 +122,6 @@ class TestProxyService:
         proxy_service: ProxyService,
         mock_response: AsyncMock,
     ) -> None:
-        """Test handling regular (non-streaming) request."""
         mock_response.content = (
             b'{"id": "test-1", "choices": [{"delta": {"content": "Hello"}}]}\n\n'
         )
@@ -153,7 +141,6 @@ class TestProxyService:
         stream_proxy_service: ProxyService,
         mock_stream_response: AsyncMock,
     ) -> None:
-        """Test handling streaming request."""
 
         stream_request_data.body = ChatRequest(
             messages=[Message(role="user", content="Hello")],
@@ -192,7 +179,6 @@ class TestProxyService:
         assert vendor == str(VendorSlug.DEEPSEEK)
 
     async def test_handle_request_no_body(self, proxy_service: ProxyService) -> None:
-        """Test handling request without body."""
         request_data = ProxyRequestData(
             method="POST",
             headers={},
@@ -211,7 +197,6 @@ class TestProxyService:
         request_data: ProxyRequestData,
         proxy_service: ProxyService,
     ) -> None:
-        """Test handling request with an invalid model format."""
         request_data.body.model = "invalid-model"  # type: ignore
 
         with pytest.raises(VendorProxyError, match="Invalid model format"):
@@ -225,7 +210,6 @@ class TestProxyService:
         request_data: ProxyRequestData,
         proxy_service: ProxyService,
     ) -> None:
-        """Test handling request with an unknown vendor."""
         request_data.body.model = "unknown:gpt-4"  # type: ignore
 
         with pytest.raises(VendorProxyError, match="Unable to find vendor 'unknown'"):
@@ -241,7 +225,6 @@ class TestProxyService:
         mock_http_client: AsyncMock,
         mock_response: AsyncMock,
     ) -> None:
-        """Test handling cancellation request."""
         completion_id = "test-completion"
         proxy_service._cache_set_vendor(completion_id, VendorSlug.OPENAI)
 
@@ -263,7 +246,6 @@ class TestProxyService:
         request_data: ProxyRequestData,
         proxy_service: ProxyService,
     ) -> None:
-        """Test handling cancellation request without completion ID."""
         with pytest.raises(VendorProxyError, match="completion_id is required"):
             await proxy_service.handle_request(
                 request_data,
@@ -276,7 +258,6 @@ class TestProxyService:
         stream_proxy_service: ProxyService,
         mock_stream_response: AsyncMock,
     ) -> None:
-        """Test handling streaming request with error in stream."""
         content = [
             'data: {"id": "test-1", "choices": [{"delta": {"content": "Hello"}}]}\n\n',
             "ERROR: Stream error\n\n",
@@ -298,7 +279,6 @@ class TestProxyService:
         stream_proxy_service: ProxyService,
         mock_stream_response: AsyncMock,
     ) -> None:
-        """Test handling streaming request with empty stream."""
 
         async def mock_aiter_bytes() -> AsyncGenerator[bytes]:
             # noinspection PyUnreachableCode
@@ -321,7 +301,6 @@ class TestProxyService:
         stream_proxy_service: ProxyService,
         mock_stream_response: AsyncMock,
     ) -> None:
-        """Test handling streaming request with custom headers."""
         mock_stream_response.headers = {
             "Content-Type": "text/event-stream",
             "Cache-Control": "no-cache",
@@ -347,7 +326,6 @@ class TestProxyService:
         proxy_service: ProxyService,
         mock_http_client: AsyncMock,
     ) -> None:
-        """Test handling request with timeout."""
         request_data.timeout = 0.1
         mock_http_client.send.side_effect = httpx.TimeoutException("Request timed out")
 
@@ -364,7 +342,6 @@ class TestProxyService:
         mock_stream_http_client: AsyncMock,
         mock_stream_response: AsyncMock,
     ) -> None:
-        """Test handling streaming request with timeout."""
         stream_request_data.timeout = 0.1
         mock_stream_http_client.send.side_effect = httpx.TimeoutException("Stream timed out")
 
@@ -380,7 +357,6 @@ class TestProxyService:
         proxy_service: ProxyService,
         mock_response: AsyncMock,
     ) -> None:
-        """Test handling request with error status code."""
         mock_response.status_code = 429
         mock_response.content = json.dumps(
             {
@@ -408,7 +384,6 @@ class TestProxyService:
         mock_stream_http_client: AsyncMock,
         mock_stream_response: AsyncMock,
     ) -> None:
-        """Test handling streaming request with error status code."""
         content = [
             'data: {"error": {"message": "Service unavailable", "type": "service_error"}}\n\n'
         ]

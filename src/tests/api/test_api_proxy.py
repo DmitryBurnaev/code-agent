@@ -1,5 +1,3 @@
-"""Tests for proxy API endpoints."""
-
 import json
 from typing import Any, Generator, AsyncIterator
 from unittest.mock import AsyncMock, patch
@@ -16,7 +14,6 @@ from src.services.proxy import ProxyService, ProxyRequestData, ProxyEndpoint
 
 @pytest.fixture
 def mock_vendor_service() -> Generator[AsyncMock, Any, None]:
-    """Return mock vendor service."""
     mock_service = AsyncMock(spec=VendorService)
     mock_service.get_list_models.return_value = [
         AIModel(id="openai__gpt-4", vendor="openai", vendor_id="gpt-4"),
@@ -28,31 +25,15 @@ def mock_vendor_service() -> Generator[AsyncMock, Any, None]:
 
 @pytest.fixture
 def mock_proxy_service() -> Generator[AsyncMock, Any, None]:
-    """Return mock proxy service."""
     service = AsyncMock(spec=ProxyService)
     service.handle_request.return_value = AsyncMock()
     with patch("src.api.proxy.ProxyService", return_value=service):
         yield service
 
 
-#
-# @pytest.fixture
-# def mock_settings() -> AppSettings:
-#     """Return mock settings for testing."""
-#     return AppSettings(
-#         api_token=SecretStr("test-token"),
-#         admin_username="test-username",
-#         admin_password=SecretStr("test-password"),
-#         secret_key=SecretStr("test-secret"),
-#         http_proxy_url=None,
-#     )
-
-
 class TestProxyAPI:
-    """Tests for proxy API endpoints."""
 
     def test_list_models(self, client: TestClient, mock_vendor_service: AsyncMock) -> None:
-        """Test GET /ai-proxy/models endpoint."""
         response = client.get("/api/ai-proxy/models")
         assert response.status_code == 200
         data = response.json()
@@ -70,7 +51,6 @@ class TestProxyAPI:
         auth_test_token: str,
         mock_proxy_service: AsyncMock,
     ) -> None:
-        """Test POST /ai-proxy/chat/completions endpoint."""
         chat_request = ChatRequest(
             messages=[Message(role="user", content="Ping")],
             model="openai__gpt-4",
@@ -130,7 +110,6 @@ class TestProxyAPI:
         mock_proxy_service: AsyncMock,
         stream_words: list[str],
     ) -> None:
-        """Test POST /ai-proxy/chat/completions endpoint with stream=True."""
         chat_request = ChatRequest(
             messages=[Message(role="user", content="Ping")],
             model="openai__gpt-4",
@@ -207,7 +186,6 @@ class TestProxyAPI:
         auth_test_token: str,
         mock_proxy_service: AsyncMock,
     ) -> None:
-        """Test DELETE /ai-proxy/chat/completions/{completion_id} endpoint."""
         completion_id = "test-completion-id"
         mock_proxy_service.handle_request.return_value = Response(
             media_type="application/json",
@@ -243,7 +221,6 @@ class TestProxyAPI:
         mock_proxy_service.__aexit__.assert_awaited_once_with(None, None, None)
 
     def test_options_chat_completion(self, client: TestClient) -> None:
-        """Test OPTIONS /ai-proxy/chat/completions endpoint."""
         response = client.options("/api/ai-proxy/chat/completions")
 
         assert response.status_code == 204

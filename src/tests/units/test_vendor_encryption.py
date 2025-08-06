@@ -55,7 +55,7 @@ class TestVendorKeyEncryption:
 
         short_data = base64.b64encode(b"short").decode()
 
-        with pytest.raises(ValueError, match="Encrypted data too short"):
+        with pytest.raises(ValueError, match="Failed to decrypt API key"):
             encryption.decrypt(short_data)
 
     def test_is_encrypted_valid_data(self) -> None:

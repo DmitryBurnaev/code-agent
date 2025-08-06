@@ -1,5 +1,3 @@
-"""Tests for utils."""
-
 from src.utils import singleton
 
 
@@ -7,8 +5,6 @@ class TestSingleton:
     """Tests for singleton decorator."""
 
     def test_same_instance(self) -> None:
-        """Test that multiple instances are actually the same object."""
-        # Create instances of the same class
 
         @singleton
         class TestClass:
@@ -27,8 +23,6 @@ class TestSingleton:
         assert instance3.value == "first"
 
     def test_state_persistence(self) -> None:
-        """Test that a singleton state persists between instances."""
-        # Create an instance and change its state
 
         @singleton
         class TestClass:
@@ -48,8 +42,6 @@ class TestSingleton:
         instance2.value = ""
 
     def test_multiple_singleton_classes(self) -> None:
-        """Test that different singleton classes don't interfere."""
-
         @singleton
         class TestClass:
             def __init__(self, value: str) -> None:
