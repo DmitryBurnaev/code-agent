@@ -17,7 +17,7 @@ from src.modules.auth.hashers import (
 )
 from src.utils import utcnow
 from src.settings import AppSettings
-from src.tests.conftest import MockAPIToken
+from src.tests.mocks import MockAPIToken
 
 
 class TestTokenEdgeCases:
@@ -33,7 +33,6 @@ class TestTokenEdgeCases:
     )
     def test_token_with_various_secret_key(self, secret_key: str) -> None:
         app_settings = AppSettings(
-            api_token=SecretStr("test-token"),
             admin_username="test-username",
             admin_password=SecretStr("test-password"),
             secret_key=SecretStr(secret_key),

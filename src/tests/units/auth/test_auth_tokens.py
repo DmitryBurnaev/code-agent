@@ -14,6 +14,7 @@ from src.modules.auth.tokens import (
     GeneratedToken,
 )
 from src.settings import AppSettings
+from src.tests.mocks import MockAPIToken
 from src.tests.units.auth.conftest import GenMockPair
 from src.utils import utcnow
 
@@ -203,7 +204,7 @@ class TestVerifyAPIToken:
         self,
         app_settings_test: AppSettings,
         mock_request: MagicMock,
-        mock_token_repository_active: MagicMock,
+        mock_db_api_token__active: MockAPIToken,
     ) -> None:
         generated_token = make_api_token(expires_at=None, settings=app_settings_test)
         result = await verify_api_token(
@@ -247,7 +248,6 @@ class TestVerifyAPIToken:
         self,
         app_settings_test: AppSettings,
         mock_request: MagicMock,
-        mock_session_uow: GenMockPair,
         mock_token_repository_unknown_token: GenMockPair,
     ) -> None:
         generated = make_api_token(expires_at=None, settings=app_settings_test)

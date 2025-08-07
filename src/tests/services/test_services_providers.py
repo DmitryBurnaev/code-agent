@@ -9,7 +9,7 @@ from src.models import AIModel, LLMVendor
 from src.settings import AppSettings
 from src.constants import VendorSlug
 
-from src.tests.conftest import MockTestResponse, MockHTTPxClient, MockVendor
+from src.tests.mocks import MockVendor, MockTestResponse, MockHTTPxClient
 
 pytestmark = pytest.mark.asyncio
 type MOCK_MODELS_TYPE = dict[str, dict[str, list[dict[str, str | int]]]]
@@ -86,7 +86,7 @@ class TestVendorService:
         app_settings_test: AppSettings,
         service: VendorService,
         mock_httpx_for_models_client: MockHTTPxClient,
-        mock_db_active_vendors: list[MockVendor],
+        mock_db_vendors__active: list[MockVendor],
     ) -> None:
         service._cache_set_data(
             VendorSlug.OPENAI,
@@ -109,7 +109,7 @@ class TestVendorService:
     async def test_get_list_models_force_refresh(
         self,
         service: VendorService,
-        mock_db_active_vendors: list[MockVendor],
+        mock_db_vendors__active: list[MockVendor],
         mock_httpx_for_models_client: AsyncMock,
     ) -> None:
 
@@ -142,7 +142,7 @@ class TestVendorService:
         self,
         service: VendorService,
         app_settings_test: AppSettings,
-        mock_db_active_vendors: list[MockVendor],
+        mock_db_api_token__active: list[MockVendor],
         mock_httpx_for_models_client: AsyncMock,
     ) -> None:
         # Mock error response

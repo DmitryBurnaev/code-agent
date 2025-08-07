@@ -1,22 +1,18 @@
-"""Test configuration and fixtures."""
-
-import dataclasses
-import json
 import os
-from typing import Any, Generator, cast, Self
+from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
 from starlette.testclient import TestClient
 
 from src.main import make_app, CodeAgentAPP
 from src.modules.auth.tokens import make_api_token
-from src.services.vendors import VendorService
 from src.settings import AppSettings, get_app_settings
 from src.constants import VendorSlug
 from src.models import LLMVendor
 from pydantic import SecretStr
+
+from src.tests.mocks import MockAPIToken, MockUser, MockVendor, MockTestResponse, MockHTTPxClient
 
 type GenMockPair = Generator[tuple[MagicMock, AsyncMock], Any, None]
 MINIMAL_ENV_VARS = {
@@ -26,23 +22,10 @@ MINIMAL_ENV_VARS = {
 }
 
 
-@dataclasses.dataclass
-class MockUser:
-    id: int
-    is_active: bool = False
-    username: str = "test-user"
-
-
 @pytest.fixture
 def mock_user() -> MockUser:
     """Return a mock user object."""
     return MockUser(id=1, is_active=True, username="test-user")
-
-
-@dataclasses.dataclass
-class MockAPIToken:
-    is_active: bool
-    user: MockUser
 
 
 @pytest.fixture
@@ -65,7 +48,6 @@ def minimal_env_vars() -> Generator[None, Any, None]:
 
 @pytest.fixture
 def test_app(app_settings_test: AppSettings) -> CodeAgentAPP:
-    """Return FastAPI application for testing."""
     test_app = make_app(settings=app_settings_test)
     test_app.dependency_overrides[get_app_settings] = lambda: test_app.settings
     return test_app
@@ -78,30 +60,9 @@ def auth_test_token(app_settings_test: AppSettings) -> str:
 
 @pytest.fixture
 def mock_request() -> MagicMock:
-    """Return mock request object."""
     request = MagicMock()
     request.method = "GET"
     return request
-
-
-@pytest.fixture
-def mock_session_uow() -> GenMockPair:
-    """Mock SASessionUOW context manager."""
-    with patch("src.db.services.SASessionUOW") as mock_uow:
-        mock_session = AsyncMock()
-        mock_uow.return_value.__aenter__.return_value.session = mock_session
-        yield mock_uow, mock_session
-
-
-@pytest.fixture
-def mock_db_token__active() -> Generator[MagicMock, Any, None]:
-    """Mock TokenRepository with active token and user."""
-    with patch("src.db.repositories.TokenRepository.get_by_token") as mock_get_by_token:
-        mock_token = MockAPIToken(
-            user=MockUser(id=1, is_active=True, username="test-user"), is_active=True
-        )
-        mock_get_by_token.return_value = mock_token
-        yield mock_get_by_token
 
 
 @pytest.fixture
@@ -114,25 +75,8 @@ def llm_vendors() -> list[LLMVendor]:
     ]
 
 
-@dataclasses.dataclass
-class MockVendor:
-    id: int
-    name: str
-    slug: str
-    is_active: bool = True
-    timeout: int = 10
-
-    @property
-    def api_url(self) -> str:
-        return f"https://api.{self.slug}.com/v1/"
-
-    @property
-    def decrypted_api_key(self) -> str:
-        return f"decrypted-{self.slug}-api-key"
-
-
 @pytest.fixture
-def mock_db_all_vendors() -> Generator[list[MockVendor], Any, None]:
+def mock_db_vendors__all() -> Generator[list[MockVendor], Any, None]:
     with patch("src.db.repositories.VendorRepository.all") as mock_get_vendors:
         mocked_vendors = [
             MockVendor(id=1, slug=VendorSlug.OPENAI, name=VendorSlug.OPENAI),
@@ -143,7 +87,7 @@ def mock_db_all_vendors() -> Generator[list[MockVendor], Any, None]:
 
 
 @pytest.fixture
-def mock_db_active_vendors() -> Generator[list[MockVendor], Any, None]:
+def mock_db_vendors__active() -> Generator[list[MockVendor], Any, None]:
     with patch("src.db.repositories.VendorRepository.filter") as mock_get_vendors:
         mocked_vendors = [
             MockVendor(id=1, slug=VendorSlug.OPENAI, name=VendorSlug.OPENAI, is_active=True),
@@ -154,9 +98,17 @@ def mock_db_active_vendors() -> Generator[list[MockVendor], Any, None]:
 
 
 @pytest.fixture
+def mock_db_api_token__active() -> Generator[MockAPIToken, Any, None]:
+    with patch("src.db.repositories.TokenRepository.get_by_token") as mock_get_by_token:
+        mock_token = MockAPIToken(is_active=True, user=MockUser(id=1, is_active=True))
+        mock_get_by_token.return_value = mock_token
+        yield mock_token
+
+
+@pytest.fixture
 def client(
     test_app: CodeAgentAPP,
-    mock_db_token__active: MagicMock,
+    mock_db_api_token__active: MockAPIToken,
     llm_vendors: list[LLMVendor],
     auth_test_token: str,
 ) -> Generator[TestClient, Any, None]:
@@ -169,46 +121,8 @@ def client(
     test_app.dependency_overrides.clear()
 
 
-@dataclasses.dataclass
-class MockTestResponse:
-    headers: dict[str, str]
-    data: dict[str, Any] | list[dict[str, Any]]
-    status_code: int = 200
-
-    def json(self) -> dict[str, Any] | list[dict[str, Any]]:
-        return self.data
-
-    @property
-    def text(self) -> str:
-        return json.dumps(self.data)
-
-
-class MockHTTPxClient:
-    """Imitate real http client but with mocked response"""
-
-    def __init__(
-        self,
-        response: MockTestResponse | None = None,
-        get_method: AsyncMock | None = None,
-    ):
-        if not any([response, get_method]):
-            raise AssertionError("At least one of `response` or `get_method` must be specified")
-
-        self.response = response
-        self.get = get_method or AsyncMock(return_value=response)
-        self.aclose = AsyncMock()
-        super().__init__()
-
-    async def __aenter__(self) -> Self:
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:  # type: ignore
-        pass
-
-
 @pytest.fixture
 def mock_httpx_client() -> MockHTTPxClient:
-    """Return mock HTTP client."""
     test_response = MockTestResponse(
         status_code=200,
         headers={"content-type": "application/json"},
@@ -216,20 +130,3 @@ def mock_httpx_client() -> MockHTTPxClient:
     )
     test_client = MockHTTPxClient(test_response)
     return test_client
-
-
-@pytest.fixture
-def service(app_settings_test: AppSettings, mock_httpx_client: MockHTTPxClient) -> VendorService:
-    """Return a vendor's service instance."""
-    return VendorService(app_settings_test, cast(httpx.AsyncClient, mock_httpx_client))
-
-
-@pytest.fixture
-def mock_token_repository_active(mock_session_uow: GenMockPair) -> Generator[MagicMock, Any, None]:
-    """Mock TokenRepository with active token and user."""
-    with patch("src.db.repositories.TokenRepository.get_by_token") as mock_get_by_token:
-        mock_token = MagicMock()
-        mock_token.is_active = True
-        mock_token.user.is_active = True
-        mock_get_by_token.return_value = mock_token
-        yield mock_get_by_token

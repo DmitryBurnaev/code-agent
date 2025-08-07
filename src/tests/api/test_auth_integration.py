@@ -4,6 +4,7 @@ from pydantic import SecretStr
 from unittest.mock import MagicMock
 from starlette.exceptions import HTTPException
 
+from src.tests.mocks import MockAPIToken
 from src.utils import utcnow
 from src.settings import AppSettings
 from src.modules.auth.tokens import make_api_token, decode_api_token, hash_token, verify_api_token
@@ -69,16 +70,14 @@ class TestAuthIntegration:
         self,
         mock_request: MagicMock,
         app_settings_test: AppSettings,
-        mock_token_repository_active: MagicMock,
+        mock_db_api_token__active: MockAPIToken,
     ) -> None:
         generated = make_api_token(expires_at=None, settings=app_settings_test)
-        # Verify token
         result = await verify_api_token(
             mock_request,
             app_settings_test,
             auth_token=f"Bearer {generated.value}",
         )
-
         assert result == generated.value
 
     @pytest.mark.parametrize(
