@@ -9,7 +9,7 @@ from src.modules.auth.dependencies import verify_api_token
 from src.modules.auth.tokens import make_api_token
 from src.settings import AppSettings
 from src.utils import utcnow
-from src.tests.conftest import GenMockPair, MockAPIToken
+from src.tests.mocks import MockAPIToken
 
 
 @pytest.mark.asyncio
@@ -60,7 +60,7 @@ class TestVerifyAPIToken:
         self,
         app_settings_test: AppSettings,
         mock_request: MagicMock,
-        mock_token_repository_active: GenMockPair,
+        mock_db_api_token__active: MockAPIToken,
     ) -> None:
         auth_token = make_api_token(
             expires_at=utcnow() + timedelta(minutes=10),
@@ -78,11 +78,9 @@ class TestVerifyAPIToken:
         self,
         app_settings_test: AppSettings,
         mock_request: MagicMock,
-        mock_make_token: MagicMock,
         mock_decode_token: MagicMock,
         mock_hash_token: MagicMock,
-        mock_session_uow: tuple[MagicMock, AsyncMock],
-        mock_token_repository_active: tuple[MagicMock, AsyncMock],
+        mock_db_api_token__active: MockAPIToken,
     ) -> None:
         auth_token = "test-token-value"
         result = await verify_api_token(mock_request, app_settings_test, auth_token=auth_token)
