@@ -6,7 +6,27 @@ services:
       - .env
     environment:
       - APP_SERVICE=web
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=4uUDDypJyOHuhPyiQ
+      - DB_DATABASE=code_agent
     volumes:
       - ${PWD}/.data:/src/.data
     ports:
       - 127.0.0.1:${APP_PORT}:${APP_PORT}
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 4uUDDypJyOHuhPyiQ
+      POSTGRES_DB: code_agent
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
