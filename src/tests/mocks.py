@@ -1,5 +1,5 @@
-import dataclasses
 import json
+import dataclasses
 from typing import Any, Self
 from unittest.mock import AsyncMock
 

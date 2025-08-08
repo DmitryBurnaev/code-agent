@@ -142,7 +142,7 @@ class TestVendorService:
         self,
         service: VendorService,
         app_settings_test: AppSettings,
-        mock_db_api_token__active: list[MockVendor],
+        mock_db_vendors__active: list[MockVendor],
         mock_httpx_for_models_client: AsyncMock,
     ) -> None:
         # Mock error response

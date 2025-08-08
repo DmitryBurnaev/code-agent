@@ -298,13 +298,9 @@ class TestAuthDependencyEdgeCases:
         mock_request: MagicMock,
         mock_decode_token: MagicMock,
         mock_hash_token: MagicMock,
-        mock_api_token_inactive: MockAPIToken,
+        mock_db_api_token__active: MockAPIToken,
         auth_token: str,
         description: str,
     ) -> None:
-        mock_api_token_inactive.is_active = True
-        mock_api_token_inactive.user.is_active = True
-
         result = await verify_api_token(mock_request, app_settings_test, auth_token=auth_token)
-
         assert result == auth_token
