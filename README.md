@@ -187,18 +187,60 @@ The application now supports encrypted storage of vendor API keys using AES-256-
    - Creating new vendors through the admin interface
    - Updating existing vendor API keys
 
-For detailed information, see [VENDOR_ENCRYPTION.md](VENDOR_ENCRYPTION.md).
-
 ## Environment Variables
 
-| Variable Name           | Description                                | Default Value          |
-|-------------------------|--------------------------------------------|------------------------|
-| LOG_LEVEL               | Sets the logging level for the application | INFO                   |
-| AUTH_API_TOKEN          | API token for authentication               | (required, no default) |
-| SWAGGER_ENABLED         | Enables/disables Swagger documentation     | true                   |
-| APP_HOST                | Host address for the application           | localhost              |
-| APP_PORT                | Port number for the application            | 8003                   |
-| VENDOR_ENCRYPTION_KEY   | Secret key for vendor API key encryption   | (required, no default) |
+### Application (AppSettings)
+
+| Variable                      | Type   | Default | Required | Description                                        |
+|-------------------------------|--------|--------:|:--------:|----------------------------------------------------|
+| DOCS_ENABLED                  | bool   |   false |          | Enable FastAPI docs (Swagger/ReDoc)                |
+| SECRET_KEY                    | string |       - |   yes    | Secret key                                         |
+| APP_HOST                      | string | 0.0.0.0 |          | Host address for the application                   |
+| APP_PORT                      | int    |    8003 |          | Port for the application                           |
+| LOG_LEVEL                     | string |    INFO |          | One of DEBUG / INFO / WARNING / ERROR / CRITICAL   |
+| JWT_ALGORITHM                 | string |   HS256 |          | JWT algorithm                                      |
+| HTTP_PROXY_URL                | string |       - |          | Socks5 Proxy URL                                   |
+| VENDOR_DEFAULT_TIMEOUT        | int    |      30 |          | Default HTTP timeout for vendor requests (seconds) |
+| VENDOR_DEFAULT_RETRIES        | int    |       3 |          | Default HTTP retry attempts for vendor requests    |
+| VENDOR_CUSTOM_URL             | string |       - |          | API URL for 'custom' vendor                        |
+| ADMIN_USERNAME                | string |   admin |          | Default admin username                             |
+| ADMIN_PASSWORD                | string |       - |   yes    | Default admin password                             |
+| ADMIN_SESSION_EXPIRATION_TIME | int    |  172800 |          | Admin session expiration time (seconds)            |
+| OFFLINE_TEST_MODE             | bool   |   false |          | Enable offline test mode                           |
+| VENDOR_ENCRYPTION_KEY         | string |       - |   yes    | Secret key for vendor API key encryption           |
+
+### Database (DBSettings, env prefix `DB_`)
+
+| Variable         | Type   |            Default | Required | Description       |
+|------------------|--------|-------------------:|:--------:|-------------------|
+| DB_DRIVER        | string | postgresql+asyncpg |          | SQLAlchemy driver |
+| DB_HOST          | string |          localhost |          | Database host     |
+| DB_PORT          | int    |               5432 |          | Database port     |
+| DB_USERNAME      | string |           postgres |          | Database username |
+| DB_PASSWORD      | string |           postgres |          | Database password |
+| DB_DATABASE      | string |         code_agent |          | Database name     |
+| DB_POOL_MIN_SIZE | int    |                  - |          | Pool min size     |
+| DB_POOL_MAX_SIZE | int    |                  - |          | Pool max size     |
+| DB_ECHO          | bool   |              false |          | SQLAlchemy echo   |
+
+### CLI utilities
+
+These are used by `src/cli/simple_ai_client.py`.
+
+| Variable           | Type   | Default | Required | Description                                                             |
+|--------------------|--------|--------:|:--------:|-------------------------------------------------------------------------|
+| CLI_AI_API_TOKEN   | string |       - |   yes*   | Authorization token for the CLI (required unless `--token` is provided) |
+| CLI_AI_TEMPERATURE | float  |     0.7 |          | Sampling temperature                                                    |
+| CLI_AI_MAX_TOKENS  | int    |    1000 |          | Max tokens in completion                                                |
+| CLI_AI_TIMEOUT     | int    |    3600 |          | HTTP timeout (seconds)                                                  |
+
+### Container / Infra
+
+| Variable     | Type   | Default |         Required         | Description                                                                     |
+|--------------|--------|--------:|:------------------------:|---------------------------------------------------------------------------------|
+| APP_SERVICE  | string |       - |     yes (container)      | Selects entrypoint behavior: `web`                                              | `test` | `lint` |
+| DOCKER_IMAGE | string |       - | yes (etc/docker-compose) | Image tag used by `etc/docker-compose.yml`                                      |
+| APP_PORT     | int    |       - | yes (etc/docker-compose) | Port mapping for `etc/docker-compose.yml` (should match application `APP_PORT`) |
 
 
 ## In the Future

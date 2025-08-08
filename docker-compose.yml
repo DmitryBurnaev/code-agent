@@ -11,6 +11,11 @@ services:
       APP_SERVICE: "web"
       APP_HOST: "0.0.0.0"
       APP_PORT: "8000"
+      DB_HOST: "postgres"
+      DB_PORT: "5432"
+      DB_USERNAME: "code-agent"
+      DB_PASSWORD: "YXKxYfY87puI"
+      DB_DATABASE: "code_agent"
     volumes:
       - ./src:/src/src
     depends_on:
@@ -18,13 +23,11 @@ services:
     restart: unless-stopped 
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: code-agent
+      POSTGRES_PASSWORD: YXKxYfY87puI
       POSTGRES_DB: code_agent
-    ports:
-      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
