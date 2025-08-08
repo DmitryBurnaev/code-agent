@@ -92,10 +92,8 @@ class TestVerifyAPIToken:
         mock_request: MagicMock,
         mock_decode_token: MagicMock,
         mock_hash_token: MagicMock,
-        mock_api_token_inactive: MockAPIToken,
+        mock_db_api_token__inactive: MockAPIToken,
     ) -> None:
-        mock_api_token_inactive.is_active = False
-
         with pytest.raises(HTTPException) as exc_info:
             await verify_api_token(mock_request, app_settings_test, auth_token="test-token")
 
@@ -108,10 +106,8 @@ class TestVerifyAPIToken:
         mock_request: MagicMock,
         mock_decode_token: MagicMock,
         mock_hash_token: MagicMock,
-        mock_api_token_inactive: MockAPIToken,
+        mock_db_api_token__user_inactive: MockAPIToken,
     ) -> None:
-        mock_api_token_inactive.is_active = True
-        mock_api_token_inactive.user.is_active = False
         with pytest.raises(HTTPException) as exc_info:
             await verify_api_token(mock_request, app_settings_test, auth_token="test-token")
 
@@ -124,20 +120,20 @@ class TestVerifyAPIToken:
         mock_request: MagicMock,
         mock_decode_token: MagicMock,
         mock_hash_token: MagicMock,
-        mock_api_token_unknown: AsyncMock,
+        mock_db_api_token__unknown: AsyncMock,
     ) -> None:
         with pytest.raises(HTTPException) as exc_info:
             await verify_api_token(mock_request, app_settings_test, auth_token="test-token")
 
         assert exc_info.value.status_code == 401
         assert "unknown token" in str(exc_info.value.detail)
-        mock_api_token_unknown.assert_awaited_with(mock_hash_token.return_value)
+        mock_db_api_token__unknown.assert_awaited_with(mock_hash_token.return_value)
 
     async def test_verify_api_token_no_identity(
         self,
         app_settings_test: AppSettings,
         mock_request: MagicMock,
-        mock_decode_token_no_identity: MagicMock,
+        mock_decode_token__no_identity: MagicMock,
     ) -> None:
         with pytest.raises(HTTPException) as exc_info:
             await verify_api_token(mock_request, app_settings_test, auth_token="test-token")
@@ -149,7 +145,7 @@ class TestVerifyAPIToken:
         self,
         app_settings_test: AppSettings,
         mock_request: MagicMock,
-        mock_decode_token_none_identity: MagicMock,
+        mock_decode_token__none_identity: MagicMock,
     ) -> None:
         with pytest.raises(HTTPException) as exc_info:
             await verify_api_token(mock_request, app_settings_test, auth_token="test-token")
@@ -163,7 +159,7 @@ class TestVerifyAPIToken:
         mock_request: MagicMock,
         mock_decode_token: MagicMock,
         mock_hash_token: MagicMock,
-        mock_repository_db_error: AsyncMock,
+        mock_db_api_token__repository_error: AsyncMock,
     ) -> None:
         with pytest.raises(Exception) as exc_info:
             await verify_api_token(mock_request, app_settings_test, auth_token="test-token")
@@ -174,7 +170,7 @@ class TestVerifyAPIToken:
         self,
         app_settings_test: AppSettings,
         mock_request: MagicMock,
-        mock_decode_token_error: MagicMock,
+        mock_decode_token__error: MagicMock,
     ) -> None:
         with pytest.raises(HTTPException) as exc_info:
             await verify_api_token(mock_request, app_settings_test, auth_token="test-token")

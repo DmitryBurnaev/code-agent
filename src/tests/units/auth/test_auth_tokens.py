@@ -1,6 +1,6 @@
 import datetime
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 from starlette.exceptions import HTTPException
 
 from src.modules.auth.tokens import (
@@ -15,7 +15,6 @@ from src.modules.auth.tokens import (
 )
 from src.settings import AppSettings
 from src.tests.mocks import MockAPIToken
-from src.tests.units.auth.conftest import GenMockPair
 from src.utils import utcnow
 
 
@@ -218,7 +217,7 @@ class TestVerifyAPIToken:
         self,
         app_settings_test: AppSettings,
         mock_request: MagicMock,
-        mock_api_token_inactive: GenMockPair,
+        mock_db_api_token__inactive: MockAPIToken,
     ) -> None:
         generated = make_api_token(expires_at=None, settings=app_settings_test)
         auth_token = f"Bearer {generated.value}"
@@ -233,7 +232,7 @@ class TestVerifyAPIToken:
         self,
         app_settings_test: AppSettings,
         mock_request: MagicMock,
-        mock_api_token_user_inactive: GenMockPair,
+        mock_db_api_token__user_inactive: MockAPIToken,
     ) -> None:
         generated = make_api_token(expires_at=None, settings=app_settings_test)
         auth_token = f"Bearer {generated.value}"
@@ -248,7 +247,7 @@ class TestVerifyAPIToken:
         self,
         app_settings_test: AppSettings,
         mock_request: MagicMock,
-        mock_token_repository_unknown_token: GenMockPair,
+        mock_db_api_token__unknown: AsyncMock,
     ) -> None:
         generated = make_api_token(expires_at=None, settings=app_settings_test)
         auth_token = f"Bearer {generated.value}"

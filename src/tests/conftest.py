@@ -1,6 +1,6 @@
 import os
 from typing import Any, Generator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from starlette.testclient import TestClient
@@ -14,7 +14,7 @@ from pydantic import SecretStr
 
 from src.tests.mocks import MockAPIToken, MockUser, MockVendor, MockTestResponse, MockHTTPxClient
 
-type GenMockPair = Generator[tuple[MagicMock, AsyncMock], Any, None]
+
 MINIMAL_ENV_VARS = {
     "SECRET_KEY": "test-key",
     "ADMIN_PASSWORD": "test-password",
@@ -24,13 +24,11 @@ MINIMAL_ENV_VARS = {
 
 @pytest.fixture
 def mock_user() -> MockUser:
-    """Return a mock user object."""
     return MockUser(id=1, is_active=True, username="test-user")
 
 
 @pytest.fixture
 def app_settings_test() -> AppSettings:
-    """Return mock settings."""
     return AppSettings(
         http_proxy_url=None,
         admin_username="test-username",
@@ -47,10 +45,11 @@ def minimal_env_vars() -> Generator[None, Any, None]:
 
 
 @pytest.fixture
-def test_app(app_settings_test: AppSettings) -> CodeAgentAPP:
+def test_app(app_settings_test: AppSettings) -> Generator[CodeAgentAPP, Any, None]:
     test_app = make_app(settings=app_settings_test)
     test_app.dependency_overrides[get_app_settings] = lambda: test_app.settings
-    return test_app
+    yield test_app
+    test_app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -117,8 +116,6 @@ def client(
     }
     with TestClient(test_app, headers=headers) as client:
         yield client
-
-    test_app.dependency_overrides.clear()
 
 
 @pytest.fixture
