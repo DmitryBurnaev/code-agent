@@ -17,9 +17,10 @@ services:
       DB_PASSWORD: "YXKxYfY87puI"
       DB_DATABASE: "code_agent"
     volumes:
-      - ./src:/src/src
+      - ${PWD}/src:/app/src
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy        
     restart: unless-stopped 
 
   postgres:
@@ -28,9 +29,14 @@ services:
       POSTGRES_USER: code-agent
       POSTGRES_PASSWORD: YXKxYfY87puI
       POSTGRES_DB: code_agent
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+    volumes:
+      - ${PWD}/.local/postgres:/var/lib/postgresql/data/pgdata
 
   test:
     image:
@@ -55,6 +61,3 @@ services:
         DEV_DEPS: "true"
     environment:
       - APP_SERVICE=lint
-
-volumes:
-  postgres_data:
