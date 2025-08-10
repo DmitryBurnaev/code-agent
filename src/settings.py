@@ -74,16 +74,16 @@ class DBSettings(BaseSettings):
     driver: str = "postgresql+asyncpg"
     host: str = "localhost"
     port: int = 5432
-    username: str = "postgres"
+    user: str = "postgres"
     password: str = "postgres"
-    database: str = "code_agent"
+    name: str = "code_agent"
     pool_min_size: int | None = Field(default_factory=lambda: None, description="Pool Min Size")
     pool_max_size: int | None = Field(default_factory=lambda: None, description="Pool Max Size")
     echo: bool = False
 
     @cached_property
     def database_dsn(self) -> str:
-        return f"{self.driver}://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
+        return f"{self.driver}://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
 
 
 def _get_settings(settings_class: type[TypeSettings]) -> TypeSettings:

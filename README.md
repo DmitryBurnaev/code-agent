@@ -262,8 +262,8 @@ These are used by `src/cli/simple_ai_client.py`.
 | Variable     | Type   | Default |         Required         | Description                                                                     |
 |--------------|--------|--------:|:------------------------:|---------------------------------------------------------------------------------|
 | APP_SERVICE  | string |       - | yes (container)          | Selects entrypoint behavior: `web` / `test` / `lint`                            | 
-| DOCKER_IMAGE | string |       - | yes (etc/docker-compose) | Image tag used by `etc/docker-compose.yml`                                      |
-| APP_PORT     | int    |       - | yes (etc/docker-compose) | Port mapping for `etc/docker-compose.yml` (should match application `APP_PORT`) |
+| DOCKER_IMAGE | string |       - | yes (docker-compose) | Image tag used by `docker-compose.yml`                                      |
+| APP_PORT     | int    |       - | yes (docker-compose) | Port mapping for `docker-compose.yml` (should match application `APP_PORT`) |
 
 
 ## In the Future

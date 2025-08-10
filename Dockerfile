@@ -3,6 +3,8 @@ FROM alpine:3.21 AS code-layer
 WORKDIR /usr/src
 
 COPY src ./src
+COPY alembic.ini .
+COPY alembic ./alembic
 COPY etc/docker-entrypoint .
 
 # copy source code
