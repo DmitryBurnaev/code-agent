@@ -125,7 +125,7 @@ class TestAuthIntegration:
         special_settings = AppSettings(
             admin_username="test-username",
             admin_password=SecretStr("test-password"),
-            secret_key=SecretStr("test-secret-key-with-special-chars!@#$%^&*()"),
+            app_secret_key=SecretStr("test-secret-key-with-special-chars!@#$%^&*()"),
             vendor_encryption_key=SecretStr("test-vendor-encryption-key"),
             jwt_algorithm="HS256",
         )
@@ -143,7 +143,7 @@ class TestAuthIntegration:
         settings = AppSettings(
             admin_username="test-username",
             admin_password=SecretStr("test-password"),
-            secret_key=SecretStr("test-secret-key"),
+            app_secret_key=SecretStr("test-secret-key"),
             vendor_encryption_key=SecretStr("test-vendor-encryption-key"),
             jwt_algorithm=jwt_algorithm,
         )
@@ -171,7 +171,6 @@ class TestAuthIntegration:
         mock_request: MagicMock,
         app_settings_test: AppSettings,
     ) -> None:
-
         with pytest.raises(HTTPException, match="Invalid token signature"):
             await verify_api_token(mock_request, app_settings_test, auth_token="malformed-token")
 

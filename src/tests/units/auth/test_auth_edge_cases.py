@@ -21,7 +21,6 @@ from src.tests.mocks import MockAPIToken
 
 
 class TestTokenEdgeCases:
-
     @pytest.mark.parametrize(
         "secret_key",
         [
@@ -35,7 +34,7 @@ class TestTokenEdgeCases:
         app_settings = AppSettings(
             admin_username="test-username",
             admin_password=SecretStr("test-password"),
-            secret_key=SecretStr(secret_key),
+            app_secret_key=SecretStr(secret_key),
             vendor_encryption_key=SecretStr(""),
             jwt_algorithm="HS256",
         )

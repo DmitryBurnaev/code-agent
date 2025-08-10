@@ -122,7 +122,7 @@ def make_admin(app: "CodeAgentAPP") -> Admin:
         app,
         session_maker=get_async_sessionmaker(),
         authentication_backend=AdminAuth(
-            secret_key=app.settings.secret_key.get_secret_value(),
+            secret_key=app.settings.app_secret_key.get_secret_value(),
             settings=app.settings,
         ),
     )

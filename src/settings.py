@@ -19,13 +19,20 @@ LogLevelString = Annotated[str, StringConstraints(to_upper=True, pattern=rf"^(?i
 TypeSettings = TypeVar("TypeSettings", bound=BaseSettings)
 
 
+class FlagsSettings(BaseSettings):
+    """Implements settings which are loaded from environment variables"""
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_prefix="FLAG_")
+    offline_mode: bool = False
+
+
 class AppSettings(BaseSettings):
     """Application settings which are loaded from environment variables"""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    docs_enabled: bool = False
-    secret_key: SecretStr = Field(description="Secret key")
+    api_docs_enabled: bool = False
+    app_secret_key: SecretStr = Field(description="Application secret key")
     app_host: str = "0.0.0.0"
     app_port: int = 8003
     log_level: LogLevelString = "INFO"
@@ -33,16 +40,13 @@ class AppSettings(BaseSettings):
     http_proxy_url: str | None = Field(default_factory=lambda: None, description="Socks5 Proxy URL")
     vendor_default_timeout: int = 30
     vendor_default_retries: int = 3
-    vendor_custom_url: str | None = Field(
-        default_factory=lambda: None, description="API URL for 'custom' vendor"
-    )
     admin_username: str = Field(
         default_factory=lambda: "admin", description="Default admin username"
     )
     admin_password: SecretStr = Field(description="Default admin password")
     admin_session_expiration_time: int = 2 * 24 * 3600  # 2 days
-    offline_test_mode: bool = False
     vendor_encryption_key: SecretStr = Field(description="Secret key for vendor API key encryption")
+    flags: FlagsSettings = Field(default_factory=FlagsSettings)
 
     @property
     def log_config(self) -> dict[str, Any]:
@@ -115,12 +119,6 @@ def get_app_settings() -> AppSettings:
 def get_db_settings() -> DBSettings:
     """Prepares database settings from environment variables"""
     return _get_settings(DBSettings)
-
-
-# TODO: do we really need this?
-# def _app_settings() -> AppSettings:
-#     """Simple access to settings from controllers"""
-#     return get_app_settings()
 
 
 SettingsDep = Annotated[AppSettings, Depends(get_app_settings)]

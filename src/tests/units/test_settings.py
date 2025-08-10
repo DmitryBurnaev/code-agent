@@ -15,31 +15,29 @@ MINIMAL_ENV_VARS = {
 
 
 class TestAppSettings:
-
     @patch.dict(os.environ, MINIMAL_ENV_VARS)
     def test_default_settings(self) -> None:
         get_app_settings.cache_clear()
         settings = AppSettings(_env_file=None)  # type: ignore
-        assert settings.docs_enabled is False
+        assert settings.api_docs_enabled is False
         assert settings.app_host == "0.0.0.0"
         assert settings.app_port == 8003
-        assert settings.secret_key.get_secret_value() == "test-key"
+        assert settings.app_secret_key.get_secret_value() == "test-key"
         assert settings.log_level == "INFO"
         assert settings.jwt_algorithm == "HS256"
         assert settings.http_proxy_url is None
         assert settings.vendor_default_timeout == 30
         assert settings.vendor_default_retries == 3
-        assert settings.vendor_custom_url is None
         assert settings.admin_username == "admin"
         assert settings.admin_password.get_secret_value() == "test-password"
         assert settings.admin_session_expiration_time == 2 * 24 * 3600
-        assert settings.offline_test_mode is False
+        assert settings.flags.offline_mode is False
         assert settings.vendor_encryption_key.get_secret_value() == "test-encryption-key"
 
     @pytest.mark.parametrize("log_level", LOG_LEVELS.split("|"))
     def test_valid_log_levels(self, log_level: str) -> None:
         settings = AppSettings(
-            secret_key=SecretStr("test-token"),
+            app_secret_key=SecretStr("test-token"),
             vendor_encryption_key=SecretStr("test-encryption-key"),
             admin_username="test-username",
             admin_password=SecretStr("test-password"),
@@ -54,7 +52,7 @@ class TestAppSettings:
             AppSettings(
                 admin_username="test-username",
                 admin_password=SecretStr("test-password"),
-                secret_key=SecretStr("test-secret"),
+                app_secret_key=SecretStr("test-secret"),
                 vendor_encryption_key=SecretStr("test-encryption-key"),
                 log_level="INVALID",
                 http_proxy_url=None,
@@ -63,7 +61,7 @@ class TestAppSettings:
 
     def test_log_config(self) -> None:
         settings = AppSettings(
-            secret_key=SecretStr("test-token"),
+            app_secret_key=SecretStr("test-token"),
             admin_username="test-username",
             admin_password=SecretStr("test-password"),
             vendor_encryption_key=SecretStr("test-encryption-key"),
@@ -86,7 +84,6 @@ class TestAppSettings:
 
 
 class TestGetSettings:
-
     @patch.dict(
         os.environ,
         MINIMAL_ENV_VARS
@@ -95,6 +92,7 @@ class TestGetSettings:
             "APP_HOST": "localhost",
             "APP_PORT": "8080",
             "HTTP_PROXY_URL": "socks5://127.0.0.1:8080",
+            "FLAG_OFFLINE_MODE": "true",
         },
     )
     def test_get_app_settings_from_env(self) -> None:
@@ -104,6 +102,7 @@ class TestGetSettings:
         assert settings.app_host == "localhost"
         assert settings.app_port == 8080
         assert settings.http_proxy_url == "socks5://127.0.0.1:8080"
+        assert settings.flags.offline_mode is True
 
     @patch.dict(os.environ, MINIMAL_ENV_VARS | {"LOG_LEVEL": "INVALID"})
     def test_get_app_settings_validation_error(self) -> None:

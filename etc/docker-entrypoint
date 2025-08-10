@@ -2,6 +2,9 @@
 
 set -e
 
+# Define required environment variables as a space-separated string for POSIX sh compatibility
+required_env_vars="DB_USER DB_PASSWORD DB_NAME APP_SECRET_KEY VENDOR_ENCRYPTION_KEY ADMIN_PASSWORD"
+
 print_caption() {
   echo ""
   echo "===================="
@@ -10,40 +13,60 @@ print_caption() {
   echo ""
 }
 
-# check that all required environment variables are set
-if [ -z "${DB_USER}" ] || [ -z "${DB_PASSWORD}" ] || [ -z "${DB_NAME}" ]; then
-  echo "Error: Required environment variables are not set" >&2
-  exit 1
-fi
+check_env_var() {
+  local var="$1"
+  # Use eval for indirect variable reference in POSIX shell
+  local value
+  eval "value=\$$var"
 
-if [ "${APP_SERVICE}" = "app" ]; then
-    print_caption "Start DB migrations"
-    alembic upgrade head
-    print_caption "Start app"
-    python -m src.main
+  if [ -z "$value" ]; then
+    echo "Error: Required environment variable $var is not set" >&2
+    kill -s SIGINT 1
+  fi
 
-elif [ "${APP_SERVICE}" = "test" ]; then
-    print_caption "Lint check"
-    export RUFF_CACHE_DIR=/tmp/.ruff
-    ruff check
-    print_caption "Start DB migrations"
-    alembic upgrade head
-    print_caption "Test"
-    coverage run -m pytest -o cache_dir=/tmp
+  echo "Environment variable $var is set"
+}
 
-elif [ "${APP_SERVICE}" = "lint" ]; then
-    print_caption "Black check"
-    black --check .
-    print_caption "Lint check"
-    export RUFF_CACHE_DIR=/tmp/.ruff
-    ruff check .
-    print_caption "Mypy check"
-    mypy .
+run_service() {
 
-else
-  echo "APP_SERVICE environment variable is unexpected or was not provided (APP_SERVICE='${APP_SERVICE}')" >&2
-  kill -s SIGINT 1
+  print_caption "Check environment variables"
+  for var in $required_env_vars; do
+    check_env_var "$var"
+  done
+  echo "APP_SERVICE=${APP_SERVICE}"
 
-fi
+  case "${APP_SERVICE}" in
+    app)
+      print_caption "Start DB migrations"
+      alembic upgrade head
+      print_caption "Start app"
+      python -m src.main
+      ;;
+    test)
+      print_caption "Lint check"
+      export RUFF_CACHE_DIR=/tmp/.ruff
+      ruff check
+      print_caption "Start DB migrations"
+      alembic upgrade head
+      print_caption "Test"
+      coverage run -m pytest -o cache_dir=/tmp
+      ;;
+    lint)
+      print_caption "Black check"
+      black --check .
+      print_caption "Lint check"
+      export RUFF_CACHE_DIR=/tmp/.ruff
+      ruff check .
+      print_caption "Mypy check"
+      mypy .
+      ;;
+    *)
+      echo "APP_SERVICE environment variable is unexpected or was not provided (APP_SERVICE='${APP_SERVICE}')" >&2
+      kill -s SIGINT 1
+      ;;
+  esac
+}
+
+run_service
 
 set +e
