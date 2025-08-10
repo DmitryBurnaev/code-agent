@@ -119,15 +119,19 @@ Note: Make sure your domain's DNS records are properly configured and pointing t
     ```shell
     make install
     ```
-2. Format changes
+2. Generate secrets for environment setup
+   ```shell
+   make secrets
+   ```
+3. Format changes
    ```shell
    make format
    ```
-3. Lint changes 
+4. Lint changes 
    ```shell
    make lint
    ```
-4. Run tests 
+5. Run tests 
    ```shell
    make test
    ```
@@ -173,23 +177,42 @@ The application now supports encrypted storage of vendor API keys using AES-256-
 
 ### Setup Encryption
 
-1. Generate a secure encryption key:
+The encryption key is now automatically generated along with other secrets using the `make secrets` command. See the [Environment Setup](#environment-setup) section above for detailed instructions.
+
+Alternatively, you can generate only the encryption key manually:
    ```bash
    python -m src.cli.generate_encryption_key
-   ```
-
-2. Add the generated key to your `.env` file:
-   ```bash
-   VENDOR_ENCRYPTION_KEY=your-generated-key-here
    ```
 
 3. API keys will be automatically encrypted when:
    - Creating new vendors through the admin interface
    - Updating existing vendor API keys
 
-## Environment Variables
+## Environment Setup
 
-### Application (AppSettings)
+### Quick Start
+
+1. Copy the environment template:
+   ```bash
+   cp .env.template .env
+   ```
+
+2. Generate secure secrets for your environment:
+   ```bash
+   make secrets
+   ```
+
+3. Copy the generated secrets to your `.env` file. The command will output something like:
+   ```bash
+   SECRET_KEY=your-generated-secret-key
+   VENDOR_ENCRYPTION_KEY=your-generated-encryption-key
+   DB_PASSWORD=your-generated-db-password
+   ADMIN_PASSWORD=your-generated-admin-password
+   ```
+
+4. Update your `.env` file with these generated values and other required settings.
+
+### Environment Variables
 
 | Variable                      | Type   | Default | Required | Description                                        |
 |-------------------------------|--------|--------:|:--------:|----------------------------------------------------|
@@ -238,7 +261,7 @@ These are used by `src/cli/simple_ai_client.py`.
 
 | Variable     | Type   | Default |         Required         | Description                                                                     |
 |--------------|--------|--------:|:------------------------:|---------------------------------------------------------------------------------|
-| APP_SERVICE  | string |       - |     yes (container)      | Selects entrypoint behavior: `web`                                              | `test` | `lint` |
+| APP_SERVICE  | string |       - | yes (container)          | Selects entrypoint behavior: `web` / `test` / `lint`                            | 
 | DOCKER_IMAGE | string |       - | yes (etc/docker-compose) | Image tag used by `etc/docker-compose.yml`                                      |
 | APP_PORT     | int    |       - | yes (etc/docker-compose) | Port mapping for `etc/docker-compose.yml` (should match application `APP_PORT`) |
 

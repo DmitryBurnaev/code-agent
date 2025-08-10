@@ -2,32 +2,44 @@
 
 set -e
 
-if [ "${APP_SERVICE}" = "web" ]
+# check that all required environment variables are set
+if [ -z "${DB_USER}" ] || [ -z "${DB_PASSWORD}" ] || [ -z "${DB_NAME}" ]; then
+  echo "Error: Required environment variables are not set" >&2
+  exit 1
+fi
+
+
+print_caption() {
+  echo "===================="
+  echo "$1"
+  echo "===================="
+  echo ""
+}
+
+
+if [ "${APP_SERVICE}" = "app" ]
   then
-#    echo "=========="
-#    echo "Start DB migrations"
-#    echo "=========="
-#    echo ""
-#    alembic upgrade head
+    print_caption "Start DB migrations"
+    alembic upgrade head
+    print_caption "Start app"
     python -m src.main
 
 elif [ "${APP_SERVICE}" = "test" ]
   then
-    echo "=== ruff ==="
+    print_caption "Lint check"
     export RUFF_CACHE_DIR=/tmp/.ruff
     ruff check
-    export COVERAGE_FILE=/tmp/.coverage
+    print_caption "Test"
     coverage run -m pytest -o cache_dir=/tmp && \
-    coverage report --omit="src/tests/*"
 
 elif [ "${APP_SERVICE}" = "lint" ]
   then
-    echo "=== black ==="
+    print_caption "Black check"
     black --check .
-    echo "=== ruff ==="
+    print_caption "Lint check"
     export RUFF_CACHE_DIR=/tmp/.ruff
     ruff check .
-    echo "=== mypy ==="
+    print_caption "Mypy check"
     mypy .
 
 else
