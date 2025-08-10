@@ -2,6 +2,9 @@
 
 MAKEFILE_TARGET := $(filter-out ai-client --help Makefile,$(MAKECMDGOALS))
 
+# Include environment variables from .env file if it exists
+-include .env
+
 .PHONY: help
 help: ## This help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*? / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -36,7 +39,7 @@ run: ## Run app
 	uv run python -m src.main
 
 .PHONY: run
-run-in-docker: ## Run app
+run-in-docker: .env ## Run app
 	@echo Run project in container...
 	docker compose up api --build
 
@@ -72,7 +75,7 @@ downgrade: ## Downgrade (unapply) DB migration (last revision)
 	@echo Migrations: downgrade last revisions...
 	uv run alembic downgrade -1
 
-.PHONY: encryption-key
-encryption-key:
+.PHONY: secrets
+secrets: ## Create new secrets
 	@echo Encryption: creating new key
-	uv run python -m src.cli.encryption_key
+	uv run python -m src.cli.secrets

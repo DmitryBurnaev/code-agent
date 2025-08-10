@@ -1,34 +1,38 @@
 services:
-  api:
+  app:
+    container_name: code-agent-app
     build:
       context: .
       target: "service"
     ports:
-      - "127.0.0.1:8003:8000"
+      - 127.0.0.1:8003:8000
     env_file:
       - .env
     environment:
-      APP_SERVICE: "web"
-      APP_HOST: "0.0.0.0"
-      APP_PORT: "8000"
-      DB_HOST: "postgres"
-      DB_PORT: "5432"
-      DB_USERNAME: "code-agent"
-      DB_PASSWORD: "YXKxYfY87puI"
-      DB_DATABASE: "code_agent"
+      APP_SERVICE: app
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
     volumes:
       - ${PWD}/src:/app/src
     depends_on:
-      postgres:
+      db:
         condition: service_healthy        
     restart: unless-stopped 
 
-  postgres:
+  db:
     image: postgres:17-alpine
+    container_name: code-agent-db
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: code-agent
-      POSTGRES_PASSWORD: YXKxYfY87puI
-      POSTGRES_DB: code_agent
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
@@ -39,25 +43,25 @@ services:
       - ${PWD}/.local/postgres:/var/lib/postgresql/data/pgdata
 
   test:
-    image:
-      code-agent:test
+    container_name: code-agent-test
+    image: code-agent:test
     build:
       context: .
-      target: "tests"
+      target: tests
       args:
-        DEV_DEPS: "true"
+        DEV_DEPS: true
     environment:
-      - APP_SERVICE=test
+      APP_SERVICE: test
     volumes:
       - ${PWD}/.local:/app/.local
 
   lint:
-    image:
-      code-agent:test
+    container_name: code-agent-lint
+    image: code-agent:test
     build:
       context: .
-      target: "tests"
+      target: tests
       args:
-        DEV_DEPS: "true"
+        DEV_DEPS: true
     environment:
-      - APP_SERVICE=lint
+      APP_SERVICE: lint
