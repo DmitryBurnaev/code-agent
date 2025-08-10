@@ -1,24 +1,23 @@
 services:
   app:
+    image: ${DOCKER_IMAGE}
     container_name: code-agent-app
     build:
       context: .
       target: "service"
     ports:
-      - 127.0.0.1:8003:8000
+      - 127.0.0.1:${APP_PORT}:${APP_PORT}
     env_file:
       - .env
     environment:
       APP_SERVICE: app
       APP_HOST: 0.0.0.0
-      APP_PORT: 8000
+      APP_PORT: ${APP_PORT}
       DB_HOST: db
       DB_PORT: 5432
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - ${PWD}/src:/app/src
     depends_on:
       db:
         condition: service_healthy        
@@ -33,14 +32,15 @@ services:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
       interval: 5s
       timeout: 2s
       retries: 5
     volumes:
-      - ${PWD}/.local/postgres:/var/lib/postgresql/data/pgdata
+      - ${PWD}/.data/postgres:/var/lib/postgresql/data/pgdata
 
   test:
     container_name: code-agent-test
@@ -53,7 +53,7 @@ services:
     environment:
       APP_SERVICE: test
     volumes:
-      - ${PWD}/.local:/app/.local
+      - ${PWD}/.data:/app/.data
 
   lint:
     container_name: code-agent-lint
