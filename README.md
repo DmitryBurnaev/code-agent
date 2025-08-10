@@ -216,8 +216,8 @@ Alternatively, you can generate only the encryption key manually:
 
 | Variable                      | Type   | Default | Required | Description                                        |
 |-------------------------------|--------|--------:|:--------:|----------------------------------------------------|
-| DOCS_ENABLED                  | bool   |   false |          | Enable FastAPI docs (Swagger/ReDoc)                |
-| SECRET_KEY                    | string |       - |   yes    | Secret key                                         |
+| API_DOCS_ENABLED              | bool   |   false |          | Enable FastAPI docs (Swagger/ReDoc)                |
+| APP_SECRET_KEY                | string |       - |   yes    | Secret key                                         |
 | APP_HOST                      | string | 0.0.0.0 |          | Host address for the application                   |
 | APP_PORT                      | int    |    8003 |          | Port for the application                           |
 | LOG_LEVEL                     | string |    INFO |          | One of DEBUG / INFO / WARNING / ERROR / CRITICAL   |
@@ -229,7 +229,6 @@ Alternatively, you can generate only the encryption key manually:
 | ADMIN_USERNAME                | string |   admin |          | Default admin username                             |
 | ADMIN_PASSWORD                | string |       - |   yes    | Default admin password                             |
 | ADMIN_SESSION_EXPIRATION_TIME | int    |  172800 |          | Admin session expiration time (seconds)            |
-| OFFLINE_TEST_MODE             | bool   |   false |          | Enable offline test mode                           |
 | VENDOR_ENCRYPTION_KEY         | string |       - |   yes    | Secret key for vendor API key encryption           |
 
 ### Database (DBSettings, env prefix `DB_`)

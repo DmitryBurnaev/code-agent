@@ -48,7 +48,7 @@ def jwt_encode(
     payload.exp = expires_at or datetime.datetime.max
     encrypted_token = jwt.encode(
         payload.as_dict(),
-        key=settings.secret_key.get_secret_value(),
+        key=settings.app_secret_key.get_secret_value(),
         algorithm=settings.jwt_algorithm,
     )
     return encrypted_token
@@ -60,7 +60,7 @@ def jwt_decode(jwt_token: str, settings: SettingsDep) -> JWTPayload:
     """
     payload: JWT_PAYLOAD_RAW_T = jwt.decode(
         jwt_token,
-        settings.secret_key.get_secret_value(),
+        settings.app_secret_key.get_secret_value(),
         algorithms=[settings.jwt_algorithm],
     )
     exp = payload["exp"]

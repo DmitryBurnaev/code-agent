@@ -130,7 +130,7 @@ class VendorService:
             logger.warning("No active vendors detected.")
             return []
 
-        if self._settings.offline_test_mode:
+        if self._settings.flags.offline_mode:
             return self._mocked_models(vendors=[vendor.slug for vendor in active_vendors])
 
         all_models = []

@@ -45,8 +45,8 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPP:
     app = CodeAgentAPP(
         title="Code Agent API",
         description="API for retrieving system information",
-        docs_url="/api/docs/" if settings.docs_enabled else None,
-        redoc_url="/api/redoc/" if settings.docs_enabled else None,
+        docs_url="/api/docs/" if settings.api_docs_enabled else None,
+        redoc_url="/api/redoc/" if settings.api_docs_enabled else None,
     )
     logger.info("Setting up application settings...")
     app.set_settings(settings)

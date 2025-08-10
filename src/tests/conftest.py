@@ -33,7 +33,7 @@ def app_settings_test() -> AppSettings:
         http_proxy_url=None,
         admin_username="test-username",
         admin_password=SecretStr("test-password-oKcqO3rPCxt2"),
-        secret_key=SecretStr("example-UStLb8mds9K"),
+        app_secret_key=SecretStr("example-UStLb8mds9K"),
         vendor_encryption_key=SecretStr("test-encryption-key"),
     )
 
