@@ -30,10 +30,10 @@ check_env_var() {
 run_service() {
 
   print_caption "Check environment variables"
+  echo "Environment variable APP_SERVICE is set (${APP_SERVICE})"
   for var in $required_env_vars; do
     check_env_var "$var"
   done
-  echo "APP_SERVICE=${APP_SERVICE}"
 
   case "${APP_SERVICE}" in
     app)
@@ -49,6 +49,7 @@ run_service() {
       print_caption "Start DB migrations"
       alembic upgrade head
       print_caption "Test"
+      export COVERAGE_FILE=/tmp/.coverage
       coverage run -m pytest -o cache_dir=/tmp
       ;;
     lint)
