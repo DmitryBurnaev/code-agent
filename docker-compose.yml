@@ -43,6 +43,8 @@ services:
   test:
     container_name: code-agent-test
     image: code-agent:test
+    env_file:
+      - .env
     build:
       context: .
       target: tests
@@ -50,12 +52,22 @@ services:
         DEV_DEPS: true
     environment:
       APP_SERVICE: test
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
       - ${PWD}/.data:/app/.data
 
   lint:
     container_name: code-agent-lint
     image: code-agent:test
+    env_file:
+      - .env
     build:
       context: .
       target: tests
