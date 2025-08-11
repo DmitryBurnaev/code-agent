@@ -2,10 +2,10 @@ name: Test
 on:
   pull_request:
     branches:
-      - 'main'
+      - "main"
   push:
     branches:
-      - 'main'
+      - "main"
 
 jobs:
   test:
@@ -18,6 +18,10 @@ jobs:
           PWD: $(PWD)
         run: |
           cp .env.template .env
+          echo "DB_PASSWORD=postgres" >> .env
+          echo "APP_SECRET_KEY=test" >> .env
+          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
+          echo "ADMIN_PASSWORD=test" >> .env
           env >> .env
 
       - name: Build images

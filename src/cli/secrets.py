@@ -14,10 +14,10 @@ def main() -> None:
 
     print("Add this to your .env file:", end="\n\n")
 
-    print(f"APP_SECRET_KEY={app_secret_key}")
-    print(f"VENDOR_ENCRYPTION_KEY={vendor_encryption_key}")
     print(f"DB_PASSWORD={db_password}")
     print(f"ADMIN_PASSWORD={admin_password}")
+    print(f"VENDOR_ENCRYPTION_KEY={vendor_encryption_key}")
+    print(f"APP_SECRET_KEY={app_secret_key}")
 
     print("\n⚠️  Important:")
     print("- Keep this secrets secure and consistent across deployments")
