@@ -11,8 +11,6 @@ services:
       - .env
     environment:
       APP_SERVICE: app
-      APP_HOST: 0.0.0.0
-      APP_PORT: ${APP_PORT}
       DB_HOST: db
       DB_PORT: 5432
       DB_NAME: ${DB_NAME}
@@ -60,8 +58,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ${PWD}/.data:/app/.data
 
   lint:
     container_name: code-agent-lint
