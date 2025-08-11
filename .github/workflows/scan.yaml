@@ -3,12 +3,17 @@ name: Security Scan
 on:
   push:
     branches:
-      - 'main'
+      - "main"
+      - "feature/6-add-admin-panel"
   schedule:
-    - cron: '0 0 * * 1'  # Every Monday at 00:00
+    - cron: "0 0 * * 1" # Every Monday at 00:00
+
+env:
+  DOCKER_IMAGE: ghcr.io/${{ github.repository }}:latest
 
 jobs:
   trivy-image:
+    name: trivy-image
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,23 +31,24 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          scan-type: 'image'
-          image-ref: 'code-agent:latest'
-          format: 'json'
-          output: 'trivy-results.json'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          exit-code: '1'
+          scan-type: "image"
+          image-ref: "${{ env.DOCKER_IMAGE }}"
+          format: "json"
+          output: "trivy-image-results.json"
+          severity: "CRITICAL,HIGH,MEDIUM"
+          exit-code: "1"
           ignore-unfixed: true
 
       - name: Upload scan results
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: trivy-scan-results
-          path: trivy-results.json
+          path: ${{ runner.workspace }}/trivy-image-results.json
           retention-days: 30
 
   code-ql:
-    name: Scan
+    name: code-ql
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -50,27 +56,27 @@ jobs:
       security-events: write
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Prepare python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13'
+      - name: Prepare python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
 
-    # Initializes the CodeQL tools for scanning.
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
-      with:
-        languages: 'python'
+      # Initializes the CodeQL tools for scanning.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: "python"
 
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
 
-    - name: Prepare artifacts for scan results
-      if: success()
-      uses: actions/upload-artifact@v4
-      with:
-        name: codeql-artifacts
-        path: ${{ runner.workspace }}/results
-        if-no-files-found: ignore
+      - name: Prepare artifacts for scan results
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeql-artifacts
+          path: ${{ runner.workspace }}/results
+          if-no-files-found: ignore
