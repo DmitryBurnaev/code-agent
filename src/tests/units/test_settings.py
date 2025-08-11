@@ -19,7 +19,7 @@ class TestAppSettings:
     def test_default_settings(self) -> None:
         get_app_settings.cache_clear()
         settings = AppSettings(_env_file=None)  # type: ignore
-        assert settings.api_docs_enabled is False
+        assert settings.api_docs_enabled is True
         assert settings.app_host == "0.0.0.0"
         assert settings.app_port == 8003
         assert settings.app_secret_key.get_secret_value() == "test-key"
@@ -43,7 +43,6 @@ class TestAppSettings:
             admin_password=SecretStr("test-password"),
             log_level=log_level,
             http_proxy_url=None,
-            vendor_custom_url=None,
         )
         assert settings.log_level == log_level.upper()
 
@@ -56,7 +55,6 @@ class TestAppSettings:
                 vendor_encryption_key=SecretStr("test-encryption-key"),
                 log_level="INVALID",
                 http_proxy_url=None,
-                vendor_custom_url=None,
             )
 
     def test_log_config(self) -> None:
@@ -67,7 +65,6 @@ class TestAppSettings:
             vendor_encryption_key=SecretStr("test-encryption-key"),
             log_level="DEBUG",
             http_proxy_url=None,
-            vendor_custom_url=None,
         )
         log_config = settings.log_config
         assert log_config["version"] == 1
