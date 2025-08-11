@@ -20,7 +20,7 @@ class TestAppSettings:
         get_app_settings.cache_clear()
         settings = AppSettings(_env_file=None)  # type: ignore
         assert settings.api_docs_enabled is True
-        assert settings.app_host == "0.0.0.0"
+        assert settings.app_host == "localhost"
         assert settings.app_port == 8003
         assert settings.app_secret_key.get_secret_value() == "test-key"
         assert settings.log_level == "INFO"
@@ -86,8 +86,8 @@ class TestGetSettings:
         MINIMAL_ENV_VARS
         | {
             "LOG_LEVEL": "DEBUG",
-            "APP_HOST": "localhost",
-            "APP_PORT": "8080",
+            "APP_HOST": "0.0.0.0",
+            "APP_PORT": "8081",
             "HTTP_PROXY_URL": "socks5://127.0.0.1:8080",
             "FLAG_OFFLINE_MODE": "true",
         },
@@ -96,8 +96,8 @@ class TestGetSettings:
         get_app_settings.cache_clear()
         settings = get_app_settings()
         assert settings.log_level == "DEBUG"
-        assert settings.app_host == "localhost"
-        assert settings.app_port == 8080
+        assert settings.app_host == "0.0.0.0"
+        assert settings.app_port == 8081
         assert settings.http_proxy_url == "socks5://127.0.0.1:8080"
         assert settings.flags.offline_mode is True
 
