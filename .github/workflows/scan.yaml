@@ -35,18 +35,17 @@ jobs:
         with:
           scan-type: "image"
           image-ref: "${{ env.DOCKER_IMAGE }}"
-          # format: "json"
-          # output: "trivy-image-results.json"
-          # severity: "CRITICAL,HIGH,MEDIUM"
-          # exit-code: "1"
-          # ignore-unfixed: true
+          format: "json"
+          output: "${{ runner.workspace }}/trivy-image-results.json"
+          severity: "CRITICAL,HIGH,MEDIUM"
+          exit-code: "1"
 
       - name: Upload scan results
         uses: actions/upload-artifact@v4
         with:
           name: trivy-scan-results
           path: ${{ runner.workspace }}/trivy-image-results.json
-          retention-days: 30
+          retention-days: 60
 
   code-ql:
     name: code-ql
