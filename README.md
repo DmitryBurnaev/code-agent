@@ -139,7 +139,18 @@ Note: Make sure your domain's DNS records are properly configured and pointing t
 
 ## CLI usages
 
-1. Simple AI Client
+1. Generate Secrets
+   ```bash
+   # Generate secure secrets and write them to .env file
+   python -m src.cli.generate_secrets
+   
+   # This will automatically:
+   # - Generate random secrets for APP_SECRET_KEY, VENDOR_ENCRYPTION_KEY, DB_PASSWORD, ADMIN_PASSWORD
+   # - Append them to .env file with "# Generated secrets" comment
+   # - Set file permissions to 600 for security
+   ```
+
+2. Simple AI Client
    ```bash   
    usage: simple_ai_client.py [-h] [--vendor VENDOR] [--vendor-url VENDOR_URL] [--model MODEL] [--token TOKEN] [--stream] [--prompt PROMPT]
 
@@ -179,10 +190,10 @@ The application now supports encrypted storage of vendor API keys using AES-256-
 
 The encryption key is now automatically generated along with other secrets using the `make secrets` command. See the [Environment Setup](#environment-setup) section above for detailed instructions.
 
-Alternatively, you can generate only the encryption key manually:
-   ```bash
-   python -m src.cli.generate_encryption_key
-   ```
+The encryption key (`VENDOR_ENCRYPTION_KEY`) is automatically:
+- Generated with 32 characters of secure random data
+- Written to your `.env` file
+- Protected with proper file permissions (600)
 
 3. API keys will be automatically encrypted when:
    - Creating new vendors through the admin interface
@@ -201,16 +212,20 @@ Alternatively, you can generate only the encryption key manually:
    ```bash
    make secrets
    ```
+   
+   This command will automatically:
+   - Generate secure random secrets for your application
+   - Write them directly to your `.env` file with a "# Generated secrets" comment
+   - Set proper file permissions (600) for security
+   - Display success messages in the console
 
-3. Copy the generated secrets to your `.env` file. The command will output something like:
-   ```bash
-   SECRET_KEY=your-generated-secret-key
-   VENDOR_ENCRYPTION_KEY=your-generated-encryption-key
-   DB_PASSWORD=your-generated-db-password
-   ADMIN_PASSWORD=your-generated-admin-password
-   ```
+   The generated secrets include:
+   - `APP_SECRET_KEY` - Secret key for the application
+   - `VENDOR_ENCRYPTION_KEY` - Key for encrypting vendor API keys
+   - `DB_PASSWORD` - Database password
+   - `ADMIN_PASSWORD` - Default admin password
 
-4. Update your `.env` file with these generated values and other required settings.
+3. Review and update your `.env` file with any additional required settings.
 
 ### Environment Variables
 
@@ -218,7 +233,7 @@ Alternatively, you can generate only the encryption key manually:
 |-------------------------------|--------|--------:|:--------:|----------------------------------------------------|
 | API_DOCS_ENABLED              | bool   |   false |          | Enable FastAPI docs (Swagger/ReDoc)                |
 | APP_SECRET_KEY                | string |       - |   yes    | Secret key                                         |
-| APP_HOST                      | string | 0.0.0.0 |          | Host address for the application                   |
+| APP_HOST                      | string | localhost |          | Host address for the application                   |
 | APP_PORT                      | int    |    8003 |          | Port for the application                           |
 | LOG_LEVEL                     | string |    INFO |          | One of DEBUG / INFO / WARNING / ERROR / CRITICAL   |
 | JWT_ALGORITHM                 | string |   HS256 |          | JWT algorithm                                      |

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "FastAPI application providing system information"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi==0.115.12",
+    "fastapi==0.116.1",
     "itsdangerous==2.2.0",      # required by session engine
     "uvicorn==0.34.0",
     "pydantic==2.11.1",
