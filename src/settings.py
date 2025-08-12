@@ -33,7 +33,7 @@ class AppSettings(BaseSettings):
 
     api_docs_enabled: bool = False
     app_secret_key: SecretStr = Field(description="Application secret key")
-    app_host: str = "0.0.0.0"
+    app_host: str = "localhost"
     app_port: int = 8003
     log_level: LogLevelString = "INFO"
     jwt_algorithm: str = "HS256"
