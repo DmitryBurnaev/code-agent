@@ -36,15 +36,15 @@ def main() -> None:
 
     except Exception as e:
         print(f"⚠️  Warning: Could not write to .env file: {e}")
-        print("Please add the secrets manually to your .env file")
 
-    # Now change the permissions of the .env file to 600
-    try:
-        os.chmod(ENV_FILE_PATH, 0o600)
-        print(f"✅ Permissions changed to 600 for {ENV_FILE_PATH}")
-    except Exception as e:
-        print(f"⚠️  Warning: Could not change permissions for {ENV_FILE_PATH}: {e}")
-        print("Please change the permissions manually to 600")
+    else:
+        # Now change the permissions of the .env file to 600
+        try:
+            os.chmod(ENV_FILE_PATH, 0o600)
+            print(f"✅ Permissions changed to 600 for {ENV_FILE_PATH}")
+        except Exception as e:
+            print(f"⚠️  Warning: Could not change permissions for {ENV_FILE_PATH}: {e}")
+            print("Please change the permissions manually to 600")
 
 
 if __name__ == "__main__":
