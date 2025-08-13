@@ -1,4 +1,5 @@
 """Generate a secure encryption key for vendor API keys."""
+
 import os
 import secrets
 from pathlib import Path
@@ -36,7 +37,6 @@ def main() -> None:
     except Exception as e:
         print(f"⚠️  Warning: Could not write to .env file: {e}")
         print("Please add the secrets manually to your .env file")
-
 
     # Now change the permissions of the .env file to 600
     try:
