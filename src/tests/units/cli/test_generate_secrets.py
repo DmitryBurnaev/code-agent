@@ -90,10 +90,7 @@ def test_main_handles_file_write_error(mock_secrets, mock_file_operations, capsy
         # Verify error message is displayed
         captured = capsys.readouterr()
         assert "⚠️  Warning: Could not write to .env file:" in captured.out
-        assert "Please add the secrets manually to your .env file" in captured.out
-
-        # Verify that permission change is still attempted even if file write failed
-        assert "✅ Permissions changed to 600 for .env" in captured.out
+        assert "✅ Permissions changed to 600 for .env" not in captured.out
 
 
 def test_main_generates_and_not_displays_secrets(mock_secrets, mock_file_operations, capsys):

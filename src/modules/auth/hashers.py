@@ -61,9 +61,8 @@ class PBKDF2PasswordHasher:
             return False, err_message
 
         if algorithm != self.algorithm:
-            err_message = f"Algorithm mismatch!: {algorithm} != {self.algorithm}"
-            logger.warning(err_message)
-            return False, err_message
+            logger.warning("Unexpected algorithm: %s", algorithm)
+            return False, "Algorithm mismatch"
 
         encoded_2 = self.encode(password, salt)
         return hmac.compare_digest(encoded, encoded_2), ""
