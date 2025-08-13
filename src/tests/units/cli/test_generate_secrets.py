@@ -118,7 +118,9 @@ def test_main_generates_and_not_displays_secrets(mock_secrets, mock_file_operati
     mock_secrets.assert_any_call(15)  # Called twice with 15
 
 
-def test_main_calls_secrets_token_urlsafe_with_correct_parameters(mock_secrets, mock_file_operations):
+def test_main_calls_secrets_token_urlsafe_with_correct_parameters(
+    mock_secrets, mock_file_operations
+):
     """Test that secrets.token_urlsafe is called with correct parameters."""
     main()
 
@@ -138,25 +140,26 @@ def test_mocks_prevent_real_file_writing(mock_secrets, mock_file_operations, tmp
     # Create a temporary .env file to test against
     test_env_file = tmp_path / ".env"
     test_env_file.write_text("EXISTING_CONTENT=test")
-    
+
     # Store original content
     original_content = test_env_file.read_text()
-    
+
     # Temporarily change working directory to temp path
     import os
+
     original_cwd = os.getcwd()
     os.chdir(tmp_path)
-    
+
     try:
         # Call main function - should use mocks, not real file operations
         main()
-        
+
         # Verify file content hasn't changed
         assert test_env_file.read_text() == original_content
-        
+
         # Verify mocks were called instead
         mock_file_operations.assert_called_once_with(Path(".env"), "a", encoding="utf-8")
-        
+
     finally:
         # Restore original working directory
         os.chdir(original_cwd)

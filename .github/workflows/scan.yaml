@@ -1,4 +1,4 @@
-name: Security Scan
+name: Scan
 
 on:
   push:
@@ -30,7 +30,7 @@ jobs:
           DOCKER_IMAGE: ${{ env.DOCKER_IMAGE }}
         run: docker compose build app
 
-      - name: Run Trivy vulnerability scanner
+      - name: Run Trivy Image
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "image"
@@ -42,10 +42,32 @@ jobs:
 
       - name: Upload scan results
         uses: actions/upload-artifact@v4
-        if: failure()
         with:
           name: trivy-scan-results
           path: ${{ runner.workspace }}/trivy-image-results.json
+          retention-days: 60
+
+  trivy-fs:
+    name: trivy-fs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy FS
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "json"
+          output: "${{ runner.workspace }}/trivy-fs-results.json"
+          severity: "CRITICAL,HIGH,MEDIUM"
+          exit-code: "1"
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-scan-results
+          path: ${{ runner.workspace }}/trivy-fs-results.json
           retention-days: 60
 
   code-ql:
@@ -73,8 +95,7 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
 
-      - name: Prepare artifacts for scan results
-        if: success()
+      - name: Upload scan results
         uses: actions/upload-artifact@v4
         with:
           name: codeql-artifacts
