@@ -9,8 +9,8 @@ on:
     - cron: "0 0 * * 1" # Every Monday at 00:00
 
 jobs:
-  code-ql:
-    name: code-ql
+  analize:
+    name: analyze
     runs-on: ubuntu-latest
     permissions:
       actions: read
