@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - "main"
+      - "feature/8-fix-deploy-and-scan"
 
 jobs:
   test:
@@ -14,15 +15,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Prepare .env file
-        env:
-          PWD: $(PWD)
+#        env:
+#          PWD: $(PWD)
         run: |
           cp .env.template .env
-          echo "DB_PASSWORD=postgres" >> .env
-          echo "APP_SECRET_KEY=test" >> .env
-          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
-          echo "ADMIN_PASSWORD=test" >> .env
-          env >> .env
+          make secrets
+#          echo "DB_PASSWORD=postgres" >> .env
+#          echo "APP_SECRET_KEY=test" >> .env
+#          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
+#          echo "ADMIN_PASSWORD=test" >> .env
+#          env >> .env
 
       - name: Build images
         run: |
