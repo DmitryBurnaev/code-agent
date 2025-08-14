@@ -18,11 +18,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Prepare .env file
-        env:
-          PWD: $(PWD)
+#        env:
+#          PWD: $(PWD)
         run: |
           cp .env.template .env
-          env >> .env
+          make secrets
 
       - name: Build image
         run: docker compose build test
