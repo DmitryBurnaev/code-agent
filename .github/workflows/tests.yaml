@@ -19,12 +19,11 @@ jobs:
 #          PWD: $(PWD)
         run: |
           cp .env.template .env
-          make secrets
-#          echo "DB_PASSWORD=postgres" >> .env
-#          echo "APP_SECRET_KEY=test" >> .env
-#          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
-#          echo "ADMIN_PASSWORD=test" >> .env
-#          env >> .env
+          echo "DB_PASSWORD=postgres" >> .env
+          echo "APP_SECRET_KEY=test" >> .env
+          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
+          echo "ADMIN_PASSWORD=test" >> .env
+          env >> .env
 
       - name: Build images
         run: |
