@@ -4,67 +4,39 @@ on:
   push:
     branches:
       - "main"
+      - "feature/8-fix-deploy-and-scan"
   schedule:
     - cron: "0 0 * * 1" # Every Monday at 00:00
 
-env:
-  DOCKER_IMAGE: code-agent:scan-${{ github.sha }}
-
 jobs:
-  trivy-image:
-    name: trivy-image
+  code-ql:
+    name: code-ql
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Prepare .env file
-        env:
-          PWD: $(PWD)
-        run: |
-          cp .env.template .env
-          env >> .env
-
-      - name: Build image
-        env:
-          DOCKER_IMAGE: ${{ env.DOCKER_IMAGE }}
-        run: docker compose build app
-
-      - name: Run Trivy Image
-        uses: aquasecurity/trivy-action@master
+      - name: Prepare python
+        uses: actions/setup-python@v5
         with:
-          scan-type: "image"
-          image-ref: "${{ env.DOCKER_IMAGE }}"
-          format: "json"
-          output: "${{ runner.workspace }}/trivy-image-results.json"
-          severity: "CRITICAL,HIGH,MEDIUM"
-          exit-code: "1"
+          python-version: "3.13"
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: "python"
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
 
       - name: Upload scan results
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-images-results
-          path: ${{ runner.workspace }}/trivy-image-results.json
-          retention-days: 60
-
-  trivy-fs:
-    name: trivy-fs
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run Trivy FS
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: "fs"
-          scan-ref: "."
-          format: "json"
-          output: "${{ runner.workspace }}/trivy-fs-results.json"
-          severity: "CRITICAL,HIGH,MEDIUM"
-          exit-code: "1"
-
-      - name: Upload scan results
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-fs-results
-          path: ${{ runner.workspace }}/trivy-fs-results.json
-          retention-days: 60
+          name: codeql-artifacts
+          path: ${{ runner.workspace }}/results
+          if-no-files-found: ignore
