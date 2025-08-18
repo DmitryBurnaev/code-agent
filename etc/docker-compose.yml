@@ -1,0 +1,31 @@
+services:
+  app:
+    image: ${DOCKER_IMAGE}
+    container_name: code-agent-app
+    env_file:
+      - .env
+    environment:
+      APP_SERVICE: app
+      DB_HOST: db
+    ports:
+      - 127.0.0.1:${APP_PORT}:${APP_PORT}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    container_name: code-agent-db
+    image: postgres:17-alpine
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+    volumes:
+      - ${PWD}/.data/postgres:/var/lib/postgresql/data/pgdata
