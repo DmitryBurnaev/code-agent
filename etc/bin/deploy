@@ -7,7 +7,7 @@ export WORKING_DIR=/opt/code-agent/
 #export $(cat .env | grep -v ^# | xargs)
 
 echo "=== pulling image ${DOCKER_IMAGE} ==="
-docker compose pull
+docker pull ${DOCKER_IMAGE}
 
 echo "=== restarting service ==="
 sudo systemctl restart code-agent.service
