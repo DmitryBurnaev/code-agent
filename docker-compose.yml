@@ -1,7 +1,7 @@
 services:
   app:
-    image: ${DOCKER_IMAGE}
     container_name: code-agent-app
+    image: code-agent:app
     build:
       context: .
       target: "service"
@@ -12,17 +12,13 @@ services:
     environment:
       APP_SERVICE: app
       DB_HOST: db
-      DB_PORT: 5432
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
     depends_on:
       db:
         condition: service_healthy        
 
   db:
-    image: postgres:17-alpine
     container_name: code-agent-db
+    image: postgres:17-alpine
     env_file:
       - .env
     environment:
@@ -51,10 +47,6 @@ services:
     environment:
       APP_SERVICE: test
       DB_HOST: db
-      DB_PORT: 5432
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
     depends_on:
       db:
         condition: service_healthy

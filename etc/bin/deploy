@@ -7,7 +7,7 @@ echo "=== reading $(pwd)/.env file ==="
 export $(cat .env | grep -v ^# | xargs)
 
 echo "=== pulling image ${DOCKER_IMAGE} ==="
-docker pull ${DOCKER_IMAGE}
+docker compose pull
 
 echo "=== restarting service ==="
 sudo systemctl restart code-agent.service
@@ -16,6 +16,8 @@ echo "=== clearing ==="
 echo y | docker image prune -a
 
 echo "=== check status ==="
+echo "sleeping a while ... "
+sleep 5
 sudo systemctl show -p ActiveState --value code-agent
 
 echo "=== show containers ==="
