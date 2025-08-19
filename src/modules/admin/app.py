@@ -120,6 +120,8 @@ def make_admin(app: "CodeAgentAPP") -> Admin:
     """Create a simple admin application"""
     return AdminApp(
         app,
+        base_url=app.settings.admin_base_url,
+        title=app.settings.admin_title,
         session_maker=get_async_sessionmaker(),
         authentication_backend=AdminAuth(
             secret_key=app.settings.app_secret_key.get_secret_value(),
