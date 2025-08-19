@@ -45,6 +45,8 @@ class AppSettings(BaseSettings):
     )
     admin_password: SecretStr = Field(description="Default admin password")
     admin_session_expiration_time: int = 2 * 24 * 3600  # 2 days
+    admin_base_url: str = "/cadm"
+    admin_title: str = "CodeAgent Admin"
     vendor_encryption_key: SecretStr = Field(description="Secret key for vendor API key encryption")
     flags: FlagsSettings = Field(default_factory=FlagsSettings)
 

@@ -68,6 +68,7 @@ def run_app() -> None:
         host=app.settings.app_host,
         port=app.settings.app_port,
         log_config=app.settings.log_config,
+        proxy_headers=True,
     )
 
 
