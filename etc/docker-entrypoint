@@ -40,7 +40,8 @@ run_service() {
       print_caption "Start DB migrations"
       alembic upgrade head
       print_caption "Start app"
-      python -m src.main
+      uvicorn --factory src.main:make_app --host 0.0.0.0 --port 8003 --loop uvloop --proxy-headers --forwarded-allow-ips="*"
+#      python -m src.main
       ;;
     test)
       print_caption "Lint check"
