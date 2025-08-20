@@ -55,14 +55,30 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPP:
     app.include_router(system_router, prefix="/api", dependencies=[Depends(verify_api_token)])
     app.include_router(proxy_router, prefix="/api", dependencies=[Depends(verify_api_token)])
 
+    logger.info("Setting up admin application...")
+    make_admin(app)
+
     logger.info("Application configured!")
     return app
 
 
-def run_app() -> None:
+#
+# def run_app() -> None:
+#     """Prepares App and run uvicorn instance"""
+#     app = make_app()
+#     make_admin(app)
+#     uvicorn.run(
+#         app,
+#         host=app.settings.app_host,
+#         port=app.settings.app_port,
+#         log_config=app.settings.log_config,
+#         proxy_headers=True,
+#     )
+# app: CodeAgentAPP = make_app()
+
+if __name__ == "__main__":
     """Prepares App and run uvicorn instance"""
-    app = make_app()
-    make_admin(app)
+    app: CodeAgentAPP = make_app()
     uvicorn.run(
         app,
         host=app.settings.app_host,
@@ -70,7 +86,3 @@ def run_app() -> None:
         log_config=app.settings.log_config,
         proxy_headers=True,
     )
-
-
-if __name__ == "__main__":
-    run_app()

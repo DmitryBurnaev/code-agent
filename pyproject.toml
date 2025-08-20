@@ -5,7 +5,7 @@ description = "FastAPI application providing system information"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi==0.116.1",
-    "itsdangerous==2.2.0",      # required by session engine
+    "itsdangerous==2.2.0", # required by session engine
     "uvicorn==0.34.0",
     "pydantic==2.11.1",
     "pydantic-settings==2.8.1",
@@ -14,9 +14,10 @@ dependencies = [
     "sqladmin==0.20.1",
     "alembic==1.16.1",
     "asyncpg==0.30.0",
-    "greenlet==3.2.3",          # for alembic only
+    "greenlet==3.2.3", # for alembic only
     "pyjwt==2.10.1",
-    "pycryptodomex==3.23.0",    # for vendor API key encryption
+    "pycryptodomex==3.23.0", # for vendor API key encryption
+    "uvloop==0.21.0",
 ]
 
 [tool.uv]
