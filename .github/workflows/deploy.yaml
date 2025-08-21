@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - "main"
-      - "bugfix/10-fix-deployment-problems"
     tags:
       - "v*"
 
@@ -13,28 +12,28 @@ env:
   DOCKER_IMAGE: ghcr.io/${{ github.repository }}:latest
 
 jobs:
-#  test:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v4
-#
-#      - name: Prepare .env file
-#        run: |
-#          cp .env.template .env
-#          echo "DB_PASSWORD=postgres" >> .env
-#          echo "APP_SECRET_KEY=test" >> .env
-#          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
-#          echo "ADMIN_PASSWORD=test" >> .env
-#          env >> .env
-#
-#      - name: Build image
-#        run: docker compose build test
-#
-#      - name: Run tests
-#        run: docker compose up --exit-code-from test test
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare .env file
+        run: |
+          cp .env.template .env
+          echo "DB_PASSWORD=postgres" >> .env
+          echo "APP_SECRET_KEY=test" >> .env
+          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
+          echo "ADMIN_PASSWORD=test" >> .env
+          env >> .env
+
+      - name: Build image
+        run: docker compose build test
+
+      - name: Run tests
+        run: docker compose up --exit-code-from test test
 
   build:
-#    needs: [test]
+    needs: [ test ]
     runs-on: ubuntu-latest
 
     permissions:
@@ -76,7 +75,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
   deploy:
-    needs: [build]
+    needs: [ build ]
     runs-on: ubuntu-latest
 
     steps:
