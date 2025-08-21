@@ -62,20 +62,6 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPP:
     return app
 
 
-#
-# def run_app() -> None:
-#     """Prepares App and run uvicorn instance"""
-#     app = make_app()
-#     make_admin(app)
-#     uvicorn.run(
-#         app,
-#         host=app.settings.app_host,
-#         port=app.settings.app_port,
-#         log_config=app.settings.log_config,
-#         proxy_headers=True,
-#     )
-# app: CodeAgentAPP = make_app()
-
 if __name__ == "__main__":
     """Prepares App and run uvicorn instance"""
     app: CodeAgentAPP = make_app()

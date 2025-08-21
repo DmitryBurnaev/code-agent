@@ -62,12 +62,51 @@ journalctl -u code-agent
    deploy ALL = NOPASSWD: /bin/systemctl show -p ActiveState --value code-agent
    ```
 
+## Service Management
+
+The application includes a convenient service management script located at `bin/service` on the server. This script provides easy access to common service operations.
+
+### Using the Service Script
+
+```bash
+# Basic commands
+bin/service start          # Start the service
+bin/service stop           # Stop the service  
+bin/service restart        # Restart the service
+bin/service status         # Show service status
+bin/service health         # Check service health
+
+# View logs
+bin/service logs                    # Show recent logs (last 50 lines)
+bin/service logs --tail 100         # Show last 100 lines
+bin/service logs --follow           # Follow logs in real-time
+bin/service logs --grep error       # Filter logs by pattern
+bin/service logs --since "1 hour ago"  # Show logs since specific time
+
+# Start/restart with log following
+bin/service start --logs            # Start and follow logs
+bin/service restart --logs          # Restart and follow logs
+```
+
+### Service Script Features
+
+- **Health checks**: Verify service status and check for recent errors
+- **Flexible logging**: Filter logs by time, pattern, or follow in real-time
+- **Easy management**: Simple commands for start/stop/restart operations
+- **Error detection**: Automatic detection of service issues
+
 ### Nginx Configuration
 
 The service requires Nginx as a reverse proxy to handle:
 - Domain-based routing (code.example.com)
 - Security layer (authorization header check)
 - API endpoint protection (only /api/* endpoints are accessible)
+
+**Important**: The application runs in a container via uvicorn with specific flags for proper reverse proxy interaction:
+- `--proxy-headers`: Enables processing of proxy headers (X-Forwarded-For, X-Forwarded-Proto, etc.)
+- `--forwarded-allow-ips`: Allows trusted proxy IPs to set forwarded headers
+
+These flags are essential for correct client IP detection and protocol handling when behind Nginx.
 
 To configure Nginx:
 
@@ -229,22 +268,22 @@ The encryption key (`VENDOR_ENCRYPTION_KEY`) is automatically:
 
 ### Environment Variables
 
-| Variable                      | Type   | Default | Required | Description                                        |
-|-------------------------------|--------|--------:|:--------:|----------------------------------------------------|
-| API_DOCS_ENABLED              | bool   |   false |          | Enable FastAPI docs (Swagger/ReDoc)                |
-| APP_SECRET_KEY                | string |       - |   yes    | Secret key                                         |
+| Variable                      | Type   |   Default | Required | Description                                        |
+|-------------------------------|--------|----------:|:--------:|----------------------------------------------------|
+| API_DOCS_ENABLED              | bool   |     false |          | Enable FastAPI docs (Swagger/ReDoc)                |
+| APP_SECRET_KEY                | string |         - |   yes    | Secret key                                         |
 | APP_HOST                      | string | localhost |          | Host address for the application                   |
-| APP_PORT                      | int    |    8003 |          | Port for the application                           |
-| LOG_LEVEL                     | string |    INFO |          | One of DEBUG / INFO / WARNING / ERROR / CRITICAL   |
-| JWT_ALGORITHM                 | string |   HS256 |          | JWT algorithm                                      |
-| HTTP_PROXY_URL                | string |       - |          | Socks5 Proxy URL                                   |
-| VENDOR_DEFAULT_TIMEOUT        | int    |      30 |          | Default HTTP timeout for vendor requests (seconds) |
-| VENDOR_DEFAULT_RETRIES        | int    |       3 |          | Default HTTP retry attempts for vendor requests    |
-| VENDOR_CUSTOM_URL             | string |       - |          | API URL for 'custom' vendor                        |
-| ADMIN_USERNAME                | string |   admin |          | Default admin username                             |
-| ADMIN_PASSWORD                | string |       - |   yes    | Default admin password                             |
-| ADMIN_SESSION_EXPIRATION_TIME | int    |  172800 |          | Admin session expiration time (seconds)            |
-| VENDOR_ENCRYPTION_KEY         | string |       - |   yes    | Secret key for vendor API key encryption           |
+| APP_PORT                      | int    |      8003 |          | Port for the application                           |
+| LOG_LEVEL                     | string |      INFO |          | One of DEBUG / INFO / WARNING / ERROR / CRITICAL   |
+| JWT_ALGORITHM                 | string |     HS256 |          | JWT algorithm                                      |
+| HTTP_PROXY_URL                | string |         - |          | Socks5 Proxy URL                                   |
+| VENDOR_DEFAULT_TIMEOUT        | int    |        30 |          | Default HTTP timeout for vendor requests (seconds) |
+| VENDOR_DEFAULT_RETRIES        | int    |         3 |          | Default HTTP retry attempts for vendor requests    |
+| VENDOR_CUSTOM_URL             | string |         - |          | API URL for 'custom' vendor                        |
+| ADMIN_USERNAME                | string |     admin |          | Default admin username                             |
+| ADMIN_PASSWORD                | string |         - |   yes    | Default admin password                             |
+| ADMIN_SESSION_EXPIRATION_TIME | int    |    172800 |          | Admin session expiration time (seconds)            |
+| VENDOR_ENCRYPTION_KEY         | string |         - |   yes    | Secret key for vendor API key encryption           |
 
 ### Database (DBSettings, env prefix `DB_`)
 
@@ -273,9 +312,9 @@ These are used by `src/cli/simple_ai_client.py`.
 
 ### Container / Infra
 
-| Variable     | Type   | Default |         Required         | Description                                                                     |
-|--------------|--------|--------:|:------------------------:|---------------------------------------------------------------------------------|
-| APP_SERVICE  | string |       - | yes (container)          | Selects entrypoint behavior: `web` / `test` / `lint`                            | 
+| Variable     | Type   | Default |       Required       | Description                                                                 |
+|--------------|--------|--------:|:--------------------:|-----------------------------------------------------------------------------|
+| APP_SERVICE  | string |       - |   yes (container)    | Selects entrypoint behavior: `web` / `test` / `lint`                        | 
 | DOCKER_IMAGE | string |       - | yes (docker-compose) | Image tag used by `docker-compose.yml`                                      |
 | APP_PORT     | int    |       - | yes (docker-compose) | Port mapping for `docker-compose.yml` (should match application `APP_PORT`) |
 

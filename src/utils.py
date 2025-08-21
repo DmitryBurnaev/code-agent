@@ -11,6 +11,7 @@ from starlette.exceptions import HTTPException
 
 from src.exceptions import BaseApplicationError
 from src.models import ErrorResponse
+from src.settings import get_app_settings
 
 if TYPE_CHECKING:
     from src.db.models import BaseModel
@@ -115,9 +116,11 @@ def admin_get_link(
     :param target: Link target (edit / link)
     :return: HTML-safe tag with a generated link
     """
+    settings = get_app_settings()
+    base_url = settings.admin_base_url
     name = url_name or instance.__class__.__name__.lower()
     return markupsafe.Markup(
-        f'<a href="/admin/{name}/{target}/{instance.id}">[#{instance.id}] {instance}</a>'
+        f'<a href="{base_url}/{name}/{target}/{instance.id}">[#{instance.id}] {instance}</a>'
     )
 
 
