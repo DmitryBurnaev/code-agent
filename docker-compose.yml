@@ -1,7 +1,7 @@
 services:
   app:
     container_name: code-agent-app
-    image: code-agent:app
+    image: ${DOCKER_IMAGE:-code-agent}
     build:
       context: .
       target: "service"
