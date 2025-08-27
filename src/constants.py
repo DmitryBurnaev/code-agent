@@ -1,5 +1,6 @@
 from enum import StrEnum
-
+from pathlib import Path
+from typing import Self
 
 __all__ = (
     "VendorSlug",
@@ -7,10 +8,6 @@ __all__ = (
     "VENDOR_DEFAULT_TIMEOUT",
     "LOG_LEVELS",
 )
-
-from pathlib import Path
-
-from typing import Self
 
 
 class StingEnum(StrEnum):

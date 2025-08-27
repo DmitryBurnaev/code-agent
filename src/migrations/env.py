@@ -16,6 +16,7 @@ from src.db.models import BaseModel
 config = context.config
 logger = logging.getLogger("alembic.env")
 
+
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
@@ -52,13 +53,7 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(
-        connection=connection,
-        target_metadata=target_metadata,
-        compare_type=True,
-        compare_server_default=True,
-        process_revision_directives=process_revision_directives,
-    )
+    context.configure(connection=connection, target_metadata=target_metadata)
 
     with context.begin_transaction():
         context.run_migrations()
@@ -88,7 +83,14 @@ def run_migrations_online() -> None:
     asyncio.run(run_async_migrations())
 
 
-def process_revision_directives(context, revision, directives):  # type: ignore # noqa
+def process_revision_directives(context, revision, directives) -> None:
+    """
+    Allows to form correct revision id
+    like:
+        0001_initial.py
+        0002_second.py
+        ...
+    """
     # extract Migration
     migration_script = directives[0]
     if migration_script.upgrade_ops.is_empty():
