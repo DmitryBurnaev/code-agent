@@ -1,8 +1,8 @@
 [project]
 name = "code-agent"
 version = "0.1.0"
-description = "FastAPI application providing system information"
-requires-python = ">=3.13"
+description = "Code Agent (some helper system)"
+requires-python = ">=3.13,<3.14"
 dependencies = [
     "fastapi==0.116.1",
     "itsdangerous==2.2.0", # required by session engine
@@ -10,13 +10,12 @@ dependencies = [
     "pydantic==2.11.1",
     "pydantic-settings==2.8.1",
     "httpx[socks]==0.28.1",
-    "sqlalchemy==2.0.41",
+    "sqlalchemy[asyncio]==2.0.43",
     "sqladmin==0.20.1",
     "alembic==1.16.1",
     "asyncpg==0.30.0",
-    "greenlet==3.2.3", # for alembic only
     "pyjwt==2.10.1",
-    "pycryptodomex==3.23.0", # for vendor API key encryption
+    "pycryptodomex==3.23.0", # for API key encryptions
     "uvloop==0.21.0",
 ]
 
@@ -27,10 +26,10 @@ dev-dependencies = [
     "pytest-asyncio>=0.26.0,<0.27",
     "coverage>=7.8,<7.9",
     "black>=25.1,<25.2",
-    "ruff>=0.11,<0.12",
-    "mypy>=0.15,<1.16",
+    "ruff>=0.12,<0.13",
+    "mypy>=0.17,<1.18",
     # pycharm requires:
-    "setuptools>=78.1,<78.2",
+    "setuptools>=78.1,<81.0",
     "pip<26",
 ]
 
@@ -94,4 +93,4 @@ exclude_also = [
 
 [tool.coverage.run]
 source = ["src"]
-omit = ["src/cli/*", "src/tests/*"]
+omit = ["src/cli/*", "src/tests/*", "src/migrations/*"]
