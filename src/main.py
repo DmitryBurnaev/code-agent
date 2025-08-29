@@ -1,5 +1,6 @@
 import logging.config
 import sys
+from contextlib import asynccontextmanager
 from typing import Any, Callable
 
 import uvicorn
@@ -10,8 +11,32 @@ from src.modules.admin.app import make_admin
 from src.exceptions import AppSettingsError
 from src.settings import get_app_settings, AppSettings
 from src.modules.api import system_router, proxy_router
+from src.db.session import initialize_database, close_database
 
 logger = logging.getLogger("src.main")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan context manager for startup and shutdown events."""
+    # Startup: Initialize resources
+    logger.info("Starting up application...")
+    try:
+        await initialize_database()
+        logger.info("Application startup completed successfully")
+    except Exception as e:
+        logger.error("Failed to initialize application: %s", str(e))
+        raise
+    
+    yield
+    
+    # Shutdown: Cleanup resources
+    logger.info("Shutting down application...")
+    try:
+        await close_database()
+        logger.info("Application shutdown completed successfully")
+    except Exception as e:
+        logger.error("Error during application shutdown: %s", str(e))
 
 
 class CodeAgentAPP(FastAPI):
@@ -47,6 +72,7 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPP:
         description="API for retrieving system information",
         docs_url="/api/docs/" if settings.api_docs_enabled else None,
         redoc_url="/api/redoc/" if settings.api_docs_enabled else None,
+        lifespan=lifespan,
     )
     logger.info("Setting up application settings...")
     app.set_settings(settings)
