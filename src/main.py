@@ -9,7 +9,7 @@ from src.modules.auth.dependencies import verify_api_token
 from src.modules.admin.app import make_admin
 from src.exceptions import AppSettingsError
 from src.settings import get_app_settings, AppSettings
-from src.api import system_router, proxy_router
+from src.modules.api import system_router, proxy_router
 
 logger = logging.getLogger("src.main")
 
