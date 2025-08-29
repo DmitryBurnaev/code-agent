@@ -1,6 +1,6 @@
 """Database module for the application."""
 
-from src.db.dependencies import get_db_session
+from src.db.dependencies import get_db_session, get_transactional_session, get_uow_with_session
 from src.db.models import BaseModel, Vendor, User, Token
 from src.db.repositories import UserRepository, VendorRepository, TokenRepository
 from src.db.services import SASessionUOW
@@ -34,4 +34,6 @@ __all__ = (
     "session_scope",
     # Dependencies
     "get_db_session",
+    "get_transactional_session",
+    "get_uow_with_session",
 )

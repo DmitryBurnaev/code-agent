@@ -30,6 +30,18 @@ class TestSystemAPI:
             "vendors": [vendor.slug for vendor in mock_db_vendors__all],
         }
 
+    def test_get_system_info_uow_di(
+        self, client: TestClient, mock_db_vendors__all: list[MockVendor]
+    ) -> None:
+        """Test the UOW with dependency injection endpoint."""
+        response = client.get("/api/system/info-uow-di/")
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {
+            "status": "ok",
+            "vendors": [vendor.slug for vendor in mock_db_vendors__all],
+        }
+
     def test_health_check(self, client: TestClient) -> None:
         response = client.get("/api/system/health/")
         assert response.status_code == 200
