@@ -27,9 +27,9 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error("Failed to initialize application: %s", str(e))
         raise
-    
+
     yield
-    
+
     # Shutdown: Cleanup resources
     logger.info("Shutting down application...")
     try:

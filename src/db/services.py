@@ -1,6 +1,6 @@
 import logging
 from types import TracebackType
-from typing import Self, Optional
+from typing import Self
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,23 +12,23 @@ logger = logging.getLogger(__name__)
 class SASessionUOW:
     """
     Unit Of Work around SQLAlchemy-session related items: repositories, ops
-    
+
     This UOW can work in two modes:
     1. Standalone mode: creates its own session from the session factory
     2. Dependency mode: accepts a session from FastAPI dependency injection
-    
+
     In both modes, it provides explicit transaction control for atomic operations.
-    
+
     Examples:
         # Standalone mode
         async with SASessionUOW() as uow:
             user_repo = UserRepository(session=uow.session)
             token_repo = TokenRepository(session=uow.session)
-            
+
             user = await user_repo.create(user_data)
             token = await token_repo.create(token_data)
             uow.mark_for_commit()
-        
+
         # Dependency mode
         async def endpoint(uow: SASessionUOW = Depends(get_uow_with_session)):
             async with uow:
@@ -40,7 +40,7 @@ class SASessionUOW:
     def __init__(self, session: AsyncSession | None = None) -> None:
         """
         Initialize UOW with optional session.
-        
+
         Args:
             session: If provided, uses this session (dependency injection mode)
                     If None, creates new session from factory (standalone mode)
@@ -54,20 +54,18 @@ class SASessionUOW:
             # Dependency mode: use provided session
             self.__session = session
             self.__owns_session: bool = False
-            
+
         self.__need_to_commit: bool = False
-        self.__transaction_started: bool = False
 
     async def __aenter__(self) -> Self:
         """Enter transaction context and start transaction if needed."""
         logger.debug("[DB] Entering UOW transaction block")
-        
+
         # Start transaction if we own the session or if no transaction is active
         if self.__owns_session or not self.__session.in_transaction():
             await self.__session.begin()
-            self.__transaction_started = True
             logger.debug("[DB] Started new transaction")
-        
+
         return self
 
     async def __aexit__(
@@ -84,7 +82,7 @@ class SASessionUOW:
         try:
             # Flush any pending changes
             await self.__session.flush()
-            
+
             # Handle transaction based on ownership and commit flag
             if self.__owns_session:
                 # We own the session - handle commit/rollback
@@ -95,7 +93,7 @@ class SASessionUOW:
                 else:
                     # No explicit commit needed, but no error - commit by default
                     await self.commit()
-                
+
                 # Close session if we own it
                 await self.__session.close()
                 logger.debug("[DB] Session closed")
@@ -107,7 +105,7 @@ class SASessionUOW:
                 elif exc_type is not None:
                     await self.rollback()
                 # Don't close session - dependency will handle it
-                
+
         except Exception as e:
             logger.error("[DB] Error during UOW cleanup: %s", str(e))
             if self.__owns_session:

@@ -16,12 +16,12 @@ from src.db.session import (
 __all__ = (
     # Models
     "BaseModel",
-    "Vendor", 
+    "Vendor",
     "User",
     "Token",
     # Repositories
     "UserRepository",
-    "VendorRepository", 
+    "VendorRepository",
     "TokenRepository",
     # Services
     "SASessionUOW",

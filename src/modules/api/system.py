@@ -52,7 +52,7 @@ async def get_system_info_new(session: AsyncSession = Depends(get_db_session)) -
 async def get_system_info_uow_di(uow: SASessionUOW = Depends(get_uow_with_session)) -> SystemInfo:
     """
     Get current system information using UOW with dependency injection.
-    
+
     This demonstrates the hybrid approach: dependency injection for session lifecycle,
     UOW for transaction control (even though this is a simple read operation).
     """
@@ -73,41 +73,41 @@ async def get_system_info_uow_di(uow: SASessionUOW = Depends(get_uow_with_sessio
 async def complex_atomic_operation(uow: SASessionUOW = Depends(get_uow_with_session)) -> dict:
     """
     Example of complex atomic operation using UOW with dependency injection.
-    
+
     This demonstrates how to perform multiple database operations in a single transaction
     with explicit control over commit/rollback using repositories.
     """
-    
+
     async with uow:
         try:
             # Multiple operations that should be atomic using repositories
             vendor_repo = VendorRepository(session=uow.session)
             user_repo = UserRepository(session=uow.session)
             token_repo = TokenRepository(session=uow.session)
-            
+
             # Simulate some complex business logic
             vendors = await vendor_repo.all()
             users = await user_repo.all()
             tokens = await token_repo.all()
-            
+
             # If any condition fails, the entire transaction should be rolled back
             if len(vendors) == 0:
                 raise HTTPException(status_code=400, detail="No vendors available")
-            
+
             if len(users) == 0:
                 raise HTTPException(status_code=400, detail="No users available")
-            
+
             # All operations succeeded - mark for commit
             uow.mark_for_commit()
-            
+
             return {
                 "status": "success",
                 "vendors_count": len(vendors),
                 "users_count": len(users),
                 "tokens_count": len(tokens),
-                "message": "All operations completed atomically"
+                "message": "All operations completed atomically",
             }
-            
+
         except Exception as e:
             # Transaction will be automatically rolled back due to exception
             # No need to explicitly call uow.rollback()
