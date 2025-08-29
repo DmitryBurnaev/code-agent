@@ -4,7 +4,7 @@ from typing import Self
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db.session import make_sa_session
+from src.db.session import get_session_factory
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,11 @@ class SASessionUOW:
     """Unit Of Work around SQLAlchemy-session related items: repositories, ops"""
 
     def __init__(self, session: AsyncSession | None = None) -> None:
-        self.__session: AsyncSession = session or make_sa_session()
+        if session is None:
+            session_factory = get_session_factory()
+            self.__session: AsyncSession = session_factory()
+        else:
+            self.__session = session
         self.__need_to_commit: bool = False
 
     async def __aenter__(self) -> Self:
