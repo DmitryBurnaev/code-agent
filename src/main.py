@@ -1,7 +1,7 @@
-import logging.config
 import sys
+import logging.config
 from contextlib import asynccontextmanager
-from typing import Any, Callable
+from typing import Any, Callable, AsyncGenerator
 
 import uvicorn
 from fastapi import FastAPI, Depends
@@ -16,29 +16,6 @@ from src.db.session import initialize_database, close_database
 logger = logging.getLogger("src.main")
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan context manager for startup and shutdown events."""
-    # Startup: Initialize resources
-    logger.info("Starting up application...")
-    try:
-        await initialize_database()
-        logger.info("Application startup completed successfully")
-    except Exception as e:
-        logger.error("Failed to initialize application: %s", str(e))
-        raise
-
-    yield
-
-    # Shutdown: Cleanup resources
-    logger.info("Shutting down application...")
-    try:
-        await close_database()
-        logger.info("Application shutdown completed successfully")
-    except Exception as e:
-        logger.error("Error during application shutdown: %s", str(e))
-
-
 class CodeAgentAPP(FastAPI):
     """Some extra fields above FastAPI Application"""
 
@@ -51,6 +28,34 @@ class CodeAgentAPP(FastAPI):
     @property
     def settings(self) -> AppSettings:
         return self._settings
+
+
+@asynccontextmanager
+async def lifespan(app: CodeAgentAPP) -> AsyncGenerator[None, None]:
+    """Application lifespan context manager for startup and shutdown events."""
+    # Startup: Initialize resources
+    logger.info("Starting up application...")
+    try:
+        await initialize_database()
+        logger.info("Application startup completed successfully")
+    except Exception as e:
+        logger.error("Failed to initialize application: %s", str(e))
+        raise
+
+    logger.info("Setting up admin application...")
+    make_admin(app)
+
+    yield
+
+    logger.info("===== shutdown ====")
+    logger.info("Shutting down this application...")
+    try:
+        await close_database()
+        logger.info("well ... Application shutdown completed successfully")
+    except Exception as e:
+        logger.error("Error during application shutdown: %s", str(e))
+
+    logger.info("=====")
 
 
 def make_app(settings: AppSettings | None = None) -> CodeAgentAPP:
@@ -74,15 +79,11 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPP:
         redoc_url="/api/redoc/" if settings.api_docs_enabled else None,
         lifespan=lifespan,
     )
-    logger.info("Setting up application settings...")
     app.set_settings(settings)
 
     logger.info("Setting up routes...")
     app.include_router(system_router, prefix="/api", dependencies=[Depends(verify_api_token)])
     app.include_router(proxy_router, prefix="/api", dependencies=[Depends(verify_api_token)])
-
-    logger.info("Setting up admin application...")
-    make_admin(app)
 
     logger.info("Application configured!")
     return app

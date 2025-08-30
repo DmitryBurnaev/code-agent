@@ -5,12 +5,11 @@ from src.db.models import BaseModel, Vendor, User, Token
 from src.db.repositories import UserRepository, VendorRepository, TokenRepository
 from src.db.services import SASessionUOW
 from src.db.session import (
-    get_async_engine,
     get_session_factory,
     initialize_database,
     close_database,
-    make_sa_session,
-    session_scope,
+    # make_sa_session,
+    # session_scope,
 )
 
 __all__ = (
@@ -26,12 +25,11 @@ __all__ = (
     # Services
     "SASessionUOW",
     # Session management
-    "get_async_engine",
     "get_session_factory",
     "initialize_database",
     "close_database",
-    "make_sa_session",
-    "session_scope",
+    # "make_sa_session",
+    # "session_scope",
     # Dependencies
     "get_db_session",
     "get_transactional_session",

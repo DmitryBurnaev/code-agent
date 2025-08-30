@@ -5,7 +5,7 @@ description = "Code Agent (some helper system)"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "fastapi==0.116.1",
-    "itsdangerous==2.2.0", # required by session engine
+    "itsdangerous==2.2.0",         # required by session engine
     "uvicorn==0.34.0",
     "pydantic==2.11.1",
     "pydantic-settings==2.8.1",
@@ -15,7 +15,7 @@ dependencies = [
     "alembic==1.16.1",
     "asyncpg==0.30.0",
     "pyjwt==2.10.1",
-    "pycryptodomex==3.23.0", # for API key encryptions
+    "pycryptodomex==3.23.0",       # for API key encryptions
     "uvloop==0.21.0",
 ]
 
@@ -74,7 +74,7 @@ target-version = ["py313"]
 
 [tool.mypy]
 strict = true
-exclude = ["src/tests", "alembic", ".local", "test_*"]
+exclude = ["src/tests", "src/migrations", ".local", "test_*"]
 
 [tool.pytest.ini_options]
 testpaths = ["src/tests"]

@@ -1,37 +1,37 @@
 import logging
-import contextlib
 from contextvars import ContextVar
-from typing import AsyncGenerator, Optional
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    create_async_engine,
+    async_sessionmaker,
+    AsyncEngine,
+    close_all_sessions,
+)
 
 from src.settings import get_db_settings
 
 logger = logging.getLogger(__name__)
+type sm_type = async_sessionmaker[AsyncSession]
 
-_engine_var: ContextVar[Optional[create_async_engine]] = ContextVar("db_engine", default=None)
-_session_factory_var: ContextVar[Optional[async_sessionmaker[AsyncSession]]] = ContextVar(
-    "db_session_factory", default=None
+_async_engine: AsyncEngine | None = None
+_async_session_factory: sm_type | None = None
+
+_async_engine_var: ContextVar[AsyncEngine | None] = ContextVar("db_async_engine", default=None)
+_async_session_factory_var: ContextVar[sm_type | None] = ContextVar(
+    "db_async_session_factory", default=None
 )
 
 
-def get_async_engine() -> create_async_engine:
-    """Get the async engine instance from current context"""
-    logger.debug("[DB] Getting async engine from current context")
-    engine = _engine_var.get()
-    if engine is None:
-        raise RuntimeError(
-            "Database engine not initialized. Make sure lifespan is properly set up."
-        )
-
-    return engine
-
-
-def get_session_factory() -> async_sessionmaker[AsyncSession]:
+def get_session_factory() -> sm_type:
     """Get the session factory instance from current context"""
-    logger.debug("[DB] Getting session factory from current context")
-    session_factory = _session_factory_var.get()
+    logger.debug("[DB] Getting session maker from current context")
+    global _async_engine, _async_session_factory
+    # TODO: use for all other cases too
+    session_factory = _async_session_factory
+    # session_factory = _async_session_factory_var.get()
     if session_factory is None:
+        # session_factory = async_sessionmaker()
         # Try to initialize lazily for backward compatibility
         logger.warning("[DB] Session factory not initialized, attempting lazy initialization...")
         try:
@@ -42,18 +42,19 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
             raise RuntimeError(
                 "Session factory not initialized. Make sure lifespan is properly set up."
             )
+
         except RuntimeError:
             # We're not in an async context, create a temporary factory
             logger.warning("[DB] Creating temporary session factory for non-async context")
-            return _create_temporary_session_factory()
+            session_factory = _create_temporary_session_factory()
+            # return _create_temporary_session_factory()
+
     return session_factory
 
 
-def _create_temporary_session_factory() -> async_sessionmaker[AsyncSession]:
+def _create_temporary_session_factory() -> sm_type:
     """Create a temporary session factory for non-async contexts (like admin setup)"""
-    logger.debug(
-        "[DB] Creating temporary session factory for non-async contexts (like admin setup)"
-    )
+    logger.debug("[DB] Creating temporary session factory for non-async contexts")
     db_settings = get_db_settings()
     extra_kwargs = {}
     if db_settings.pool_min_size:
@@ -67,11 +68,13 @@ def _create_temporary_session_factory() -> async_sessionmaker[AsyncSession]:
         **extra_kwargs,
     )
 
-    return async_sessionmaker(
-        engine,
-        expire_on_commit=False,
-        class_=AsyncSession,
-    )
+    session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    logger.info("[DB] Database engine and session: save to context vars")
+    # Set context variables
+    # _async_engine_var.set(engine)
+    # _async_session_factory_var.set(session_factory)
+
+    return session_factory
 
 
 async def initialize_database() -> None:
@@ -80,29 +83,26 @@ async def initialize_database() -> None:
     db_settings = get_db_settings()
 
     try:
-        extra_kwargs = {}
+        extra_kwargs: dict[str, str | int] = {"echo": db_settings.echo}
         if db_settings.pool_min_size:
             extra_kwargs["pool_size"] = db_settings.pool_min_size
+
         if db_settings.pool_max_size:
             extra_kwargs["max_overflow"] = db_settings.pool_max_size - (
                 db_settings.pool_min_size or 5
             )
 
-        engine = create_async_engine(
-            db_settings.database_dsn,
-            echo=db_settings.echo,
-            **extra_kwargs,
-        )
-
+        engine = create_async_engine(db_settings.database_dsn, **extra_kwargs)
         session_factory = async_sessionmaker(
-            engine,
+            bind=engine,
             expire_on_commit=False,
             class_=AsyncSession,
         )
 
+        logger.info("[DB] Database engine and session: save to context vars")
         # Set context variables
-        _engine_var.set(engine)
-        _session_factory_var.set(session_factory)
+        _async_engine_var.set(engine)
+        _async_session_factory_var.set(session_factory)
 
         logger.info("[DB] Database engine and session factory initialized successfully")
 
@@ -115,48 +115,51 @@ async def close_database() -> None:
     """Close database engine and cleanup resources from current context"""
     logger.info("[DB] Closing database engine...")
 
-    session_factory = _session_factory_var.get()
-    engine = _engine_var.get()
+    try:
+        logger.debug("[DB] Closing all async sessions...")
+        await close_all_sessions()
+    except Exception as exc:
+        logger.error("[DB] Failed to close all async sessions: %r", exc)
+        raise
 
-    if session_factory:
-        await session_factory.close_all()
-        _session_factory_var.set(None)
+    if _async_session_factory_var.get():
+        _async_session_factory_var.set(None)
 
-    if engine:
-        await engine.dispose()
-        _engine_var.set(None)
+    if engine := _async_engine_var.get():
+        await engine.dispose(close=True)
+        _async_engine_var.set(None)
 
     logger.info("[DB] Database engine closed successfully")
 
 
-def get_async_sessionmaker() -> async_sessionmaker[AsyncSession]:
-    """Get async session factory - deprecated, use get_session_factory() instead"""
-    logger.warning("[DB] get_async_sessionmaker() is deprecated, use get_session_factory() instead")
-    return get_session_factory()
-
-
-def make_sa_session() -> AsyncSession:
-    """
-    Create a new SQLAlchemy session using the current context session factory.
-    This method is kept for backward compatibility but should be replaced
-    with dependency injection in new code.
-    """
-    logger.debug("[DB] Creating new async SQLAlchemy session")
-
-    try:
-        session_factory = get_session_factory()
-        return session_factory()
-    except Exception as e:
-        logger.error("[DB] Failed to create async session: %s", str(e))
-        raise
-
-
-@contextlib.asynccontextmanager
-async def session_scope() -> AsyncGenerator[AsyncSession, None]:
-    """Simple context manager that creates a new session for SQLAlchemy."""
-    session = make_sa_session()
-    try:
-        yield session
-    finally:
-        await session.close()
-        logger.debug("[DB] Session closed")
+# def get_async_sessionmaker() -> async_session_factory_type:
+#     """Get async session factory - deprecated, use get_session_factory() instead"""
+#     logger.warning("[DB] get_async_sessionmaker() is deprecated, use get_session_factory() instead")
+#     return get_session_factory()
+#
+#
+# def make_sa_session() -> AsyncSession:
+#     """
+#     Create a new SQLAlchemy session using the current context session factory.
+#     This method is kept for backward compatibility but should be replaced
+#     with dependency injection in new code.
+#     """
+#     logger.debug("[DB] Creating new async SQLAlchemy session")
+#
+#     try:
+#         session_factory = get_session_factory()
+#         return session_factory()
+#     except Exception as e:
+#         logger.error("[DB] Failed to create async session: %s", str(e))
+#         raise
+#
+#
+# @contextlib.asynccontextmanager
+# async def session_scope() -> AsyncGenerator[AsyncSession, None]:
+#     """Simple context manager that creates a new session for SQLAlchemy."""
+#     session = make_sa_session()
+#     try:
+#         yield session
+#     finally:
+#         await session.close()
+#         logger.debug("[DB] Session closed")

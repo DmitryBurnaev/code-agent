@@ -20,6 +20,9 @@ __all__ = (
     "hash_token",
     "verify_api_token",
 )
+
+from src.utils import cut_string
+
 type JWT_PAYLOAD_RAW_T = dict[str, str | int | datetime.datetime]
 
 
@@ -187,7 +190,7 @@ async def verify_api_token(
     if not auth_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    logger.info("[auth] Authentication: input auth token: %s", auth_token)
+    logger.info("[auth] Authentication: input auth token: '%s'", cut_string(auth_token, 15))
 
     decoded_payload = decode_api_token(auth_token, settings=settings)
     raw_token_identity = decoded_payload.sub

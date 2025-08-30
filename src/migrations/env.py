@@ -83,7 +83,7 @@ def run_migrations_online() -> None:
     asyncio.run(run_async_migrations())
 
 
-def process_revision_directives(context, revision, directives) -> None:
+def process_revision_directives(context, revision, directives) -> None:  # type: ignore
     """
     Allows to form correct revision id
     like:

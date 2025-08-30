@@ -143,7 +143,12 @@ class VendorService:
                 vendor,
                 force_refresh,
             )
-            llm_vendor = LLMVendor.from_vendor(vendor)
+            try:
+                llm_vendor = LLMVendor.from_vendor(vendor)
+            except Exception as exc:
+                logger.exception("Failed to fetch vendor models: %r. Skipping.", exc)
+                continue
+
             if not force_refresh:
                 cached = self._cache_get_data(vendor.slug)
                 if cached is not None:
