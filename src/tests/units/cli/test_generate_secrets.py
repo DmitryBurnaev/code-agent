@@ -1,11 +1,16 @@
+from typing import Generator, Any
+
 import pytest
-from unittest.mock import patch, mock_open
 from pathlib import Path
-from src.cli.generate_secrets import main
+from unittest.mock import patch, mock_open, MagicMock
+
+from _pytest.capture import CaptureFixture
+
+from src.modules.cli.generate_secrets import main
 
 
 @pytest.fixture
-def mock_secrets():
+def mock_secrets() -> Generator[MagicMock, Any, None]:
     """Mock secrets.token_urlsafe to return predictable values for testing."""
     with patch("src.cli.generate_secrets.secrets.token_urlsafe") as mock_token_urlsafe:
         # Return different predictable values for each call
@@ -19,25 +24,25 @@ def mock_secrets():
 
 
 @pytest.fixture
-def mock_file_operations():
+def mock_file_operations() -> Generator[MagicMock, Any, None]:
     """Mock file operations for testing .env file writing."""
     with patch("builtins.open", mock_open()) as mock_file:
         yield mock_file
 
 
-def test_main_writes_secrets_to_env_file(mock_secrets, mock_file_operations, capsys):
+def test_main_writes_secrets_to_env_file(
+    mock_secrets: MagicMock,
+    mock_file_operations: MagicMock,
+    capsys: CaptureFixture[str],
+) -> None:
     """Test that main function writes secrets to .env file."""
-    # Call the main function
     main()
 
-    # Verify file was opened for appending
     mock_file_operations.assert_called_once_with(Path(".env"), "a", encoding="utf-8")
 
-    # Get the file handle and verify what was written
     file_handle = mock_file_operations()
     written_content = file_handle.write.call_args[0][0]
 
-    # Verify the content contains all secrets with proper formatting
     expected_lines = [
         "",
         "# Generated secrets",
@@ -50,12 +55,15 @@ def test_main_writes_secrets_to_env_file(mock_secrets, mock_file_operations, cap
     expected_content = "\n".join(expected_lines)
     assert written_content == expected_content
 
-    # Verify success message is displayed
     captured = capsys.readouterr()
     assert "✅ Secrets written to .env" in captured.out
 
 
-def test_main_changes_file_permissions_successfully(mock_secrets, mock_file_operations, capsys):
+def test_main_changes_file_permissions_successfully(
+    mock_secrets: MagicMock,
+    mock_file_operations: MagicMock,
+    capsys: CaptureFixture[str],
+) -> None:
     """Test that main function successfully changes file permissions to 600."""
     with patch("os.chmod") as mock_chmod:
         main()
@@ -68,7 +76,11 @@ def test_main_changes_file_permissions_successfully(mock_secrets, mock_file_oper
         assert "✅ Permissions changed to 600 for .env" in captured.out
 
 
-def test_main_handles_permission_change_error(mock_secrets, mock_file_operations, capsys):
+def test_main_handles_permission_change_error(
+    mock_secrets: MagicMock,
+    mock_file_operations: MagicMock,
+    capsys: CaptureFixture[str],
+) -> None:
     """Test that main function handles permission change errors gracefully."""
     with patch("os.chmod", side_effect=PermissionError("Permission denied")):
         main()
@@ -82,7 +94,11 @@ def test_main_handles_permission_change_error(mock_secrets, mock_file_operations
         assert "✅ Secrets written to .env" in captured.out
 
 
-def test_main_handles_file_write_error(mock_secrets, mock_file_operations, capsys):
+def test_main_handles_file_write_error(
+    mock_secrets: MagicMock,
+    mock_file_operations: MagicMock,
+    capsys: CaptureFixture[str],
+) -> None:
     """Test that main function handles file write errors gracefully."""
     with patch("builtins.open", side_effect=PermissionError("Permission denied")):
         main()
@@ -93,7 +109,11 @@ def test_main_handles_file_write_error(mock_secrets, mock_file_operations, capsy
         assert "✅ Permissions changed to 600 for .env" not in captured.out
 
 
-def test_main_generates_and_not_displays_secrets(mock_secrets, mock_file_operations, capsys):
+def test_main_generates_and_not_displays_secrets(
+    mock_secrets: MagicMock,
+    mock_file_operations: MagicMock,
+    capsys: CaptureFixture[str],
+) -> None:
     """Test that main function generates and displays secrets correctly."""
     # Call the main function
     main()
@@ -116,8 +136,9 @@ def test_main_generates_and_not_displays_secrets(mock_secrets, mock_file_operati
 
 
 def test_main_calls_secrets_token_urlsafe_with_correct_parameters(
-    mock_secrets, mock_file_operations
-):
+    mock_secrets: MagicMock,
+    mock_file_operations: MagicMock,
+) -> None:
     """Test that secrets.token_urlsafe is called with correct parameters."""
     main()
 
@@ -132,7 +153,11 @@ def test_main_calls_secrets_token_urlsafe_with_correct_parameters(
     assert mock_secrets.call_args_list == expected_calls
 
 
-def test_mocks_prevent_real_file_writing(mock_secrets, mock_file_operations, tmp_path):
+def test_mocks_prevent_real_file_writing(
+    mock_secrets: MagicMock,
+    mock_file_operations: MagicMock,
+    tmp_path: Path,
+) -> None:
     """Test that mocks prevent real file writing operations."""
     # Create a temporary .env file to test against
     test_env_file = tmp_path / ".env"

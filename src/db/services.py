@@ -45,17 +45,16 @@ class SASessionUOW:
             session: If provided, uses this session (dependency injection mode)
                     If None, creates new session from factory (standalone mode)
         """
+        self.__need_to_commit: bool = False
+        self.__owns_session: bool = False
         if session is None:
             # Standalone mode: create new session
             session_factory = get_session_factory()
             self.__session: AsyncSession = session_factory()
-            self.__owns_session: bool = True
+            self.__owns_session = True
         else:
             # Dependency mode: use provided session
             self.__session = session
-            self.__owns_session: bool = False
-
-        self.__need_to_commit: bool = False
 
     async def __aenter__(self) -> Self:
         """Enter transaction context and start transaction if needed."""
@@ -88,28 +87,33 @@ class SASessionUOW:
                 # We own the session - handle commit/rollback
                 if self.__need_to_commit and exc_type is None:
                     await self.commit()
+
                 elif exc_type is not None:
                     await self.rollback()
+
                 else:
                     # No explicit commit needed, but no error - commit by default
                     await self.commit()
 
-                # Close session if we own it
                 await self.__session.close()
                 logger.debug("[DB] Session closed")
+
             else:
                 # Dependency mode - let the dependency handle session lifecycle
                 # But we can still control transaction
                 if self.__need_to_commit and exc_type is None:
                     await self.commit()
+
                 elif exc_type is not None:
                     await self.rollback()
+
                 # Don't close session - dependency will handle it
 
-        except Exception as e:
-            logger.error("[DB] Error during UOW cleanup: %s", str(e))
+        except Exception as exc:
+            logger.error("[DB] Error during UOW cleanup: %r", exc)
             if self.__owns_session:
                 await self.__session.close()
+
             raise
 
     @property

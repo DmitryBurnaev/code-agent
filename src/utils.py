@@ -9,9 +9,9 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from starlette.exceptions import HTTPException
 
-from src.exceptions import BaseApplicationError
 from src.models import ErrorResponse
 from src.settings import get_app_settings
+from src.exceptions import BaseApplicationError
 
 if TYPE_CHECKING:
     from src.db.models import BaseModel

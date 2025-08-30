@@ -1,8 +1,12 @@
-from typing import Any, Iterator, Optional
-from src.cli import simple_ai_client
+import typing
+from typing import Any, Iterator, Optional, ContextManager
+
+from httpx import Response
+
+from src.modules.cli import simple_ai_client
 
 # Mock response for non-streaming mode
-default_json_type = dict[str, Any]
+type default_json_type = dict[str, Any]
 
 
 class MockResponse:
@@ -46,21 +50,20 @@ def test_extract_text_from_response_full() -> None:
 
 def test_process_full_response_prints_content(capsys: Any) -> None:
     resp = MockResponse({"choices": [{"message": {"content": "Answer!"}}]})
-    out = simple_ai_client.process_full_response(resp)  # type: ignore
+    out = simple_ai_client.process_full_response(typing.cast(Response, resp))
     captured = capsys.readouterr()
     assert "Answer!" in captured.out
     assert out == "Answer!"
 
 
 def test_process_stream_response_prints_content(capsys: Any) -> None:
-    # Mock SSE chunks
     lines = [
         b'data: {"choices": [{"delta": {"content": "chunk1 "}}]}',
         b'data: {"choices": [{"delta": {"content": "chunk2!"}}]}',
         b"data: [DONE]",
     ]
     resp = MockStreamResponse(lines)
-    out = simple_ai_client.process_stream_response(resp)  # type: ignore
+    out = simple_ai_client.process_stream_response(typing.cast(ContextManager[Response], resp))
     captured = capsys.readouterr()
     assert "chunk1 chunk2!" in captured.out
     assert out == "chunk1 chunk2!"

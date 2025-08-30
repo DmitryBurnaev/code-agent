@@ -1,3 +1,4 @@
+import logging
 from typing import Any, TYPE_CHECKING, cast
 
 from jinja2 import FileSystemLoader
@@ -18,7 +19,7 @@ from src.modules.admin.views import (
     AIModelsAdminView,
     TokenAdminView,
 )
-from src.db.session import get_async_sessionmaker
+from src.db.session import get_session_factory
 from src.services.counters import AdminCounter
 from src.services.vendors import VendorService
 from src.settings import get_app_settings
@@ -33,6 +34,8 @@ ADMIN_VIEWS: tuple[type[BaseView], ...] = (
     AIModelsAdminView,
     TokenAdminView,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AdminApp(Admin):
@@ -53,7 +56,11 @@ class AdminApp(Admin):
         settings = get_app_settings()
         async with SASessionUOW() as uow:
             dashboard_stat = await AdminCounter().get_stat(session=uow.session)
+        try:
             models = await VendorService(settings).get_list_models()
+        except Exception as exc:
+            logger.error("Failed to get vendor models: %r", exc)
+            models = []
 
         context = {
             "vendors": {
@@ -122,7 +129,7 @@ def make_admin(app: "CodeAgentAPP") -> Admin:
         app,
         base_url=app.settings.admin_base_url,
         title=app.settings.admin_title,
-        session_maker=get_async_sessionmaker(),
+        session_maker=get_session_factory(),
         authentication_backend=AdminAuth(
             secret_key=app.settings.app_secret_key.get_secret_value(),
             settings=app.settings,
