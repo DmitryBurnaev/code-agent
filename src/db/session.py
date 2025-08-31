@@ -1,5 +1,4 @@
 import logging
-from contextvars import ContextVar
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -17,10 +16,10 @@ type sm_type = async_sessionmaker[AsyncSession]
 _async_engine: AsyncEngine | None = None
 _async_session_factory: sm_type | None = None
 
-_async_engine_var: ContextVar[AsyncEngine | None] = ContextVar("db_async_engine", default=None)
-_async_session_factory_var: ContextVar[sm_type | None] = ContextVar(
-    "db_async_session_factory", default=None
-)
+# _async_engine_var: ContextVar[AsyncEngine | None] = ContextVar("db_async_engine", default=None)
+# _async_session_factory_var: ContextVar[sm_type | None] = ContextVar(
+#     "db_async_session_factory", default=None
+# )
 
 
 def get_session_factory() -> sm_type:
@@ -31,23 +30,27 @@ def get_session_factory() -> sm_type:
     session_factory = _async_session_factory
     # session_factory = _async_session_factory_var.get()
     if session_factory is None:
+        logger.warning("[DB] Session factory not initialized!")
+        raise RuntimeError(
+            "Session factory not initialized. Make sure lifespan is properly set up."
+        )
         # session_factory = async_sessionmaker()
         # Try to initialize lazily for backward compatibility
-        logger.warning("[DB] Session factory not initialized, attempting lazy initialization...")
-        try:
-            import asyncio
-
-            # Check if we're in an async context
-            asyncio.get_running_loop()
-            raise RuntimeError(
-                "Session factory not initialized. Make sure lifespan is properly set up."
-            )
-
-        except RuntimeError:
-            # We're not in an async context, create a temporary factory
-            logger.warning("[DB] Creating temporary session factory for non-async context")
-            session_factory = _create_temporary_session_factory()
-            # return _create_temporary_session_factory()
+        # logger.warning("[DB] Session factory not initialized, attempting lazy initialization...")
+        # try:
+        #     import asyncio
+        #
+        #     # Check if we're in an async context
+        #     asyncio.get_running_loop()
+        #     raise RuntimeError(
+        #         "Session factory not initialized. Make sure lifespan is properly set up."
+        #     )
+        #
+        # except RuntimeError:
+        #     # We're not in an async context, create a temporary factory
+        #     logger.warning("[DB] Creating temporary session factory for non-async context")
+        #     session_factory = _create_temporary_session_factory()
+        #     # return _create_temporary_session_factory()
 
     return session_factory
 
@@ -80,6 +83,7 @@ def _create_temporary_session_factory() -> sm_type:
 async def initialize_database() -> None:
     """Initialize database engine and session factory in current context"""
     logger.info("[DB] Initializing database engine and session factory...")
+    global _async_engine, _async_session_factory
     db_settings = get_db_settings()
 
     try:
@@ -101,8 +105,11 @@ async def initialize_database() -> None:
 
         logger.info("[DB] Database engine and session: save to context vars")
         # Set context variables
-        _async_engine_var.set(engine)
-        _async_session_factory_var.set(session_factory)
+        # TODO: use class-singleton instead
+        _async_engine = engine
+        _async_session_factory = session_factory
+        # _async_engine_var.set(engine)
+        # _async_session_factory_var.set(session_factory)
 
         logger.info("[DB] Database engine and session factory initialized successfully")
 
@@ -122,12 +129,15 @@ async def close_database() -> None:
         logger.error("[DB] Failed to close all async sessions: %r", exc)
         raise
 
-    if _async_session_factory_var.get():
-        _async_session_factory_var.set(None)
+    # if _async_session_factory_var.get():
+    #     _async_session_factory_var.set(None)
 
-    if engine := _async_engine_var.get():
-        await engine.dispose(close=True)
-        _async_engine_var.set(None)
+    if _async_engine:
+        await _async_engine.dispose(close=True)
+
+    # if engine := _async_engine_var.get():
+    #     await engine.dispose(close=True)
+    #     _async_engine_var.set(None)
 
     logger.info("[DB] Database engine closed successfully")
 
