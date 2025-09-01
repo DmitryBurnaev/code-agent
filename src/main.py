@@ -8,7 +8,7 @@ from fastapi import FastAPI, Depends
 
 from src.modules.auth.dependencies import verify_api_token
 from src.modules.admin.app import make_admin
-from src.exceptions import AppSettingsError
+from src.exceptions import AppSettingsError, StartupError
 from src.settings import get_app_settings, AppSettings
 from src.modules.api import system_router, proxy_router
 from src.db.session import initialize_database, close_database
@@ -33,14 +33,12 @@ class CodeAgentAPP(FastAPI):
 @asynccontextmanager
 async def lifespan(app: CodeAgentAPP) -> AsyncGenerator[None, None]:
     """Application lifespan context manager for startup and shutdown events."""
-    # Startup: Initialize resources
     logger.info("Starting up application...")
     try:
         await initialize_database()
         logger.info("Application startup completed successfully")
-    except Exception as e:
-        logger.error("Failed to initialize application: %s", str(e))
-        raise
+    except Exception as exc:
+        raise StartupError("Failed to initialize DB connection") from exc
 
     logger.info("Setting up admin application...")
     make_admin(app)
@@ -51,9 +49,10 @@ async def lifespan(app: CodeAgentAPP) -> AsyncGenerator[None, None]:
     logger.info("Shutting down this application...")
     try:
         await close_database()
-        logger.info("well ... Application shutdown completed successfully")
-    except Exception as e:
-        logger.error("Error during application shutdown: %s", str(e))
+    except Exception as exc:
+        logger.error("Error during application shutdown: %r", exc)
+    else:
+        logger.info("Application shutdown completed successfully")
 
     logger.info("=====")
 

@@ -19,6 +19,14 @@ class AppSettingsError(BaseApplicationError):
     """Settings error"""
 
 
+class StartupError(BaseApplicationError):
+    """Startup error"""
+
+
+class DatabaseError(BaseApplicationError):
+    """Database error"""
+
+
 class VendorError(BaseApplicationError):
     """Vendor error"""
 
