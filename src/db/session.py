@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from src.exceptions import DatabaseError
-from src.settings import get_db_settings
+from src.settings.db import get_db_settings
 from src.utils import singleton
 
 logger = logging.getLogger(__name__)

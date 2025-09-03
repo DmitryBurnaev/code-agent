@@ -7,6 +7,7 @@ from pydantic import SecretStr, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.settings.utils import prepare_settings
+from src.settings.log import LogSettings
 
 __all__ = (
     "get_app_settings",
@@ -20,6 +21,7 @@ class FlagsSettings(BaseSettings):
     """Implements settings which are loaded from environment variables"""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_prefix="FLAG_")
+
     offline_mode: bool = False
 
 
@@ -27,8 +29,12 @@ class AdminSettings(BaseSettings):
     """Implements settings which are loaded from environment variables"""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_prefix="ADMIN_")
+
     username: str = Field(default_factory=lambda: "admin", description="Default admin username")
-    password: SecretStr = Field(description="Default admin password")
+    password: SecretStr = Field(
+        default_factory=lambda: SecretStr("code-admin!"),
+        description="Default admin password",
+    )
     session_expiration_time: int = 2 * 24 * 3600  # 2 days
     base_url: str = "/cadm"
     title: str = "CodeAgent Admin"
@@ -48,8 +54,9 @@ class AppSettings(BaseSettings):
     vendor_default_timeout: int = 30
     vendor_default_retries: int = 3
     vendor_encryption_key: SecretStr = Field(description="Secret key for vendor API key encryption")
-    flags: FlagsSettings = Field(default_factory=FlagsSettings)
     admin: AdminSettings = Field(default_factory=AdminSettings)
+    flags: FlagsSettings = Field(default_factory=FlagsSettings)
+    log: LogSettings = Field(default_factory=LogSettings)
 
 
 @lru_cache

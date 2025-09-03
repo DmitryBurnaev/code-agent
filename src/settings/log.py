@@ -1,16 +1,29 @@
 from functools import lru_cache
 import logging
-from typing import Annotated
+from typing import Annotated, TypedDict, Any
 
 from pydantic import StringConstraints
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.settings.utils import prepare_settings
 
+__all__ = (
+    "LOG_LEVELS_PATTERN",
+    "LogSettings",
+)
+
 LOG_LEVELS_PATTERN = "DEBUG|INFO|WARNING|ERROR|CRITICAL"
 LogLevelString = Annotated[
     str, StringConstraints(to_upper=True, pattern=rf"^(?i:{LOG_LEVELS_PATTERN})$")
 ]
+
+
+class LogDictConfig(TypedDict):
+    version: int
+    disable_existing_loggers: bool
+    formatters: dict[str, dict[str, str]]
+    handlers: dict[str, dict[str, str | list[logging.Filter]]]
+    loggers: dict[str, dict[str, list[str] | int | str | bool]]
 
 
 class LoggingRequestForStaticsFilter(logging.Filter):
@@ -34,7 +47,7 @@ class LogSettings(BaseSettings):
     datefmt: str = "%d.%m.%Y %H:%M:%S"
 
     @property
-    def log_config(self) -> dict[str, dict[str, str | bool | list[str]]]:
+    def dict_config(self) -> LogDictConfig:
         filters: list[logging.Filter] = []
         if self.skip_static_access:
             filters.append(LoggingRequestForStaticsFilter("skip-static-access"))
@@ -66,6 +79,11 @@ class LogSettings(BaseSettings):
                 "uvicorn.error": {"handlers": ["console"], "level": self.level, "propagate": False},
             },
         }
+
+    @property
+    def dict_config_any(self) -> dict[str, Any]:
+        """Just simple workaround for type checking in logging config"""
+        return dict(self.dict_config)
 
 
 @lru_cache
