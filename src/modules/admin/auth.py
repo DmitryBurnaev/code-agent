@@ -86,7 +86,7 @@ class AdminAuth(AuthenticationBackend):
         return True
 
     def _encode_token(self, user_payload: UserPayload) -> str:
-        exp_time = self.settings.admin_session_expiration_time
+        exp_time = self.settings.admin.session_expiration_time
         admin_login_token = jwt_encode(
             payload=JWTPayload(sub=str(user_payload["id"])),
             expires_at=(utcnow() + datetime.timedelta(seconds=exp_time)),

@@ -117,7 +117,7 @@ def admin_get_link(
     :return: HTML-safe tag with a generated link
     """
     settings = get_app_settings()
-    base_url = settings.admin_base_url
+    base_url = settings.admin.base_url
     name = url_name or instance.__class__.__name__.lower()
     return markupsafe.Markup(
         f'<a href="{base_url}/{name}/{target}/{instance.id}">[#{instance.id}] {instance}</a>'

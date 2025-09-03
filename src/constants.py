@@ -6,7 +6,6 @@ __all__ = (
     "VendorSlug",
     "VENDOR_URLS",
     "VENDOR_DEFAULT_TIMEOUT",
-    "LOG_LEVELS",
 )
 
 

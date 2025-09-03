@@ -50,8 +50,8 @@ def _add_initial_admin(connection: sa.Connection) -> None:
         VALUES (:username, :password, :is_admin, :is_active, :created_at)            
     """
     users_data = {
-        "username": app_settings.admin_username,
-        "password": PBKDF2PasswordHasher().encode(app_settings.admin_password.get_secret_value()),
+        "username": app_settings.admin.username,
+        "password": PBKDF2PasswordHasher().encode(app_settings.admin.password.get_secret_value()),
         "is_admin": True,
         "is_active": True,
         "created_at": utcnow(),

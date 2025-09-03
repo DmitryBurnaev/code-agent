@@ -268,22 +268,22 @@ The encryption key (`VENDOR_ENCRYPTION_KEY`) is automatically:
 
 ### Environment Variables
 
-| Variable                      | Type   |   Default | Required | Description                                        |
-|-------------------------------|--------|----------:|:--------:|----------------------------------------------------|
-| API_DOCS_ENABLED              | bool   |     false |          | Enable FastAPI docs (Swagger/ReDoc)                |
-| APP_SECRET_KEY                | string |         - |   yes    | Secret key                                         |
-| APP_HOST                      | string | localhost |          | Host address for the application                   |
-| APP_PORT                      | int    |      8003 |          | Port for the application                           |
-| LOG_LEVEL                     | string |      INFO |          | One of DEBUG / INFO / WARNING / ERROR / CRITICAL   |
-| JWT_ALGORITHM                 | string |     HS256 |          | JWT algorithm                                      |
-| HTTP_PROXY_URL                | string |         - |          | Socks5 Proxy URL                                   |
-| VENDOR_DEFAULT_TIMEOUT        | int    |        30 |          | Default HTTP timeout for vendor requests (seconds) |
-| VENDOR_DEFAULT_RETRIES        | int    |         3 |          | Default HTTP retry attempts for vendor requests    |
-| VENDOR_CUSTOM_URL             | string |         - |          | API URL for 'custom' vendor                        |
-| ADMIN_USERNAME                | string |     admin |          | Default admin username                             |
-| ADMIN_PASSWORD                | string |         - |   yes    | Default admin password                             |
-| ADMIN_SESSION_EXPIRATION_TIME | int    |    172800 |          | Admin session expiration time (seconds)            |
-| VENDOR_ENCRYPTION_KEY         | string |         - |   yes    | Secret key for vendor API key encryption           |
+| Variable                      | Type   |     Default | Required | Description                                        |
+|-------------------------------|--------|------------:|:--------:|----------------------------------------------------|
+| API_DOCS_ENABLED              | bool   |       false |          | Enable FastAPI docs (Swagger/ReDoc)                |
+| APP_SECRET_KEY                | string |           - |   yes    | Secret key                                         |
+| APP_HOST                      | string |   localhost |          | Host address for the application                   |
+| APP_PORT                      | int    |        8003 |          | Port for the application                           |
+| LOG_LEVEL                     | string |        INFO |          | One of DEBUG / INFO / WARNING / ERROR / CRITICAL   |
+| JWT_ALGORITHM                 | string |       HS256 |          | JWT algorithm                                      |
+| HTTP_PROXY_URL                | string |           - |          | Socks5 Proxy URL                                   |
+| VENDOR_DEFAULT_TIMEOUT        | int    |          30 |          | Default HTTP timeout for vendor requests (seconds) |
+| VENDOR_DEFAULT_RETRIES        | int    |           3 |          | Default HTTP retry attempts for vendor requests    |
+| VENDOR_CUSTOM_URL             | string |           - |          | API URL for 'custom' vendor                        |
+| ADMIN_USERNAME                | string |       admin |          | Default admin username                             |
+| ADMIN_PASSWORD                | string | code-admin! |          | Default (initial) admin password                   |
+| ADMIN_SESSION_EXPIRATION_TIME | int    |      172800 |          | Admin session expiration time (seconds)            |
+| VENDOR_ENCRYPTION_KEY         | string |           - |   yes    | Secret key for vendor API key encryption           |
 
 ### Database (DBSettings, env prefix `DB_`)
 

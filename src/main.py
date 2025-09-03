@@ -67,7 +67,7 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPP:
             logger.error("Unable to get settings from environment: %r", exc)
             sys.exit(1)
 
-    logging.config.dictConfig(settings.log_config)
+    logging.config.dictConfig(settings.log.dict_config_any)
     logging.captureWarnings(capture=True)
 
     logger.info("Setting up application...")
@@ -95,6 +95,6 @@ if __name__ == "__main__":
         app,
         host=app.settings.app_host,
         port=app.settings.app_port,
-        log_config=app.settings.log_config,
+        log_config=app.settings.log.dict_config_any,
         proxy_headers=True,
     )

@@ -5,7 +5,7 @@ import pytest
 from pydantic import SecretStr
 
 from src.settings import AppSettings, get_app_settings
-from src.constants import LOG_LEVELS
+from src.settings.log import LOG_LEVELS_PATTERN, LogSettings
 
 MINIMAL_ENV_VARS = {
     "SECRET_KEY": "test-key",
@@ -23,50 +23,43 @@ class TestAppSettings:
         assert settings.app_host == "localhost"
         assert settings.app_port == 8003
         assert settings.app_secret_key.get_secret_value() == "test-key"
-        assert settings.log_level == "INFO"
+        assert settings.log.level == "INFO"
         assert settings.jwt_algorithm == "HS256"
         assert settings.http_proxy_url is None
         assert settings.vendor_default_timeout == 30
         assert settings.vendor_default_retries == 3
-        assert settings.admin_username == "admin"
-        assert settings.admin_password.get_secret_value() == "test-password"
-        assert settings.admin_session_expiration_time == 2 * 24 * 3600
+        assert settings.admin.username == "admin"
+        assert settings.admin.password.get_secret_value() == "test-password"
+        assert settings.admin.session_expiration_time == 2 * 24 * 3600
         assert settings.flags.offline_mode is False
         assert settings.vendor_encryption_key.get_secret_value() == "test-encryption-key"
 
-    @pytest.mark.parametrize("log_level", LOG_LEVELS.split("|"))
+    @pytest.mark.parametrize("log_level", LOG_LEVELS_PATTERN.split("|"))
     def test_valid_log_levels(self, log_level: str) -> None:
         settings = AppSettings(
             app_secret_key=SecretStr("test-token"),
             vendor_encryption_key=SecretStr("test-encryption-key"),
-            admin_username="test-username",
-            admin_password=SecretStr("test-password"),
-            log_level=log_level,
             http_proxy_url=None,
         )
-        assert settings.log_level == log_level.upper()
+        assert settings.log.level == log_level.upper()
 
     def test_invalid_log_level(self) -> None:
         with pytest.raises(ValueError):
             AppSettings(
-                admin_username="test-username",
-                admin_password=SecretStr("test-password"),
                 app_secret_key=SecretStr("test-secret"),
                 vendor_encryption_key=SecretStr("test-encryption-key"),
-                log_level="INVALID",
                 http_proxy_url=None,
+                log=LogSettings(level="INVALID"),
             )
 
     def test_log_config(self) -> None:
         settings = AppSettings(
             app_secret_key=SecretStr("test-token"),
-            admin_username="test-username",
-            admin_password=SecretStr("test-password"),
             vendor_encryption_key=SecretStr("test-encryption-key"),
-            log_level="DEBUG",
+            log=LogSettings(level="DEBUG"),
             http_proxy_url=None,
         )
-        log_config = settings.log_config
+        log_config = settings.log.dict_config
         assert log_config["version"] == 1
         assert "standard" in log_config["formatters"]
         assert "console" in log_config["handlers"]
@@ -95,7 +88,7 @@ class TestGetSettings:
     def test_get_app_settings_from_env(self) -> None:
         get_app_settings.cache_clear()
         settings = get_app_settings()
-        assert settings.log_level == "DEBUG"
+        assert settings.log.level == "DEBUG"
         assert settings.app_host == "0.0.0.0"
         assert settings.app_port == 8081
         assert settings.http_proxy_url == "socks5://127.0.0.1:8080"
