@@ -234,7 +234,7 @@ The encryption key (`VENDOR_ENCRYPTION_KEY`) is automatically:
 - Written to your `.env` file
 - Protected with proper file permissions (600)
 
-3. API keys will be automatically encrypted when:
+API keys will be automatically encrypted when:
    - Creating new vendors through the admin interface
    - Updating existing vendor API keys
 
@@ -274,16 +274,36 @@ The encryption key (`VENDOR_ENCRYPTION_KEY`) is automatically:
 | APP_SECRET_KEY                | string |           - |   yes    | Secret key                                         |
 | APP_HOST                      | string |   localhost |          | Host address for the application                   |
 | APP_PORT                      | int    |        8003 |          | Port for the application                           |
-| LOG_LEVEL                     | string |        INFO |          | One of DEBUG / INFO / WARNING / ERROR / CRITICAL   |
 | JWT_ALGORITHM                 | string |       HS256 |          | JWT algorithm                                      |
 | HTTP_PROXY_URL                | string |           - |          | Socks5 Proxy URL                                   |
 | VENDOR_DEFAULT_TIMEOUT        | int    |          30 |          | Default HTTP timeout for vendor requests (seconds) |
 | VENDOR_DEFAULT_RETRIES        | int    |           3 |          | Default HTTP retry attempts for vendor requests    |
-| VENDOR_CUSTOM_URL             | string |           - |          | API URL for 'custom' vendor                        |
-| ADMIN_USERNAME                | string |       admin |          | Default admin username                             |
-| ADMIN_PASSWORD                | string | code-admin! |          | Default (initial) admin password                   |
-| ADMIN_SESSION_EXPIRATION_TIME | int    |      172800 |          | Admin session expiration time (seconds)            |
 | VENDOR_ENCRYPTION_KEY         | string |           - |   yes    | Secret key for vendor API key encryption           |
+
+### Admin Settings (AdminSettings, env prefix `ADMIN_`)
+
+| Variable                      | Type   |         Default | Required | Description                             |
+|-------------------------------|--------|----------------:|:--------:|-----------------------------------------|
+| ADMIN_USERNAME                | string |           admin |          | Default admin username                  |
+| ADMIN_PASSWORD                | string |     code-admin! |          | Default (initial) admin password        |
+| ADMIN_SESSION_EXPIRATION_TIME | int    |          172800 |          | Admin session expiration time (seconds) |
+| ADMIN_BASE_URL                | string |           /cadm |          | Admin panel base URL                    |
+| ADMIN_TITLE                   | string | CodeAgent Admin |          | Admin panel title                       |
+
+### Logging Settings (LogSettings, env prefix `LOG_`)
+
+| Variable               | Type   |                                                           Default | Required | Description                                      |
+|------------------------|--------|------------------------------------------------------------------:|:--------:|--------------------------------------------------|
+| LOG_LEVEL              | string |                                                              INFO |          | One of DEBUG / INFO / WARNING / ERROR / CRITICAL |
+| LOG_SKIP_STATIC_ACCESS | bool   |                                                             false |          | Skip logging access to static files              |
+| LOG_FORMAT             | string | [%(asctime)s] %(levelname)s [%(filename)s:%(lineno)s] %(message)s |          | Log message format                               |
+| LOG_DATEFMT            | string |                                                 %d.%m.%Y %H:%M:%S |          | Date format for log timestamps                   |
+
+### Feature Flags (FlagsSettings, env prefix `FLAG_`)
+
+| Variable          | Type | Default | Required | Description         |
+|-------------------|------|--------:|:--------:|---------------------|
+| FLAG_OFFLINE_MODE | bool |   false |          | Enable offline mode |
 
 ### Database (DBSettings, env prefix `DB_`)
 
@@ -317,18 +337,3 @@ These are used by `src/cli/simple_ai_client.py`.
 | APP_SERVICE  | string |       - |   yes (container)    | Selects entrypoint behavior: `web` / `test` / `lint`                        | 
 | DOCKER_IMAGE | string |       - | yes (docker-compose) | Image tag used by `docker-compose.yml`                                      |
 | APP_PORT     | int    |       - | yes (docker-compose) | Port mapping for `docker-compose.yml` (should match application `APP_PORT`) |
-
-
-## In the Future
-1. Use DB storage for
-   1. AI credentials (encrypted) and user settings
-      - [x] Create SQLAlchemy models for vendors and their settings
-      - [x] Implement symmetric encryption for sensitive data (tokens)
-      - [x] Create repository pattern for vendor data access
-      - [x] Add migration system for database schema
-      - [x] Implement vendor settings management API
-      - [x] Add validation for vendor settings
-      - [ ] Create backup/restore mechanism for vendor data
-   2. request-response history (by completion-id)
-   3. models usages 
-2. Use redis-based cache instead of in-memory one
