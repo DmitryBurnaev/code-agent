@@ -39,7 +39,7 @@ class LoggingRequestForStaticsFilter(logging.Filter):
 class LogSettings(BaseSettings):
     """Implements settings which are loaded from environment variables"""
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_prefix="LOG_")
+    model_config = SettingsConfigDict(env_prefix="LOG_")
 
     level: LogLevelString = "INFO"
     skip_static_access: bool = False
@@ -71,12 +71,12 @@ class LogSettings(BaseSettings):
             "loggers": {
                 "src": {"handlers": ["console"], "level": self.level, "propagate": False},
                 "fastapi": {"handlers": ["console"], "level": self.level, "propagate": False},
+                "uvicorn.error": {"handlers": ["console"], "level": self.level, "propagate": False},
                 "uvicorn.access": {
                     "handlers": ["console"],
                     "level": self.level,
                     "propagate": False,
                 },
-                "uvicorn.error": {"handlers": ["console"], "level": self.level, "propagate": False},
             },
         }
 

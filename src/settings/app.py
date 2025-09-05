@@ -20,7 +20,7 @@ APP_DIR = Path(__file__).parent.parent
 class FlagsSettings(BaseSettings):
     """Implements settings which are loaded from environment variables"""
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_prefix="FLAG_")
+    model_config = SettingsConfigDict(env_prefix="FLAG_")
 
     offline_mode: bool = False
 
@@ -28,14 +28,14 @@ class FlagsSettings(BaseSettings):
 class AdminSettings(BaseSettings):
     """Implements settings which are loaded from environment variables"""
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_prefix="ADMIN_")
+    model_config = SettingsConfigDict(env_prefix="ADMIN_")
 
     username: str = Field(default_factory=lambda: "admin", description="Default admin username")
     password: SecretStr = Field(
         default_factory=lambda: SecretStr("code-admin!"),
         description="Default admin password",
     )
-    session_expiration_time: int = 2 * 24 * 3600  # 2 days
+    session_expiration_time: int = 2 * 24 * 3600
     base_url: str = "/cadm"
     title: str = "CodeAgent Admin"
 
