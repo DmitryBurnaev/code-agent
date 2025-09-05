@@ -12,7 +12,7 @@ from src.modules.cli.generate_secrets import main
 @pytest.fixture
 def mock_secrets() -> Generator[MagicMock, Any, None]:
     """Mock secrets.token_urlsafe to return predictable values for testing."""
-    with patch("src.cli.generate_secrets.secrets.token_urlsafe") as mock_token_urlsafe:
+    with patch("src.modules.cli.generate_secrets.secrets.token_urlsafe") as mock_token_urlsafe:
         # Return different predictable values for each call
         mock_token_urlsafe.side_effect = [
             "test-secret-key-32-chars-long-for-testing",

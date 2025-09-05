@@ -40,6 +40,7 @@ class TestAppSettings:
             app_secret_key=SecretStr("test-token"),
             vendor_encryption_key=SecretStr("test-encryption-key"),
             http_proxy_url=None,
+            log=LogSettings(level=log_level),
         )
         assert settings.log.level == log_level.upper()
 

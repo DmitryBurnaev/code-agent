@@ -6,13 +6,13 @@ requires-python = ">=3.13,<3.14"
 dependencies = [
     "fastapi==0.116.1",
     "itsdangerous==2.2.0",         # required by session engine
-    "uvicorn==0.34.0",
-    "pydantic==2.11.1",
-    "pydantic-settings==2.8.1",
+    "uvicorn==0.35.0",
+    "pydantic==2.11.7",
+    "pydantic-settings==2.10.1",
     "httpx[socks]==0.28.1",
     "sqlalchemy[asyncio]==2.0.43",
-    "sqladmin==0.20.1",
-    "alembic==1.16.1",
+    "sqladmin==0.21.0",
+    "alembic==1.16.5",
     "asyncpg==0.30.0",
     "pyjwt==2.10.1",
     "pycryptodomex==3.23.0",       # for API key encryptions
@@ -23,8 +23,8 @@ dependencies = [
 dev-dependencies = [
     "types-WTForms>=3.2,<4",
     "pytest>=8.3,<9",
-    "pytest-asyncio>=0.26.0,<0.27",
-    "coverage>=7.8,<7.9",
+    "pytest-asyncio>=1.1.0,<1.2", # were >=0.26.0,<0.27"
+    "coverage>=7.10,<7.11",
     "black>=25.1,<25.2",
     "ruff>=0.12,<0.13",
     "mypy>=0.17,<1.18",

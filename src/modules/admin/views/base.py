@@ -33,9 +33,9 @@ class BaseModelView(ModelView):
         if not self.custom_post_create:
             raise HTTPException(status_code=400, detail="Missing handle_post_create' logic")
 
-        model = await self.get_object_for_details(object_id)
+        model = await self.get_object_for_details(request=request)
         if not model:
-            raise HTTPException(status_code=404, detail="Object not found")
+            raise HTTPException(status_code=404, detail=f"Object #{object_id} not found")
 
         context = {"model_view": self, "model": model, "title": self.name}
 
