@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, AsyncIterator, Generator
+from typing import Any, AsyncGenerator, AsyncIterator, Generator, cast
 from unittest.mock import Mock, AsyncMock, patch
 
 import json
@@ -375,7 +375,8 @@ class TestProxyService:
         assert isinstance(response, Response)
         assert response.status_code == 429
         assert response.headers["Content-Type"] == "application/json"
-        assert json.loads(str(response.body))["error"]["type"] == "rate_limit_error"
+        response_body: bytes = cast(bytes, response.body)
+        assert json.loads(response_body.decode())["error"]["type"] == "rate_limit_error"
 
     async def test_handle_request_streaming_error_status(
         self,

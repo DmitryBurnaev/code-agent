@@ -1,10 +1,11 @@
 import os
-from typing import Any, Generator
+from typing import Any, Generator, AsyncGenerator
 from unittest.mock import MagicMock, patch
 
 import pytest
 from starlette.testclient import TestClient
 
+from src.db import initialize_database
 from src.main import make_app, CodeAgentAPP
 from src.modules.auth.tokens import make_api_token
 from src.settings import AppSettings, get_app_settings
@@ -32,8 +33,6 @@ def mock_user() -> MockUser:
 def app_settings_test() -> AppSettings:
     return AppSettings(
         http_proxy_url=None,
-        admin_username="test-username",
-        admin_password=SecretStr("test-password-oKcqO3rPCxt2"),
         app_secret_key=SecretStr("example-UStLb8mds9K"),
         vendor_encryption_key=SecretStr("test-encryption-key"),
     )
@@ -45,10 +44,11 @@ def minimal_env_vars() -> Generator[None, Any, None]:
         yield
 
 
-@pytest.fixture
-def test_app(app_settings_test: AppSettings) -> Generator[CodeAgentAPP, Any, None]:
+@pytest.fixture(autouse=True)
+async def test_app(app_settings_test: AppSettings) -> AsyncGenerator[CodeAgentAPP, Any]:
     test_app = make_app(settings=app_settings_test)
     test_app.dependency_overrides[get_app_settings] = lambda: test_app.settings
+    await initialize_database()
     yield test_app
     test_app.dependency_overrides.clear()
 
