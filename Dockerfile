@@ -1,17 +1,16 @@
 # copy source code
-FROM alpine:3.21 AS code-layer
+FROM alpine:3.22 AS code-layer
 WORKDIR /usr/src
 
 COPY src ./src
 COPY alembic.ini .
-COPY alembic ./alembic
 COPY etc/docker-entrypoint .
 
 # copy source code
 FROM python:3.13-alpine AS requirements-layer
 WORKDIR /usr/src
 ARG DEV_DEPS="false"
-ARG UV_VERSION=0.6.14
+ARG UV_VERSION=0.8.15
 
 COPY pyproject.toml .
 COPY uv.lock .
