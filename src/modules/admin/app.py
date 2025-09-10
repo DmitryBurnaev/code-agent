@@ -112,8 +112,12 @@ class AdminApp(Admin):
         return redirect_url
 
     def _init_jinja_templates(self) -> None:
+        """
+        Init jinja templates.
+        Note: we have to insert loader in the start of list in order to override default templates
+        """
         templates_dir = APP_DIR / self.custom_templates_dir
-        self.templates.env.loader.loaders.append(FileSystemLoader(templates_dir))  # type: ignore
+        self.templates.env.loader.loaders.insert(0, FileSystemLoader(templates_dir))  # type: ignore
 
     def _register_views(self) -> None:
         for view in ADMIN_VIEWS:
