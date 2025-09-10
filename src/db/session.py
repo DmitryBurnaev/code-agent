@@ -19,6 +19,10 @@ type sm_type = async_sessionmaker[AsyncSession]
 
 @singleton
 class AsyncDBConnectors:
+    """
+    Singleton class that handles database connections
+    (default session factory and prepared settings).
+    """
 
     def __init__(self) -> None:
         self.engine: AsyncEngine | None = None

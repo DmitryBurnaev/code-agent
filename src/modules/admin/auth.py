@@ -3,12 +3,12 @@ import logging
 from typing import cast, TypedDict
 
 import jwt
-from fastapi import HTTPException, Request
+from fastapi import Request
 from sqladmin.authentication import AuthenticationBackend
 
 from src.db.repositories import UserRepository
 from src.db.services import SASessionUOW
-from src.settings import SettingsDep
+from src.db.models import User
 from src.modules.auth.tokens import jwt_encode, JWTPayload, jwt_decode
 from src.settings import AppSettings
 from src.utils import utcnow
@@ -28,7 +28,7 @@ class AdminAuth(AuthenticationBackend):
     Customized admin authentication (based on encoding JWT token based on current user)
     """
 
-    def __init__(self, secret_key: str, settings: SettingsDep) -> None:
+    def __init__(self, secret_key: str, settings: AppSettings) -> None:
         super().__init__(secret_key=secret_key)
         self.settings: AppSettings = settings
 
@@ -39,19 +39,14 @@ class AdminAuth(AuthenticationBackend):
 
         async with SASessionUOW() as uow:
             user = await UserRepository(session=uow.session).get_by_username(username=username)
-            if not user:
-                raise HTTPException(status_code=401, detail="User not found")
+            ok, _ = self._check_user(user, identety=username, password=password)
+            if not ok:
+                return False
 
-            if not user.is_active:
-                raise HTTPException(status_code=401, detail="User inactive")
+            admin: User = cast(User, user)
 
-            password_verified = user.verify_password(password)
-
-        if not password_verified:
-            raise HTTPException(status_code=401, detail="Invalid password")
-
-        user_payload: UserPayload = {"id": user.id, "username": user.username, "email": user.email}
-        request.session.update({"token": self._encode_token(user_payload)})
+        payload: UserPayload = {"id": admin.id, "username": admin.username, "email": admin.email}
+        request.session.update({"token": self._encode_token(payload)})
         return True
 
     async def logout(self, request: Request) -> bool:
@@ -71,16 +66,8 @@ class AdminAuth(AuthenticationBackend):
 
         async with SASessionUOW() as uow:
             user = await UserRepository(session=uow.session).first(instance_id=user_id)
-            if not user:
-                logger.error("[admin-auth] User 'id: %r' not found", user_id)
-                return False
-
-            if not user.is_active:
-                logger.error("[admin-auth] User '%r' inactive", user)
-                return False
-
-            if not user.is_admin:
-                logger.error("[admin-auth] User '%r' not admin", user)
+            ok, _ = self._check_user(user, identety=user_id)
+            if not ok:
                 return False
 
         return True
@@ -101,3 +88,25 @@ class AdminAuth(AuthenticationBackend):
             return None
 
         return int(user_payload.sub)
+
+    @staticmethod
+    def _check_user(user: User | None, identety: str | int,  password: str | None = None) -> tuple[bool, str]:
+        if not user:
+            logger.error("[admin-auth] User '%r' not found", identety)
+            return False, "User not found"
+
+        if password is not None:
+            password_verified = user.verify_password(password)
+            if not password_verified:
+                logger.error("[admin-auth] User '%r' | invalid password", user)
+                return False, "Invalid password"
+
+        if not user.is_active:
+            logger.error("[admin-auth] User '%r' | inactive", user)
+            return False, "User inactive"
+
+        if not user.is_admin:
+            logger.error("[admin-auth] User '%r' | not an admin", user)
+            return False, "User is not an admin"
+
+        return True, "User is active"
