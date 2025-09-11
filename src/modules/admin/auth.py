@@ -9,6 +9,7 @@ from sqladmin.authentication import AuthenticationBackend
 from src.db.repositories import UserRepository
 from src.db.services import SASessionUOW
 from src.db.models import User
+from src.modules.admin.utils import my_context_var
 from src.modules.auth.tokens import jwt_encode, JWTPayload, jwt_decode
 from src.settings import AppSettings
 from src.utils import utcnow
@@ -39,8 +40,9 @@ class AdminAuth(AuthenticationBackend):
 
         async with SASessionUOW() as uow:
             user = await UserRepository(session=uow.session).get_by_username(username=username)
-            ok, _ = self._check_user(user, identety=username, password=password)
+            ok, message = self._check_user(user, identety=username, password=password)
             if not ok:
+                my_context_var.set(message)
                 return False
 
             admin: User = cast(User, user)
