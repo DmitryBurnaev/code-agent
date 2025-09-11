@@ -11,6 +11,7 @@ from starlette.responses import Response
 from src.modules.admin.auth import AdminAuth
 from src.constants import APP_DIR
 from src.db.services import SASessionUOW
+from src.modules.admin.utils import custom_greeting
 from src.modules.admin.views import (
     BaseAPPView,
     BaseModelView,
@@ -118,6 +119,7 @@ class AdminApp(Admin):
         """
         templates_dir = APP_DIR / self.custom_templates_dir
         self.templates.env.loader.loaders.insert(0, FileSystemLoader(templates_dir))  # type: ignore
+        self.templates.env.globals["greet"] = custom_greeting
 
     def _register_views(self) -> None:
         for view in ADMIN_VIEWS:
