@@ -96,21 +96,21 @@ class AdminAuth(AuthenticationBackend):
     @staticmethod
     def _check_user(user: User | None, identety: str | int,  password: str | None = None) -> tuple[bool, str]:
         if not user:
-            logger.error("[admin-auth] User '%r' not found", identety)
+            logger.error("[admin-auth] User '%s' not found", identety)
             return False, "User not found"
 
         if password is not None:
             password_verified = user.verify_password(password)
             if not password_verified:
-                logger.error("[admin-auth] User '%r' | invalid password", user)
+                logger.error("[admin-auth] User '%s' | invalid password", user)
                 return False, "Invalid password"
 
         if not user.is_active:
-            logger.error("[admin-auth] User '%r' | inactive", user)
+            logger.error("[admin-auth] User '%s' | inactive", user)
             return False, "User inactive"
 
         if not user.is_admin:
-            logger.error("[admin-auth] User '%r' | not an admin", user)
+            logger.error("[admin-auth] User '%s' | not an admin", user)
             return False, "User is not an admin"
 
         return True, "User is active"
