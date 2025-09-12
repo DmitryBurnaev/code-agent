@@ -9,7 +9,7 @@ from sqladmin.authentication import AuthenticationBackend
 from src.db.repositories import UserRepository
 from src.db.services import SASessionUOW
 from src.db.models import User
-from src.modules.admin.utils import my_context_var
+from src.modules.admin.utils import register_error_alert
 from src.modules.auth.tokens import jwt_encode, JWTPayload, jwt_decode
 from src.settings import AppSettings
 from src.utils import utcnow
@@ -42,7 +42,7 @@ class AdminAuth(AuthenticationBackend):
             user = await UserRepository(session=uow.session).get_by_username(username=username)
             ok, message = self._check_user(user, identety=username, password=password)
             if not ok:
-                my_context_var.set(message)
+                register_error_alert(title="Authentication failed", details=message)
                 return False
 
             admin: User = cast(User, user)
@@ -64,12 +64,14 @@ class AdminAuth(AuthenticationBackend):
         user_id = self._decode_token(token)
         if not user_id:
             logger.warning("[admin-auth] Invalid or outdated session's token")
+            register_error_alert(title="Authentication failed", details="Invalid or outdated session's token")
             return False
 
         async with SASessionUOW() as uow:
             user = await UserRepository(session=uow.session).first(instance_id=user_id)
-            ok, _ = self._check_user(user, identety=user_id)
+            ok, message = self._check_user(user, identety=user_id)
             if not ok:
+                register_error_alert(title="Authentication failed", details=message)
                 return False
 
         return True
