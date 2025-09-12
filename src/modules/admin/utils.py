@@ -1,10 +1,11 @@
 import logging
 import contextvars
-from typing import TypedDict
+from typing import TypedDict, Optional
 
 logger = logging.getLogger(__name__)
-alert_context_var = contextvars.ContextVar("alert_context", default=None)
-
+alert_context_var: contextvars.ContextVar[Optional["ErrorInContext"]] = contextvars.ContextVar(
+    "alert_context", default=None
+)
 
 class ErrorInContext(TypedDict):
     title: str
@@ -19,7 +20,7 @@ def register_error_alert(title: str, details: str) -> None:
     alert_context_var.set(ErrorInContext(title=title, details=details))
 
 
-def get_current_error_alert() -> ErrorInContext | None:
+def get_current_error_alert() -> dict[str, str] | None:
     """
     Get the current error alert from the context (used for global context in jinja templates)
     """
