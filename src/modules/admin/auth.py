@@ -64,7 +64,9 @@ class AdminAuth(AuthenticationBackend):
         user_id = self._decode_token(token)
         if not user_id:
             logger.warning("[admin-auth] Invalid or outdated session's token")
-            register_error_alert(title="Authentication failed", details="Invalid or outdated session's token")
+            register_error_alert(
+                title="Authentication failed", details="Invalid or outdated session's token"
+            )
             return False
 
         async with SASessionUOW() as uow:
@@ -94,7 +96,9 @@ class AdminAuth(AuthenticationBackend):
         return int(user_payload.sub)
 
     @staticmethod
-    def _check_user(user: User | None, identety: str | int,  password: str | None = None) -> tuple[bool, str]:
+    def _check_user(
+        user: User | None, identety: str | int, password: str | None = None
+    ) -> tuple[bool, str]:
         if not user:
             logger.error("[admin-auth] User '%s' not found", identety)
             return False, "User not found"
