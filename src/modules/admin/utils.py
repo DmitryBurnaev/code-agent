@@ -7,6 +7,7 @@ alert_context_var: contextvars.ContextVar[Optional["ErrorInContext"]] = contextv
     "alert_context", default=None
 )
 
+
 class ErrorInContext(TypedDict):
     title: str
     details: str
