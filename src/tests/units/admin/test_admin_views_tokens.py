@@ -1,7 +1,3 @@
-"""
-Tests for admin views tokens module.
-"""
-
 import datetime
 from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -12,16 +8,14 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
 from src.modules.admin.views.tokens import TokenAdminView
-from src.db.models import Token, User
-from src.tests.mocks import MockUser, MockAPIToken
+from src.db.models import Token
+from src.tests.mocks import MockUser
 
 
 class TestTokenAdminView:
-    """Test cases for TokenAdminView class."""
 
     @pytest.fixture
     def mock_app(self) -> MagicMock:
-        """Create mock app with settings."""
         app = MagicMock()
         app.settings = MagicMock()
         app.settings.jwt_algorithm = "HS256"
@@ -31,14 +25,12 @@ class TestTokenAdminView:
 
     @pytest.fixture
     def token_admin_view(self, mock_app: MagicMock) -> TokenAdminView:
-        """Create TokenAdminView instance for testing."""
         view = TokenAdminView()
         view.app = mock_app
         return view
 
     @pytest.fixture
     def mock_request(self) -> MagicMock:
-        """Create mock FastAPI request."""
         request = MagicMock(spec=Request)
         request.query_params = {"pks": "1,2,3"}
         request.url_for = MagicMock()
@@ -47,12 +39,10 @@ class TestTokenAdminView:
 
     @pytest.fixture
     def mock_user(self) -> MockUser:
-        """Create mock user."""
         return MockUser(id=1, username="test-user", is_active=True)
 
     @pytest.fixture
     def mock_token(self, mock_user: MockUser) -> MagicMock:
-        """Create mock token."""
         token = MagicMock(spec=Token)
         token.id = 1
         token.user_id = 1
@@ -66,7 +56,6 @@ class TestTokenAdminView:
 
     @pytest.fixture
     def mock_form_data(self) -> dict[str, Any]:
-        """Create mock form data for token creation."""
         return {
             "user": 1,
             "name": "test-token",
@@ -75,7 +64,6 @@ class TestTokenAdminView:
 
     @pytest.fixture
     def mock_token_repository(self) -> Generator[AsyncMock, Any, None]:
-        """Mock TokenRepository for testing."""
         with patch("src.modules.admin.views.tokens.TokenRepository") as mock_repo_class:
             mock_repo = AsyncMock()
             mock_repo_class.return_value = mock_repo
@@ -83,7 +71,6 @@ class TestTokenAdminView:
 
     @pytest.fixture
     def mock_uow(self) -> Generator[AsyncMock, Any, None]:
-        """Mock SASessionUOW for testing."""
         with patch("src.modules.admin.views.tokens.SASessionUOW") as mock_uow_class:
             mock_uow = AsyncMock()
             mock_uow_class.return_value.__aenter__.return_value = mock_uow
@@ -92,7 +79,6 @@ class TestTokenAdminView:
 
     @pytest.fixture
     def mock_cache(self) -> Generator[MagicMock, Any, None]:
-        """Mock InMemoryCache for testing."""
         with patch("src.modules.admin.views.tokens.InMemoryCache") as mock_cache_class:
             mock_cache = MagicMock()
             mock_cache_class.return_value = mock_cache
@@ -100,7 +86,15 @@ class TestTokenAdminView:
 
 
 class TestTokenAdminViewInsertModel(TestTokenAdminView):
-    """Test cases for TokenAdminView.insert_model method."""
+
+    @pytest.fixture
+    def mock_make_api_token(self) -> Generator[MagicMock, Any, None]:
+        with patch("src.modules.admin.views.tokens.make_api_token") as mock_make_token:
+            mock_token_info = MagicMock()
+            mock_token_info.hashed_value = "hashed-token-value"
+            mock_token_info.value = "raw-token-value"
+            mock_make_token.return_value = mock_token_info
+            yield mock_make_token
 
     @pytest.mark.asyncio
     async def test_insert_model_success(
@@ -110,21 +104,14 @@ class TestTokenAdminViewInsertModel(TestTokenAdminView):
         mock_form_data: dict[str, Any],
         mock_token: Token,
         mock_cache: MagicMock,
+        mock_make_api_token: MagicMock,
     ) -> None:
-        """Test successful token creation."""
         # Setup mocks
         mock_super_insert = AsyncMock(return_value=mock_token)
         token_admin_view.__class__.__bases__[0].insert_model = mock_super_insert
 
-        # Mock make_api_token
-        with patch("src.modules.admin.views.tokens.make_api_token") as mock_make_token:
-            mock_token_info = MagicMock()
-            mock_token_info.hashed_value = "hashed-token-value"
-            mock_token_info.value = "raw-token-value"
-            mock_make_token.return_value = mock_token_info
-
-            # Execute
-            result = await token_admin_view.insert_model(mock_request, mock_form_data)
+        # Execute
+        result = await token_admin_view.insert_model(mock_request, mock_form_data)
 
         # Verify
         assert result == mock_token
@@ -138,26 +125,19 @@ class TestTokenAdminViewInsertModel(TestTokenAdminView):
         mock_request: MagicMock,
         mock_token: Token,
         mock_cache: MagicMock,
+        mock_make_api_token: MagicMock,
     ) -> None:
-        """Test token creation without expiration date."""
         # Setup mocks
         form_data = {"user": 1, "name": "test-token"}
         mock_super_insert = AsyncMock(return_value=mock_token)
         token_admin_view.__class__.__bases__[0].insert_model = mock_super_insert
 
-        # Mock make_api_token
-        with patch("src.modules.admin.views.tokens.make_api_token") as mock_make_token:
-            mock_token_info = MagicMock()
-            mock_token_info.hashed_value = "hashed-token-value"
-            mock_token_info.value = "raw-token-value"
-            mock_make_token.return_value = mock_token_info
-
-            # Execute
-            result = await token_admin_view.insert_model(mock_request, form_data)
+        # Execute
+        result = await token_admin_view.insert_model(mock_request, form_data)
 
         # Verify
         assert result == mock_token
-        mock_make_token.assert_called_once_with(
+        mock_make_api_token.assert_called_once_with(
             expires_at=None, settings=token_admin_view.app.settings
         )
 
@@ -168,33 +148,25 @@ class TestTokenAdminViewInsertModel(TestTokenAdminView):
         mock_request: MagicMock,
         mock_token: Token,
         mock_cache: MagicMock,
+        mock_make_api_token: MagicMock,
     ) -> None:
-        """Test token creation with expiration date."""
         # Setup mocks
         expires_at = datetime.datetime.now() + datetime.timedelta(days=30)
         form_data = {"user": 1, "name": "test-token", "expires_at": expires_at}
         mock_super_insert = AsyncMock(return_value=mock_token)
         token_admin_view.__class__.__bases__[0].insert_model = mock_super_insert
 
-        # Mock make_api_token
-        with patch("src.modules.admin.views.tokens.make_api_token") as mock_make_token:
-            mock_token_info = MagicMock()
-            mock_token_info.hashed_value = "hashed-token-value"
-            mock_token_info.value = "raw-token-value"
-            mock_make_token.return_value = mock_token_info
-
-            # Execute
-            result = await token_admin_view.insert_model(mock_request, form_data)
+        # Execute
+        result = await token_admin_view.insert_model(mock_request, form_data)
 
         # Verify
         assert result == mock_token
-        mock_make_token.assert_called_once_with(
+        mock_make_api_token.assert_called_once_with(
             expires_at=expires_at, settings=token_admin_view.app.settings
         )
 
 
 class TestTokenAdminViewGetObjectForDetails(TestTokenAdminView):
-    """Test cases for TokenAdminView.get_object_for_details method."""
 
     @pytest.mark.asyncio
     async def test_get_object_for_details_success(
@@ -204,7 +176,6 @@ class TestTokenAdminViewGetObjectForDetails(TestTokenAdminView):
         mock_token: Token,
         mock_cache: MagicMock,
     ) -> None:
-        """Test successful token details retrieval."""
         # Setup mocks
         mock_super_get = AsyncMock(return_value=mock_token)
         token_admin_view.__class__.__bases__[0].get_object_for_details = mock_super_get
@@ -227,7 +198,6 @@ class TestTokenAdminViewGetObjectForDetails(TestTokenAdminView):
         mock_token: Token,
         mock_cache: MagicMock,
     ) -> None:
-        """Test token details retrieval when token not in cache."""
         # Setup mocks
         mock_super_get = AsyncMock(return_value=mock_token)
         token_admin_view.__class__.__bases__[0].get_object_for_details = mock_super_get
@@ -244,7 +214,6 @@ class TestTokenAdminViewGetObjectForDetails(TestTokenAdminView):
 
 
 class TestTokenAdminViewGetSaveRedirectUrl(TestTokenAdminView):
-    """Test cases for TokenAdminView.get_save_redirect_url method."""
 
     def test_get_save_redirect_url(
         self,
@@ -252,7 +221,6 @@ class TestTokenAdminViewGetSaveRedirectUrl(TestTokenAdminView):
         mock_request: MagicMock,
         mock_token: Token,
     ) -> None:
-        """Test redirect URL generation after token creation."""
         # Setup mocks
         mock_build_url = MagicMock(return_value=URL("/admin/tokens/details/1"))
         token_admin_view._build_url_for = mock_build_url
@@ -268,7 +236,6 @@ class TestTokenAdminViewGetSaveRedirectUrl(TestTokenAdminView):
 
 
 class TestTokenAdminViewActions(TestTokenAdminView):
-    """Test cases for TokenAdminView action methods."""
 
     @pytest.mark.asyncio
     async def test_deactivate_tokens_success(
@@ -278,7 +245,6 @@ class TestTokenAdminViewActions(TestTokenAdminView):
         mock_token_repository: AsyncMock,
         mock_uow: AsyncMock,
     ) -> None:
-        """Test successful token deactivation."""
         # Setup mocks
         mock_set_active = AsyncMock(return_value=RedirectResponse("/admin/tokens/list"))
         token_admin_view._set_active = mock_set_active
@@ -298,7 +264,6 @@ class TestTokenAdminViewActions(TestTokenAdminView):
         mock_token_repository: AsyncMock,
         mock_uow: AsyncMock,
     ) -> None:
-        """Test successful token activation."""
         # Setup mocks
         mock_set_active = AsyncMock(return_value=RedirectResponse("/admin/tokens/list"))
         token_admin_view._set_active = mock_set_active
@@ -312,7 +277,6 @@ class TestTokenAdminViewActions(TestTokenAdminView):
 
 
 class TestTokenAdminViewSetActive(TestTokenAdminView):
-    """Test cases for TokenAdminView._set_active method."""
 
     @pytest.mark.asyncio
     async def test_set_active_success(
@@ -322,7 +286,6 @@ class TestTokenAdminViewSetActive(TestTokenAdminView):
         mock_token_repository: AsyncMock,
         mock_uow: AsyncMock,
     ) -> None:
-        """Test successful token activation/deactivation."""
         # Setup mocks
         mock_uow.session = MagicMock()
         mock_token_repository.set_active.return_value = None
@@ -343,7 +306,6 @@ class TestTokenAdminViewSetActive(TestTokenAdminView):
         mock_token_repository: AsyncMock,
         mock_uow: AsyncMock,
     ) -> None:
-        """Test token activation/deactivation with no pks provided."""
         # Setup mocks
         mock_request.query_params = {"pks": ""}
         mock_uow.session = MagicMock()
@@ -364,7 +326,6 @@ class TestTokenAdminViewSetActive(TestTokenAdminView):
         mock_token_repository: AsyncMock,
         mock_uow: AsyncMock,
     ) -> None:
-        """Test token activation/deactivation with empty pks."""
         # Setup mocks
         mock_request.query_params = {}
         mock_uow.session = MagicMock()
@@ -385,7 +346,6 @@ class TestTokenAdminViewSetActive(TestTokenAdminView):
         mock_token_repository: AsyncMock,
         mock_uow: AsyncMock,
     ) -> None:
-        """Test token deactivation."""
         # Setup mocks
         mock_uow.session = MagicMock()
         mock_token_repository.set_active.return_value = None
@@ -400,7 +360,6 @@ class TestTokenAdminViewSetActive(TestTokenAdminView):
 
 
 class TestTokenAdminViewEdgeCases(TestTokenAdminView):
-    """Test cases for TokenAdminView edge cases and error handling."""
 
     @pytest.mark.asyncio
     async def test_insert_model_database_error(
@@ -409,22 +368,15 @@ class TestTokenAdminViewEdgeCases(TestTokenAdminView):
         mock_request: MagicMock,
         mock_form_data: dict[str, Any],
         mock_cache: MagicMock,
+        mock_make_api_token: MagicMock,
     ) -> None:
-        """Test token creation with database error."""
         # Setup mocks
         mock_super_insert = AsyncMock(side_effect=Exception("Database error"))
         token_admin_view.__class__.__bases__[0].insert_model = mock_super_insert
 
-        # Mock make_api_token
-        with patch("src.modules.admin.views.tokens.make_api_token") as mock_make_token:
-            mock_token_info = MagicMock()
-            mock_token_info.hashed_value = "hashed-token-value"
-            mock_token_info.value = "raw-token-value"
-            mock_make_token.return_value = mock_token_info
-
-            # Execute and expect exception
-            with pytest.raises(Exception, match="Database error"):
-                await token_admin_view.insert_model(mock_request, mock_form_data)
+        # Execute and expect exception
+        with pytest.raises(Exception, match="Database error"):
+            await token_admin_view.insert_model(mock_request, mock_form_data)
 
     @pytest.mark.asyncio
     async def test_get_object_for_details_database_error(
@@ -433,7 +385,6 @@ class TestTokenAdminViewEdgeCases(TestTokenAdminView):
         mock_request: MagicMock,
         mock_cache: MagicMock,
     ) -> None:
-        """Test token details retrieval with database error."""
         # Setup mocks
         mock_super_get = AsyncMock(side_effect=Exception("Database error"))
         token_admin_view.__class__.__bases__[0].get_object_for_details = mock_super_get
@@ -450,7 +401,6 @@ class TestTokenAdminViewEdgeCases(TestTokenAdminView):
         mock_token_repository: AsyncMock,
         mock_uow: AsyncMock,
     ) -> None:
-        """Test token activation/deactivation with database error."""
         # Setup mocks
         mock_uow.session = MagicMock()
         mock_token_repository.set_active.side_effect = Exception("Database error")
@@ -465,7 +415,6 @@ class TestTokenAdminViewEdgeCases(TestTokenAdminView):
         mock_request: MagicMock,
         mock_token: Token,
     ) -> None:
-        """Test redirect URL generation with error."""
         # Setup mocks
         mock_build_url = MagicMock(side_effect=Exception("URL build error"))
         token_admin_view._build_url_for = mock_build_url
