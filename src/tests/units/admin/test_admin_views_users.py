@@ -1,7 +1,3 @@
-"""
-Tests for admin views users module.
-"""
-
 from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -16,10 +12,8 @@ from src.tests.mocks import MockUser
 
 
 class TestUserAdminForm:
-    """Test cases for UserAdminForm class."""
 
     def test_form_creation(self) -> None:
-        """Test form creation with all fields."""
         form = UserAdminForm()
 
         # Verify all fields exist
@@ -31,7 +25,6 @@ class TestUserAdminForm:
         assert hasattr(form, "is_active")
 
     def test_validate_success_no_password(self) -> None:
-        """Test form validation without password change."""
         form = UserAdminForm()
         # Set form data using process method
         form.process(
@@ -47,7 +40,6 @@ class TestUserAdminForm:
         assert result is True
 
     def test_validate_success_with_password(self) -> None:
-        """Test form validation with matching passwords."""
         form = UserAdminForm()
         form.process(
             username="testuser",
@@ -62,7 +54,6 @@ class TestUserAdminForm:
         assert result is True
 
     def test_validate_password_mismatch(self) -> None:
-        """Test form validation with mismatched passwords."""
         form = UserAdminForm()
         form.process(
             username="testuser",
@@ -79,7 +70,6 @@ class TestUserAdminForm:
         assert form.repeat_password.errors == ("Passwords must be the same",)
 
     def test_validate_with_extra_validators(self) -> None:
-        """Test form validation with extra validators."""
         form = UserAdminForm()
         form.process(
             username="testuser",
@@ -96,35 +86,29 @@ class TestUserAdminForm:
 
 
 class TestUserAdminView:
-    """Test cases for UserAdminView class."""
 
     @pytest.fixture
     def mock_app(self) -> MagicMock:
-        """Create mock app."""
         app = MagicMock()
         return app
 
     @pytest.fixture
     def user_admin_view(self, mock_app: MagicMock) -> UserAdminView:
-        """Create UserAdminView instance for testing."""
         view = UserAdminView()
         view.app = mock_app
         return view
 
     @pytest.fixture
     def mock_request(self) -> MagicMock:
-        """Create mock FastAPI request."""
         request = MagicMock(spec=Request)
         return request
 
     @pytest.fixture
     def mock_user(self) -> MockUser:
-        """Create mock user."""
         return MockUser(id=1, username="test-user", is_active=True)
 
     @pytest.fixture
     def mock_user_repository(self) -> Generator[AsyncMock, Any, None]:
-        """Mock UserRepository for testing."""
         with patch("src.modules.admin.views.users.UserRepository") as mock_repo_class:
             mock_repo = AsyncMock()
             mock_repo_class.return_value = mock_repo
@@ -132,7 +116,6 @@ class TestUserAdminView:
 
     @pytest.fixture
     def mock_uow(self) -> Generator[AsyncMock, Any, None]:
-        """Mock SASessionUOW for testing."""
         with patch("src.modules.admin.views.users.SASessionUOW") as mock_uow_class:
             mock_uow = AsyncMock()
             mock_uow_class.return_value.__aenter__.return_value = mock_uow
@@ -141,7 +124,11 @@ class TestUserAdminView:
 
 
 class TestUserAdminViewInsertModel(TestUserAdminView):
-    """Test cases for UserAdminView.insert_model method."""
+
+    @pytest.fixture
+    def mock_user_make_password(self) -> Generator[MagicMock, Any, None]:
+        with patch.object(User, "make_password", return_value="hashed-password") as mock_make_password:
+            yield mock_make_password
 
     @pytest.mark.asyncio
     async def test_insert_model_success(
@@ -151,8 +138,8 @@ class TestUserAdminViewInsertModel(TestUserAdminView):
         mock_user: MockUser,
         mock_user_repository: AsyncMock,
         mock_uow: AsyncMock,
+        mock_user_make_password: MagicMock,
     ) -> None:
-        """Test successful user creation."""
         # Setup mocks
         form_data = {
             "username": "newuser",
@@ -165,10 +152,8 @@ class TestUserAdminViewInsertModel(TestUserAdminView):
         user_admin_view.__class__.__bases__[0].insert_model = mock_super_insert
         mock_user_repository.get_by_username.return_value = None
 
-        # Mock User.make_password
-        with patch.object(User, "make_password", return_value="hashed-password"):
-            # Execute
-            result = await user_admin_view.insert_model(mock_request, form_data)
+        # Execute
+        result = await user_admin_view.insert_model(mock_request, form_data)
 
         # Verify
         assert result == mock_user
@@ -186,7 +171,6 @@ class TestUserAdminViewInsertModel(TestUserAdminView):
         mock_user_repository: AsyncMock,
         mock_uow: AsyncMock,
     ) -> None:
-        """Test user creation without password."""
         # Setup mocks
         form_data = {
             "username": "newuser",
@@ -212,7 +196,6 @@ class TestUserAdminViewInsertModel(TestUserAdminView):
         mock_user_repository: AsyncMock,
         mock_uow: AsyncMock,
     ) -> None:
-        """Test user creation with taken username."""
         # Setup mocks
         form_data = {
             "username": "existinguser",
@@ -239,7 +222,6 @@ class TestUserAdminViewInsertModel(TestUserAdminView):
         mock_user_repository: AsyncMock,
         mock_uow: AsyncMock,
     ) -> None:
-        """Test user creation with database error."""
         # Setup mocks
         form_data = {
             "username": "newuser",
@@ -256,7 +238,6 @@ class TestUserAdminViewInsertModel(TestUserAdminView):
 
 
 class TestUserAdminViewUpdateModel(TestUserAdminView):
-    """Test cases for UserAdminView.update_model method."""
 
     @pytest.mark.asyncio
     async def test_update_model_success_with_password(
@@ -264,8 +245,8 @@ class TestUserAdminViewUpdateModel(TestUserAdminView):
         user_admin_view: UserAdminView,
         mock_request: MagicMock,
         mock_user: MockUser,
+        mock_user_make_password: MagicMock,
     ) -> None:
-        """Test successful user update with password change."""
         # Setup mocks
         form_data = {
             "username": "updateduser",  # Should be removed
@@ -278,17 +259,15 @@ class TestUserAdminViewUpdateModel(TestUserAdminView):
         mock_super_update = AsyncMock(return_value=mock_user)
         user_admin_view.__class__.__bases__[0].update_model = mock_super_update
 
-        # Mock User.make_password
-        with patch.object(User, "make_password", return_value="hashed-new-password"):
-            # Execute
-            result = await user_admin_view.update_model(mock_request, "1", form_data)
+        # Execute
+        result = await user_admin_view.update_model(mock_request, "1", form_data)
 
         # Verify
         assert result == mock_user
         mock_super_update.assert_called_once()
         # Check that username was removed and password was hashed
         call_args = mock_super_update.call_args[0]
-        assert call_args[2]["password"] == "hashed-new-password"
+        assert call_args[2]["password"] == "hashed-password"
         assert "username" not in call_args[2]
         assert "new_password" not in call_args[2]
         assert "repeat_password" not in call_args[2]
@@ -300,7 +279,6 @@ class TestUserAdminViewUpdateModel(TestUserAdminView):
         mock_request: MagicMock,
         mock_user: MockUser,
     ) -> None:
-        """Test successful user update without password change."""
         # Setup mocks
         form_data = {
             "username": "updateduser",  # Should be removed
@@ -331,7 +309,6 @@ class TestUserAdminViewUpdateModel(TestUserAdminView):
         mock_request: MagicMock,
         mock_user: MockUser,
     ) -> None:
-        """Test user update with database error."""
         # Setup mocks
         form_data = {
             "email": "updated@example.com",
@@ -347,7 +324,6 @@ class TestUserAdminViewUpdateModel(TestUserAdminView):
 
 
 class TestUserAdminViewValidateUsername(TestUserAdminView):
-    """Test cases for UserAdminView._validate_username static method."""
 
     @pytest.mark.asyncio
     async def test_validate_username_success(
@@ -355,7 +331,6 @@ class TestUserAdminViewValidateUsername(TestUserAdminView):
         mock_user_repository: AsyncMock,
         mock_uow: AsyncMock,
     ) -> None:
-        """Test successful username validation."""
         # Setup mocks
         mock_user_repository.get_by_username.return_value = None
 
@@ -372,7 +347,6 @@ class TestUserAdminViewValidateUsername(TestUserAdminView):
         mock_user_repository: AsyncMock,
         mock_uow: AsyncMock,
     ) -> None:
-        """Test username validation with taken username."""
         # Setup mocks
         mock_user_repository.get_by_username.return_value = mock_user
 
@@ -390,7 +364,6 @@ class TestUserAdminViewValidateUsername(TestUserAdminView):
         mock_user_repository: AsyncMock,
         mock_uow: AsyncMock,
     ) -> None:
-        """Test username validation with database error."""
         # Setup mocks
         mock_user_repository.get_by_username.side_effect = Exception("Database error")
 
@@ -400,10 +373,8 @@ class TestUserAdminViewValidateUsername(TestUserAdminView):
 
 
 class TestUserAdminViewEdgeCases(TestUserAdminView):
-    """Test cases for UserAdminView edge cases and error handling."""
 
     def test_form_field_attributes(self) -> None:
-        """Test form field attributes and configurations."""
         form = UserAdminForm()
 
         # Test username field
@@ -430,7 +401,6 @@ class TestUserAdminViewEdgeCases(TestUserAdminView):
         mock_user_repository: AsyncMock,
         mock_uow: AsyncMock,
     ) -> None:
-        """Test user creation with empty password."""
         # Setup mocks
         form_data = {
             "username": "newuser",
@@ -456,7 +426,6 @@ class TestUserAdminViewEdgeCases(TestUserAdminView):
         mock_user_repository: AsyncMock,
         mock_uow: AsyncMock,
     ) -> None:
-        """Test user creation with None password."""
         # Setup mocks
         form_data = {
             "username": "newuser",
@@ -475,7 +444,6 @@ class TestUserAdminViewEdgeCases(TestUserAdminView):
         assert exc_info.value.detail == "Password required"
 
     def test_form_validation_with_none_values(self) -> None:
-        """Test form validation with None values."""
         form = UserAdminForm()
         form.process(
             username="testuser",
@@ -490,7 +458,6 @@ class TestUserAdminViewEdgeCases(TestUserAdminView):
         assert result is True
 
     def test_form_validation_with_empty_strings(self) -> None:
-        """Test form validation with empty string values."""
         form = UserAdminForm()
         form.process(
             username="testuser",
