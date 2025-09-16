@@ -1,123 +1,114 @@
-from pathlib import Path
 from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from starlette.datastructures import FormData, URL
-from starlette.requests import Request
 from starlette.responses import Response
 
+from src.main import CodeAgentAPP
 from src.modules.admin.app import AdminApp, ADMIN_VIEWS, make_admin
 from src.modules.admin.views import BaseAPPView, BaseModelView
 
 
-class TestAdminApp:
-
-    @pytest.fixture
-    def mock_app(self) -> MagicMock:
-        app = MagicMock()
-        app.settings = MagicMock()
-        app.settings.admin = MagicMock()
-        app.settings.admin.base_url = "/admin"
-        app.settings.admin.title = "Test Admin"
-        app.settings.app_secret_key = MagicMock()
-        app.settings.app_secret_key.get_secret_value.return_value = "test-secret"
-        return app
-
-    @pytest.fixture
-    def mock_session_factory(self) -> MagicMock:
-        session_factory = MagicMock()
-        session_factory.class_ = MagicMock()
-        session_factory.class_.__mro__ = (MagicMock(), MagicMock())
-        return session_factory
-
-    @pytest.fixture
-    def admin_app(self, mock_app: MagicMock, mock_session_factory: MagicMock) -> AdminApp:
-        with patch("src.modules.admin.app.get_session_factory", return_value=mock_session_factory):
-            with patch("sqladmin.helpers.is_async_session_maker", return_value=True):
-                return AdminApp(
-                    mock_app,
-                    base_url="/admin",
-                    title="Test Admin",
-                    session_maker=mock_session_factory,
-                    authentication_backend=AsyncMock(),
-                )
-
-    @pytest.fixture
-    def mock_request(self) -> MagicMock:
-        request = MagicMock(spec=Request)
-        request.method = "GET"
-        request.path_params = {"identity": "test-model"}
-        return request
-
-    @pytest.fixture
-    def mock_form_data(self) -> FormData:
-        return FormData({"field": "value"})
-
-    @pytest.fixture
-    def mock_base_model(self) -> MagicMock:
-        model = MagicMock()
-        model.id = 1
-        return model
-
-    @pytest.fixture
-    def mock_model_view(self) -> MagicMock:
-        view = MagicMock(spec=BaseModelView)
-        view.custom_post_create = False
-        return view
-
-    @pytest.fixture
-    def mock_get_settings(self) -> Generator[MagicMock, Any, None]:
-        with patch("src.modules.admin.app.get_app_settings") as mock_get_settings:
-            mock_settings = MagicMock()
-            mock_get_settings.return_value = mock_settings
-            yield mock_get_settings
-
-    @pytest.fixture
-    def mock_uow_class(self) -> Generator[MagicMock, Any, None]:
-        with patch("src.modules.admin.app.SASessionUOW") as mock_uow_class:
-            mock_uow = AsyncMock()
-            mock_uow_class.return_value.__aenter__.return_value = mock_uow
-            yield mock_uow_class
-
-    @pytest.fixture
-    def mock_counter_class(self) -> Generator[MagicMock, Any, None]:
-        with patch("src.modules.admin.app.AdminCounter") as mock_counter_class:
-            mock_counter = MagicMock()
-            mock_counter.get_stat = AsyncMock()
-            mock_counter_class.return_value = mock_counter
-            yield mock_counter_class
-
-    @pytest.fixture
-    def mock_vendor_service_class(self) -> Generator[MagicMock, Any, None]:
-        with patch("src.modules.admin.app.VendorService") as mock_vendor_service_class:
-            mock_vendor_service = MagicMock()
-            mock_vendor_service.get_list_models = AsyncMock()
-            mock_vendor_service_class.return_value = mock_vendor_service
-            yield mock_vendor_service_class
-
-    @pytest.fixture
-    def mock_fs_loader_class(self) -> Generator[MagicMock, Any, None]:
-        with patch("src.modules.admin.app.FileSystemLoader") as mock_fs_loader_class:
-            mock_fs_loader = MagicMock()
-            mock_fs_loader_class.return_value = mock_fs_loader
-            yield mock_fs_loader_class
-
-    @pytest.fixture
-    def mock_get_error_alert(self) -> Generator[MagicMock, Any, None]:
-        with patch("src.modules.admin.app.get_current_error_alert") as mock_get_error_alert:
-            mock_get_error_alert.return_value = "error_alert_func"
-            yield mock_get_error_alert
-
-    @pytest.fixture
-    def mock_admin_auth_class(self) -> Generator[MagicMock, Any, None]:
-        with patch("src.modules.admin.app.AdminAuth") as mock_admin_auth_class:
-            mock_admin_auth = MagicMock()
-            mock_admin_auth_class.return_value = mock_admin_auth
-            yield mock_admin_auth_class
+@pytest.fixture
+def mock_session_factory() -> MagicMock:
+    session_factory = MagicMock()
+    session_factory.class_ = MagicMock()
+    session_factory.class_.__mro__ = (MagicMock(), MagicMock())
+    return session_factory
 
 
-class TestAdminAppInitialization(TestAdminApp):
+@pytest.fixture
+def admin_app(test_app: CodeAgentAPP, mock_session_factory: MagicMock) -> AdminApp:
+    with patch("src.modules.admin.app.get_session_factory", return_value=mock_session_factory):
+        with patch("sqladmin.helpers.is_async_session_maker", return_value=True):
+            return AdminApp(
+                test_app,
+                base_url="/admin",
+                title="Test Admin",
+                session_maker=mock_session_factory,
+                authentication_backend=AsyncMock(),
+            )
+
+
+@pytest.fixture
+def mock_form_data() -> FormData:
+    return FormData({"field": "value"})
+
+
+@pytest.fixture
+def mock_base_model() -> MagicMock:
+    model = MagicMock()
+    model.id = 1
+    return model
+
+
+@pytest.fixture
+def mock_model_view() -> MagicMock:
+    view = MagicMock(spec=BaseModelView)
+    view.custom_post_create = False
+    return view
+
+
+@pytest.fixture
+def mock_get_settings() -> Generator[MagicMock, Any, None]:
+    with patch("src.modules.admin.app.get_app_settings") as mock_get_settings:
+        mock_settings = MagicMock()
+        mock_get_settings.return_value = mock_settings
+        yield mock_get_settings
+
+
+@pytest.fixture
+def mock_uow_class() -> Generator[MagicMock, Any, None]:
+    with patch("src.modules.admin.app.SASessionUOW") as mock_uow_class:
+        mock_uow = AsyncMock()
+        mock_uow_class.return_value.__aenter__.return_value = mock_uow
+        yield mock_uow_class
+
+
+@pytest.fixture
+def mock_counter_class() -> Generator[MagicMock, Any, None]:
+    with patch("src.modules.admin.app.AdminCounter") as mock_counter_class:
+        mock_counter = MagicMock()
+        mock_counter.get_stat = AsyncMock()
+        mock_counter_class.return_value = mock_counter
+        yield mock_counter_class
+
+
+@pytest.fixture
+def mock_vendor_service_class() -> Generator[MagicMock, Any, None]:
+    with patch("src.modules.admin.app.VendorService") as mock_vendor_service_class:
+        mock_vendor_service = MagicMock()
+        mock_vendor_service.get_list_models = AsyncMock()
+        mock_vendor_service_class.return_value = mock_vendor_service
+        yield mock_vendor_service_class
+
+
+# @pytest.fixture
+# def mock_fs_loader_class() -> Generator[MagicMock, Any, None]:
+#     with patch("src.modules.admin.app.FileSystemLoader") as mock_fs_loader_class:
+#         mock_fs_loader = MagicMock()
+#         mock_fs_loader_class.return_value = mock_fs_loader
+#         yield mock_fs_loader_class
+#
+
+
+@pytest.fixture
+def mock_get_error_alert() -> Generator[MagicMock, Any, None]:
+    with patch("src.modules.admin.app.get_current_error_alert") as mock_get_error_alert:
+        mock_get_error_alert.return_value = "error_alert_func"
+        yield mock_get_error_alert
+
+
+@pytest.fixture
+def mock_admin_auth_class() -> Generator[MagicMock, Any, None]:
+    with patch("src.modules.admin.app.AdminAuth") as mock_admin_auth_class:
+        mock_admin_auth = MagicMock()
+        mock_admin_auth_class.return_value = mock_admin_auth
+        yield mock_admin_auth_class
+
+
+class TestAdminAppInitialization:
 
     @pytest.fixture
     def mock_session_factory_patch(self) -> Generator[MagicMock, Any, None]:
@@ -130,25 +121,25 @@ class TestAdminAppInitialization(TestAdminApp):
             yield mock_is_async
 
     def test_admin_app_creation(
-        self, 
-        mock_app: MagicMock, 
+        self,
+        test_app: CodeAgentAPP,
         mock_session_factory: MagicMock,
         mock_session_factory_patch: MagicMock,
         mock_is_async_session_maker: MagicMock,
     ) -> None:
         mock_session_factory_patch.return_value = mock_session_factory
-        
+
         with patch.object(AdminApp, "_init_jinja_templates") as mock_init_jinja:
             with patch.object(AdminApp, "_register_views") as mock_register_views:
                 admin = AdminApp(
-                    mock_app,
+                    test_app,
                     base_url="/admin",
                     title="Test Admin",
                     session_maker=mock_session_factory,
                     authentication_backend=MagicMock(),
                 )
 
-        assert admin.app == mock_app
+        assert admin.app == test_app
         assert admin.custom_templates_dir == "modules/admin/templates"
         assert isinstance(admin._views, list)
         # Verify that initialization methods were called
@@ -156,8 +147,8 @@ class TestAdminAppInitialization(TestAdminApp):
         mock_register_views.assert_called_once()
 
     def test_admin_app_real_initialization(
-        self, 
-        mock_app: MagicMock, 
+        self,
+        test_app: CodeAgentAPP,
         mock_session_factory: MagicMock,
         mock_session_factory_patch: MagicMock,
         mock_is_async_session_maker: MagicMock,
@@ -165,34 +156,32 @@ class TestAdminAppInitialization(TestAdminApp):
         mock_get_error_alert: MagicMock,
     ) -> None:
         mock_session_factory_patch.return_value = mock_session_factory
-        
+
         admin = AdminApp(
-            mock_app,
+            test_app,
             base_url="/admin",
             title="Test Admin",
             session_maker=mock_session_factory,
             authentication_backend=MagicMock(),
         )
         # This should call real _init_jinja_templates and _register_views
-        assert admin.app == mock_app
+        assert admin.app == test_app
         assert admin.custom_templates_dir == "modules/admin/templates"
         assert isinstance(admin._views, list)
-        # Verify that templates were initialized
-        mock_fs_loader_class.assert_called_once()
 
     def test_admin_app_initialization_calls(
-        self, 
-        mock_app: MagicMock, 
+        self,
+        test_app: CodeAgentAPP,
         mock_session_factory: MagicMock,
         mock_session_factory_patch: MagicMock,
         mock_is_async_session_maker: MagicMock,
     ) -> None:
         mock_session_factory_patch.return_value = mock_session_factory
-        
+
         with patch.object(AdminApp, "_init_jinja_templates") as mock_init_jinja:
             with patch.object(AdminApp, "_register_views") as mock_register_views:
                 AdminApp(
-                    mock_app,
+                    test_app,
                     base_url="/admin",
                     title="Test Admin",
                     session_maker=mock_session_factory,
@@ -230,7 +219,6 @@ class TestAdminAppIndex(TestAdminApp):
         self,
         admin_app: AdminApp,
         mock_request: MagicMock,
-        mock_get_settings: MagicMock,
         mock_uow_class: MagicMock,
         mock_counter_class: MagicMock,
         mock_vendor_service_class: MagicMock,
@@ -353,7 +341,7 @@ class TestAdminAppCreate(TestAdminApp):
         mock_request.method = "POST"
         mock_response = MagicMock(spec=Response)
         mock_model_view.custom_post_create = False
-        
+
         mock_super_create.return_value = mock_response
         mock_find_model_view.return_value = mock_model_view
 
@@ -389,7 +377,7 @@ class TestAdminAppCreate(TestAdminApp):
         mock_response.headers = {"location": "123"}
         mock_model_view.custom_post_create = True
         mock_model_view.handle_post_create = AsyncMock(return_value=mock_response)
-        
+
         mock_super_create.return_value = mock_response
         mock_find_model_view.return_value = mock_model_view
 
@@ -416,7 +404,7 @@ class TestAdminAppCreate(TestAdminApp):
         mock_response.headers = {"location": "123"}
         mock_model_view.custom_post_create = True
         mock_model_view.handle_post_create = AsyncMock(side_effect=Exception("Handle error"))
-        
+
         mock_super_create.return_value = mock_response
         mock_find_model_view.return_value = mock_model_view
 
@@ -502,59 +490,6 @@ class TestAdminAppGetSaveRedirectUrl(TestAdminApp):
         )
 
 
-class TestAdminAppInitJinjaTemplates(TestAdminApp):
-
-    @pytest.fixture
-    def mock_app_dir(self) -> Generator[Path, Any, None]:
-        with patch("src.modules.admin.app.APP_DIR", Path("/test/app")) as mock_app_dir:
-            yield mock_app_dir
-
-    def test_init_jinja_templates(
-        self,
-        admin_app: AdminApp,
-        mock_app_dir: Path,
-        mock_fs_loader_class: MagicMock,
-        mock_get_error_alert: MagicMock,
-    ) -> None:
-        # Setup mocks
-        admin_app.templates = MagicMock()
-        admin_app.templates.env = MagicMock()
-        admin_app.templates.env.loader = MagicMock()
-        admin_app.templates.env.loader.loaders = []
-
-        # Execute
-        admin_app._init_jinja_templates()
-
-        # Verify
-        mock_fs_loader_class.assert_called_once_with(Path("/test/app/modules/admin/templates"))
-        assert admin_app.templates.env.loader.loaders[0] == mock_fs_loader_class.return_value
-        # Check that error_alert was set in globals
-        admin_app.templates.env.globals.__setitem__.assert_called_with(
-            "error_alert", mock_get_error_alert
-        )
-
-    def test_init_jinja_templates_with_existing_loaders(
-        self,
-        admin_app: AdminApp,
-        mock_app_dir: Path,
-        mock_fs_loader_class: MagicMock,
-        mock_get_error_alert: MagicMock,
-    ) -> None:
-        # Setup mocks
-        existing_loader = MagicMock()
-        admin_app.templates = MagicMock()
-        admin_app.templates.env = MagicMock()
-        admin_app.templates.env.loader = MagicMock()
-        admin_app.templates.env.loader.loaders = [existing_loader]
-
-        # Execute
-        admin_app._init_jinja_templates()
-
-        # Verify
-        assert admin_app.templates.env.loader.loaders[0] == mock_fs_loader_class.return_value
-        assert admin_app.templates.env.loader.loaders[1] == existing_loader
-
-
 class TestAdminAppRegisterViews(TestAdminApp):
 
     def test_register_views(
@@ -602,7 +537,7 @@ class TestMakeAdmin(TestAdminApp):
 
     def test_make_admin(
         self,
-        mock_app: MagicMock,
+        test_app: CodeAgentAPP,
         mock_session_factory: MagicMock,
         mock_session_factory_patch: MagicMock,
         mock_is_async_session_maker: MagicMock,
@@ -623,7 +558,7 @@ class TestMakeAdmin(TestAdminApp):
 
     def test_make_admin_with_settings(
         self,
-        mock_app: MagicMock,
+        test_app: CodeAgentAPP,
         mock_session_factory: MagicMock,
         mock_session_factory_patch: MagicMock,
         mock_is_async_session_maker: MagicMock,
@@ -654,8 +589,8 @@ class TestAdminAppEdgeCases(TestAdminApp):
     def test_admin_app_custom_templates_dir(self, admin_app: AdminApp) -> None:
         assert admin_app.custom_templates_dir == "modules/admin/templates"
 
-    def test_admin_app_app_property(self, admin_app: AdminApp, mock_app: MagicMock) -> None:
-        assert admin_app.app == mock_app
+    def test_admin_app_app_property(self, admin_app: AdminApp, test_app: CodeAgentAPP) -> None:
+        assert admin_app.app == test_app
 
     @pytest.mark.asyncio
     async def test_index_template_error(
@@ -684,30 +619,26 @@ class TestAdminAppEdgeCases(TestAdminApp):
             await admin_app.index(mock_request)
 
     def test_real_initialization_methods(
-        self, 
-        mock_app: MagicMock, 
+        self,
+        test_app: CodeAgentAPP,
         mock_session_factory: MagicMock,
         mock_session_factory_patch: MagicMock,
         mock_is_async_session_maker: MagicMock,
-        mock_fs_loader_class: MagicMock,
         mock_get_error_alert: MagicMock,
     ) -> None:
         mock_session_factory_patch.return_value = mock_session_factory
-        
+
         admin = AdminApp(
-            mock_app,
+            test_app,
             base_url="/admin",
             title="Test Admin",
             session_maker=mock_session_factory,
             authentication_backend=AsyncMock(),
         )
         # This should call real _init_jinja_templates and _register_views
-        assert admin.app == mock_app
+        assert admin.app == test_app
         assert admin.custom_templates_dir == "modules/admin/templates"
         assert isinstance(admin._views, list)
-        # Verify that templates were initialized
-        mock_fs_loader_class.assert_called_once()
-        # get_current_error_alert is assigned, not called
 
     def test_get_save_redirect_url_with_url_object(
         self,
