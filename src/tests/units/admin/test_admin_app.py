@@ -108,27 +108,19 @@ def mock_admin_auth_class() -> Generator[MagicMock, Any, None]:
         yield mock_admin_auth_class
 
 
+@pytest.fixture(autouse=True)
+def mock_is_async_session_maker() -> Generator[MagicMock, Any, None]:
+    with patch("sqladmin.helpers.is_async_session_maker", return_value=True) as mock_is_async:
+        yield mock_is_async
+
+
 class TestAdminAppInitialization:
-
-    @pytest.fixture
-    def mock_session_factory_patch(self) -> Generator[MagicMock, Any, None]:
-        with patch("src.modules.admin.app.get_session_factory") as mock_get_session_factory:
-            yield mock_get_session_factory
-
-    @pytest.fixture
-    def mock_is_async_session_maker(self) -> Generator[MagicMock, Any, None]:
-        with patch("sqladmin.helpers.is_async_session_maker", return_value=True) as mock_is_async:
-            yield mock_is_async
 
     def test_admin_app_creation(
         self,
         test_app: CodeAgentAPP,
         mock_session_factory: MagicMock,
-        mock_session_factory_patch: MagicMock,
-        mock_is_async_session_maker: MagicMock,
     ) -> None:
-        mock_session_factory_patch.return_value = mock_session_factory
-
         with patch.object(AdminApp, "_init_jinja_templates") as mock_init_jinja:
             with patch.object(AdminApp, "_register_views") as mock_register_views:
                 admin = AdminApp(
@@ -142,62 +134,16 @@ class TestAdminAppInitialization:
         assert admin.app == test_app
         assert admin.custom_templates_dir == "modules/admin/templates"
         assert isinstance(admin._views, list)
-        # Verify that initialization methods were called
-        mock_init_jinja.assert_called_once()
-        mock_register_views.assert_called_once()
-
-    def test_admin_app_real_initialization(
-        self,
-        test_app: CodeAgentAPP,
-        mock_session_factory: MagicMock,
-        mock_session_factory_patch: MagicMock,
-        mock_is_async_session_maker: MagicMock,
-        mock_fs_loader_class: MagicMock,
-        mock_get_error_alert: MagicMock,
-    ) -> None:
-        mock_session_factory_patch.return_value = mock_session_factory
-
-        admin = AdminApp(
-            test_app,
-            base_url="/admin",
-            title="Test Admin",
-            session_maker=mock_session_factory,
-            authentication_backend=MagicMock(),
-        )
-        # This should call real _init_jinja_templates and _register_views
-        assert admin.app == test_app
-        assert admin.custom_templates_dir == "modules/admin/templates"
-        assert isinstance(admin._views, list)
-
-    def test_admin_app_initialization_calls(
-        self,
-        test_app: CodeAgentAPP,
-        mock_session_factory: MagicMock,
-        mock_session_factory_patch: MagicMock,
-        mock_is_async_session_maker: MagicMock,
-    ) -> None:
-        mock_session_factory_patch.return_value = mock_session_factory
-
-        with patch.object(AdminApp, "_init_jinja_templates") as mock_init_jinja:
-            with patch.object(AdminApp, "_register_views") as mock_register_views:
-                AdminApp(
-                    test_app,
-                    base_url="/admin",
-                    title="Test Admin",
-                    session_maker=mock_session_factory,
-                    authentication_backend=MagicMock(),
-                )
-
         mock_init_jinja.assert_called_once()
         mock_register_views.assert_called_once()
 
     def test_admin_app_views_initialization(self, admin_app: AdminApp) -> None:
         assert isinstance(admin_app._views, list)
-        # _views contains the registered views from ADMIN_VIEWS
         assert len(admin_app._views) == len(ADMIN_VIEWS)
 
 
-class TestAdminAppIndex(TestAdminApp):
+@pytest.mark.asyncio
+class TestAdminAppIndex:
 
     @pytest.fixture
     def mock_dashboard_stat(self) -> MagicMock:
@@ -214,12 +160,10 @@ class TestAdminAppIndex(TestAdminApp):
     def mock_template_response(self) -> MagicMock:
         return MagicMock(spec=Response)
 
-    @pytest.mark.asyncio
     async def test_index_success(
         self,
         admin_app: AdminApp,
         mock_request: MagicMock,
-        mock_uow_class: MagicMock,
         mock_counter_class: MagicMock,
         mock_vendor_service_class: MagicMock,
         mock_dashboard_stat: MagicMock,
@@ -255,13 +199,11 @@ class TestAdminAppIndex(TestAdminApp):
         assert context["vendors"]["active"] == 8
         assert context["models"]["active"] == 2
 
-    @pytest.mark.asyncio
     async def test_index_vendor_service_error(
         self,
         admin_app: AdminApp,
         mock_request: MagicMock,
         mock_get_settings: MagicMock,
-        mock_uow_class: MagicMock,
         mock_counter_class: MagicMock,
         mock_vendor_service_class: MagicMock,
         mock_dashboard_stat: MagicMock,
@@ -289,13 +231,12 @@ class TestAdminAppIndex(TestAdminApp):
         context = template_call_args[1]["context"]
         assert context["models"]["active"] == 0
 
-    @pytest.mark.asyncio
     async def test_index_database_error(
         self,
         admin_app: AdminApp,
         mock_request: MagicMock,
         mock_get_settings: MagicMock,
-        mock_uow_class: MagicMock,
+        # mock_uow_class: MagicMock,
         mock_counter_class: MagicMock,
     ) -> None:
         # Setup mocks
@@ -307,34 +248,33 @@ class TestAdminAppIndex(TestAdminApp):
             await admin_app.index(mock_request)
 
 
-class TestAdminAppCreate(TestAdminApp):
+@pytest.mark.asyncio
+class TestAdminAppCreate:
 
-    @pytest.mark.asyncio
     async def test_create_get_request(
         self,
         admin_app: AdminApp,
         mock_request: MagicMock,
-        mock_super_create: MagicMock,
+        mock_create: MagicMock,
     ) -> None:
         # Setup mocks
         mock_request.method = "GET"
         mock_response = MagicMock(spec=Response)
-        mock_super_create.return_value = mock_response
+        mock_create.return_value = mock_response
 
         # Execute
         result = await admin_app.create(mock_request)
 
         # Verify
         assert result == mock_response
-        mock_super_create.assert_called_once_with(mock_request)
+        mock_create.assert_called_once_with(mock_request)
 
-    @pytest.mark.asyncio
     async def test_create_post_request_no_custom_post_create(
         self,
         admin_app: AdminApp,
         mock_request: MagicMock,
         mock_model_view: MagicMock,
-        mock_super_create: MagicMock,
+        mock_create: MagicMock,
         mock_find_model_view: MagicMock,
     ) -> None:
         # Setup mocks
@@ -342,7 +282,7 @@ class TestAdminAppCreate(TestAdminApp):
         mock_response = MagicMock(spec=Response)
         mock_model_view.custom_post_create = False
 
-        mock_super_create.return_value = mock_response
+        mock_create.return_value = mock_response
         mock_find_model_view.return_value = mock_model_view
 
         # Execute
@@ -350,25 +290,24 @@ class TestAdminAppCreate(TestAdminApp):
 
         # Verify
         assert result == mock_response
-        mock_super_create.assert_called_once_with(mock_request)
+        mock_create.assert_called_once_with(mock_request)
 
     @pytest.fixture
-    def mock_super_create(self) -> Generator[MagicMock, Any, None]:
-        with patch.object(AdminApp.__class__.__bases__[0], "create") as mock_super_create:
-            yield mock_super_create
+    def mock_create(self) -> Generator[MagicMock, Any, None]:
+        with patch("sqladmin.application.Admin.create") as mock_create:
+            yield mock_create
 
     @pytest.fixture
     def mock_find_model_view(self) -> Generator[MagicMock, Any, None]:
         with patch.object(AdminApp, "_find_model_view") as mock_find_model_view:
             yield mock_find_model_view
 
-    @pytest.mark.asyncio
     async def test_create_post_request_with_custom_post_create(
         self,
         admin_app: AdminApp,
         mock_request: MagicMock,
         mock_model_view: MagicMock,
-        mock_super_create: MagicMock,
+        mock_create: MagicMock,
         mock_find_model_view: MagicMock,
     ) -> None:
         # Setup mocks
@@ -378,7 +317,7 @@ class TestAdminAppCreate(TestAdminApp):
         mock_model_view.custom_post_create = True
         mock_model_view.handle_post_create = AsyncMock(return_value=mock_response)
 
-        mock_super_create.return_value = mock_response
+        mock_create.return_value = mock_response
         mock_find_model_view.return_value = mock_model_view
 
         # Execute
@@ -386,7 +325,7 @@ class TestAdminAppCreate(TestAdminApp):
 
         # Verify
         assert result == mock_response
-        mock_super_create.assert_called_once_with(mock_request)
+        mock_create.assert_called_once_with(mock_request)
         mock_model_view.handle_post_create.assert_called_once_with(mock_request, 123)
 
     @pytest.mark.asyncio
@@ -395,7 +334,7 @@ class TestAdminAppCreate(TestAdminApp):
         admin_app: AdminApp,
         mock_request: MagicMock,
         mock_model_view: MagicMock,
-        mock_super_create: MagicMock,
+        mock_create: MagicMock,
         mock_find_model_view: MagicMock,
     ) -> None:
         # Setup mocks
@@ -405,7 +344,7 @@ class TestAdminAppCreate(TestAdminApp):
         mock_model_view.custom_post_create = True
         mock_model_view.handle_post_create = AsyncMock(side_effect=Exception("Handle error"))
 
-        mock_super_create.return_value = mock_response
+        mock_create.return_value = mock_response
         mock_find_model_view.return_value = mock_model_view
 
         # Execute and expect exception
@@ -413,7 +352,7 @@ class TestAdminAppCreate(TestAdminApp):
             await admin_app.create(mock_request)
 
 
-class TestAdminAppGetSaveRedirectUrl(TestAdminApp):
+class TestAdminAppGetSaveRedirectUrl:
 
     @pytest.fixture
     def mock_super_get_save_redirect_url(self) -> Generator[MagicMock, Any, None]:
@@ -490,7 +429,7 @@ class TestAdminAppGetSaveRedirectUrl(TestAdminApp):
         )
 
 
-class TestAdminAppRegisterViews(TestAdminApp):
+class TestAdminAppRegisterViews:
 
     def test_register_views(
         self,
@@ -533,7 +472,7 @@ class TestAdminAppRegisterViews(TestAdminApp):
         assert custom_view2.app == admin_app.app
 
 
-class TestMakeAdmin(TestAdminApp):
+class TestMakeAdmin:
 
     def test_make_admin(
         self,
@@ -546,14 +485,14 @@ class TestMakeAdmin(TestAdminApp):
         mock_session_factory_patch.return_value = mock_session_factory
 
         # Execute
-        result = make_admin(mock_app)
+        result = make_admin(test_app)
 
         # Verify
         assert isinstance(result, AdminApp)
-        assert result.app == mock_app
+        assert result.app == test_app
         mock_admin_auth_class.assert_called_once_with(
-            secret_key=mock_app.settings.app_secret_key.get_secret_value(),
-            settings=mock_app.settings,
+            secret_key=test_app.settings.app_secret_key.get_secret_value(),
+            settings=test_app.settings,
         )
 
     def test_make_admin_with_settings(
@@ -565,19 +504,19 @@ class TestMakeAdmin(TestAdminApp):
         mock_admin_auth_class: MagicMock,
     ) -> None:
         # Setup mocks
-        mock_app.settings.admin.base_url = "/custom/admin"
-        mock_app.settings.admin.title = "Custom Admin"
+        test_app.settings.admin.base_url = "/custom/admin"
+        test_app.settings.admin.title = "Custom Admin"
         mock_session_factory_patch.return_value = mock_session_factory
 
         # Execute
-        result = make_admin(mock_app)
+        result = make_admin(test_app)
 
         # Verify
         assert isinstance(result, AdminApp)
-        assert result.app == mock_app
+        assert result.app == test_app
 
 
-class TestAdminAppEdgeCases(TestAdminApp):
+class TestAdminAppEdgeCases:
 
     def test_admin_views_constant(self) -> None:
         assert isinstance(ADMIN_VIEWS, tuple)
