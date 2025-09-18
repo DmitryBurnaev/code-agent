@@ -368,7 +368,6 @@ class TestTokenAdminViewEdgeCases(TestTokenAdminView):
         mock_request: MagicMock,
         mock_form_data: dict[str, Any],
         mock_cache: MagicMock,
-        mock_make_api_token: MagicMock,
     ) -> None:
         # Setup mocks
         mock_super_insert = AsyncMock(side_effect=Exception("Database error"))

@@ -52,33 +52,25 @@ class VendorAdminView(BaseModelView, model=Vendor):
     }
 
     async def insert_model(self, request: Request, data: FormDataType) -> Any:
-        data = await self._validate(data)
+        """Creates new vendor entry with API Key's encryption"""
 
-        # Encrypt API key before saving
+        data = await self._validate(data)
         if new_api_key := data.pop("new_api_key"):
             data["api_key"] = self._encrypt_api_key(str(new_api_key))
 
         return await super().insert_model(request, data)
 
     async def update_model(self, request: Request, pk: str, data: FormDataType) -> Any:
+        """Updates vendor entry (and encrypt API key if provided)"""
+
         data = await self._validate(data, vendor_id=int(pk))
-        # Encrypt API key before saving
         if new_api_key := data.pop("new_api_key"):
             data["api_key"] = self._encrypt_api_key(str(new_api_key))
+
         return await super().update_model(request, pk, data)
 
     def _encrypt_api_key(self, plaintext_key: str) -> str:
-        """Encrypt API key using application encryption settings.
-
-        Args:
-            plaintext_key: Plaintext API key to encrypt
-
-        Returns:
-            Encrypted API key
-
-        Raises:
-            ValueError: If encryption fails or key is empty
-        """
+        """Encrypt API key using application encryption settings"""
         if not plaintext_key:
             raise ValueError("API key cannot be empty")
 

@@ -8,6 +8,7 @@ from starlette.responses import Response
 from src.main import CodeAgentAPP
 from src.modules.admin.app import AdminApp, ADMIN_VIEWS, make_admin
 from src.modules.admin.views import BaseAPPView, BaseModelView
+from src.services.counters import DashboardCounts
 
 
 @pytest.fixture
@@ -84,13 +85,10 @@ def mock_vendor_service_class() -> Generator[MagicMock, Any, None]:
         yield mock_vendor_service_class
 
 
-# @pytest.fixture
-# def mock_fs_loader_class() -> Generator[MagicMock, Any, None]:
-#     with patch("src.modules.admin.app.FileSystemLoader") as mock_fs_loader_class:
-#         mock_fs_loader = MagicMock()
-#         mock_fs_loader_class.return_value = mock_fs_loader
-#         yield mock_fs_loader_class
-#
+@pytest.fixture
+def mock_super_get_save_redirect_url() -> Generator[MagicMock, Any, None]:
+    with patch("sqladmin.application.Admin.get_save_redirect_url") as mock_super:
+        yield mock_super
 
 
 @pytest.fixture
@@ -170,21 +168,17 @@ class TestAdminAppIndex:
         mock_models: list[dict[str, str]],
         mock_template_response: MagicMock,
     ) -> None:
-        # Setup mocks
         mock_counter = mock_counter_class.return_value
         mock_counter.get_stat = AsyncMock(return_value=mock_dashboard_stat)
 
         mock_vendor_service = mock_vendor_service_class.return_value
         mock_vendor_service.get_list_models = AsyncMock(return_value=mock_models)
 
-        # Mock templates
         admin_app.templates = MagicMock()
         admin_app.templates.TemplateResponse = AsyncMock(return_value=mock_template_response)
 
-        # Execute
         result = await admin_app.index(mock_request)
 
-        # Verify
         assert result == mock_template_response
         admin_app.templates.TemplateResponse.assert_called_once()
 
@@ -209,21 +203,17 @@ class TestAdminAppIndex:
         mock_dashboard_stat: MagicMock,
         mock_template_response: MagicMock,
     ) -> None:
-        # Setup mocks
         mock_counter = mock_counter_class.return_value
         mock_counter.get_stat = AsyncMock(return_value=mock_dashboard_stat)
 
         mock_vendor_service = mock_vendor_service_class.return_value
         mock_vendor_service.get_list_models = AsyncMock(side_effect=Exception("Vendor error"))
 
-        # Mock templates
         admin_app.templates = MagicMock()
         admin_app.templates.TemplateResponse = AsyncMock(return_value=mock_template_response)
 
-        # Execute
         result = await admin_app.index(mock_request)
 
-        # Verify
         assert result == mock_template_response
 
         # Check that models is empty due to error
@@ -239,11 +229,9 @@ class TestAdminAppIndex:
         # mock_uow_class: MagicMock,
         mock_counter_class: MagicMock,
     ) -> None:
-        # Setup mocks
         mock_counter = mock_counter_class.return_value
         mock_counter.get_stat = AsyncMock(side_effect=Exception("Database error"))
 
-        # Execute and expect exception
         with pytest.raises(Exception, match="Database error"):
             await admin_app.index(mock_request)
 
@@ -257,15 +245,12 @@ class TestAdminAppCreate:
         mock_request: MagicMock,
         mock_create: MagicMock,
     ) -> None:
-        # Setup mocks
         mock_request.method = "GET"
         mock_response = MagicMock(spec=Response)
         mock_create.return_value = mock_response
 
-        # Execute
         result = await admin_app.create(mock_request)
 
-        # Verify
         assert result == mock_response
         mock_create.assert_called_once_with(mock_request)
 
@@ -277,7 +262,6 @@ class TestAdminAppCreate:
         mock_create: MagicMock,
         mock_find_model_view: MagicMock,
     ) -> None:
-        # Setup mocks
         mock_request.method = "POST"
         mock_response = MagicMock(spec=Response)
         mock_model_view.custom_post_create = False
@@ -285,10 +269,8 @@ class TestAdminAppCreate:
         mock_create.return_value = mock_response
         mock_find_model_view.return_value = mock_model_view
 
-        # Execute
         result = await admin_app.create(mock_request)
 
-        # Verify
         assert result == mock_response
         mock_create.assert_called_once_with(mock_request)
 
@@ -310,7 +292,6 @@ class TestAdminAppCreate:
         mock_create: MagicMock,
         mock_find_model_view: MagicMock,
     ) -> None:
-        # Setup mocks
         mock_request.method = "POST"
         mock_response = MagicMock(spec=Response)
         mock_response.headers = {"location": "123"}
@@ -320,10 +301,8 @@ class TestAdminAppCreate:
         mock_create.return_value = mock_response
         mock_find_model_view.return_value = mock_model_view
 
-        # Execute
         result = await admin_app.create(mock_request)
 
-        # Verify
         assert result == mock_response
         mock_create.assert_called_once_with(mock_request)
         mock_model_view.handle_post_create.assert_called_once_with(mock_request, 123)
@@ -337,7 +316,6 @@ class TestAdminAppCreate:
         mock_create: MagicMock,
         mock_find_model_view: MagicMock,
     ) -> None:
-        # Setup mocks
         mock_request.method = "POST"
         mock_response = MagicMock(spec=Response)
         mock_response.headers = {"location": "123"}
@@ -347,17 +325,11 @@ class TestAdminAppCreate:
         mock_create.return_value = mock_response
         mock_find_model_view.return_value = mock_model_view
 
-        # Execute and expect exception
         with pytest.raises(Exception, match="Handle error"):
             await admin_app.create(mock_request)
 
 
 class TestAdminAppGetSaveRedirectUrl:
-
-    @pytest.fixture
-    def mock_super_get_save_redirect_url(self) -> Generator[MagicMock, Any, None]:
-        with patch.object(AdminApp.__class__.__bases__[0], "get_save_redirect_url") as mock_super:
-            yield mock_super
 
     def test_get_save_redirect_url_base_model_view_no_custom_post_create(
         self,
@@ -368,17 +340,14 @@ class TestAdminAppGetSaveRedirectUrl:
         mock_base_model: MagicMock,
         mock_super_get_save_redirect_url: MagicMock,
     ) -> None:
-        # Setup mocks
         mock_model_view.custom_post_create = False
         mock_redirect_url = "http://example.com/redirect"
         mock_super_get_save_redirect_url.return_value = mock_redirect_url
 
-        # Execute
         result = admin_app.get_save_redirect_url(
             mock_request, mock_form_data, mock_model_view, mock_base_model
         )
 
-        # Verify
         assert result == mock_redirect_url
         mock_super_get_save_redirect_url.assert_called_once_with(
             mock_request, mock_form_data, mock_model_view, mock_base_model
@@ -392,16 +361,12 @@ class TestAdminAppGetSaveRedirectUrl:
         mock_model_view: MagicMock,
         mock_base_model: MagicMock,
     ) -> None:
-        # Setup mocks
         mock_model_view.custom_post_create = True
         mock_base_model.id = 123
 
-        # Execute
         result = admin_app.get_save_redirect_url(
             mock_request, mock_form_data, mock_model_view, mock_base_model
         )
-
-        # Verify
         assert result == "123"
 
     def test_get_save_redirect_url_non_base_model_view(
@@ -412,17 +377,14 @@ class TestAdminAppGetSaveRedirectUrl:
         mock_base_model: MagicMock,
         mock_super_get_save_redirect_url: MagicMock,
     ) -> None:
-        # Setup mocks
         mock_model_view = MagicMock()  # Not a BaseModelView
         mock_redirect_url = "http://example.com/redirect"
         mock_super_get_save_redirect_url.return_value = mock_redirect_url
 
-        # Execute
         result = admin_app.get_save_redirect_url(
             mock_request, mock_form_data, mock_model_view, mock_base_model
         )
 
-        # Verify
         assert result == mock_redirect_url
         mock_super_get_save_redirect_url.assert_called_once_with(
             mock_request, mock_form_data, mock_model_view, mock_base_model
@@ -435,14 +397,11 @@ class TestAdminAppRegisterViews:
         self,
         admin_app: AdminApp,
     ) -> None:
-        # Setup mocks
         admin_app.add_view = MagicMock()
         admin_app._views = [MagicMock(spec=BaseAPPView), MagicMock(spec=BaseModelView)]
 
-        # Execute
         admin_app._register_views()
 
-        # Verify
         assert admin_app.add_view.call_count == len(ADMIN_VIEWS)
         for view in ADMIN_VIEWS:
             admin_app.add_view.assert_any_call(view)
@@ -455,16 +414,13 @@ class TestAdminAppRegisterViews:
         self,
         admin_app: AdminApp,
     ) -> None:
-        # Setup mocks
         admin_app.add_view = MagicMock()
         custom_view1 = MagicMock(spec=BaseAPPView)
         custom_view2 = MagicMock(spec=BaseModelView)
         admin_app._views = [custom_view1, custom_view2]
 
-        # Execute
         admin_app._register_views()
 
-        # Verify
         assert admin_app.add_view.call_count == len(ADMIN_VIEWS)
 
         # Check that app is set for custom view instances
@@ -478,16 +434,12 @@ class TestMakeAdmin:
         self,
         test_app: CodeAgentAPP,
         mock_session_factory: MagicMock,
-        mock_session_factory_patch: MagicMock,
         mock_is_async_session_maker: MagicMock,
         mock_admin_auth_class: MagicMock,
     ) -> None:
-        mock_session_factory_patch.return_value = mock_session_factory
 
-        # Execute
         result = make_admin(test_app)
 
-        # Verify
         assert isinstance(result, AdminApp)
         assert result.app == test_app
         mock_admin_auth_class.assert_called_once_with(
@@ -499,19 +451,14 @@ class TestMakeAdmin:
         self,
         test_app: CodeAgentAPP,
         mock_session_factory: MagicMock,
-        mock_session_factory_patch: MagicMock,
         mock_is_async_session_maker: MagicMock,
         mock_admin_auth_class: MagicMock,
     ) -> None:
-        # Setup mocks
         test_app.settings.admin.base_url = "/custom/admin"
         test_app.settings.admin.title = "Custom Admin"
-        mock_session_factory_patch.return_value = mock_session_factory
 
-        # Execute
         result = make_admin(test_app)
 
-        # Verify
         assert isinstance(result, AdminApp)
         assert result.app == test_app
 
@@ -540,20 +487,21 @@ class TestAdminAppEdgeCases:
         mock_uow_class: MagicMock,
         mock_counter_class: MagicMock,
         mock_vendor_service_class: MagicMock,
-        mock_dashboard_stat: MagicMock,
     ) -> None:
-        # Setup mocks
         mock_counter = mock_counter_class.return_value
-        mock_counter.get_stat = AsyncMock(return_value=mock_dashboard_stat)
+        mock_counter.get_stat = AsyncMock(
+            return_value=DashboardCounts(
+                total_vendors=10,
+                active_vendors=2,
+            )
+        )
 
         mock_vendor_service = mock_vendor_service_class.return_value
         mock_vendor_service.get_list_models = AsyncMock(return_value=[])
 
-        # Mock templates to raise error
         admin_app.templates = MagicMock()
         admin_app.templates.TemplateResponse = AsyncMock(side_effect=Exception("Template error"))
 
-        # Execute and expect exception
         with pytest.raises(Exception, match="Template error"):
             await admin_app.index(mock_request)
 
@@ -561,12 +509,9 @@ class TestAdminAppEdgeCases:
         self,
         test_app: CodeAgentAPP,
         mock_session_factory: MagicMock,
-        mock_session_factory_patch: MagicMock,
         mock_is_async_session_maker: MagicMock,
         mock_get_error_alert: MagicMock,
     ) -> None:
-        mock_session_factory_patch.return_value = mock_session_factory
-
         admin = AdminApp(
             test_app,
             base_url="/admin",
@@ -588,17 +533,14 @@ class TestAdminAppEdgeCases:
         mock_base_model: MagicMock,
         mock_super_get_save_redirect_url: MagicMock,
     ) -> None:
-        # Setup mocks
         mock_model_view.custom_post_create = False
         mock_redirect_url = URL("http://example.com/redirect")
         mock_super_get_save_redirect_url.return_value = mock_redirect_url
 
-        # Execute
         result = admin_app.get_save_redirect_url(
             mock_request, mock_form_data, mock_model_view, mock_base_model
         )
 
-        # Verify
         assert result == mock_redirect_url
         mock_super_get_save_redirect_url.assert_called_once_with(
             mock_request, mock_form_data, mock_model_view, mock_base_model
