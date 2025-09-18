@@ -11,6 +11,12 @@ from src.db.models import User
 from src.tests.mocks import MockUser
 
 
+@pytest.fixture
+def mock_user_make_password() -> Generator[MagicMock, Any, None]:
+    with patch.object(User, "make_password", return_value="hashed-password") as mock_make_password:
+        yield mock_make_password
+
+
 class TestUserAdminForm:
 
     def test_form_creation(self) -> None:
@@ -124,11 +130,6 @@ class TestUserAdminView:
 
 
 class TestUserAdminViewInsertModel(TestUserAdminView):
-
-    @pytest.fixture
-    def mock_user_make_password(self) -> Generator[MagicMock, Any, None]:
-        with patch.object(User, "make_password", return_value="hashed-password") as mock_make_password:
-            yield mock_make_password
 
     @pytest.mark.asyncio
     async def test_insert_model_success(
