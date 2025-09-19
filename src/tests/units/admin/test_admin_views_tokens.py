@@ -12,89 +12,86 @@ from src.db.models import Token
 from src.tests.mocks import MockUser
 
 
-class TestTokenAdminView:
-
-    @pytest.fixture
-    def mock_app(self) -> MagicMock:
-        app = MagicMock()
-        app.settings = MagicMock()
-        app.settings.jwt_algorithm = "HS256"
-        app.settings.app_secret_key = MagicMock()
-        app.settings.app_secret_key.get_secret_value.return_value = "test-secret"
-        return app
-
-    @pytest.fixture
-    def token_admin_view(self, mock_app: MagicMock) -> TokenAdminView:
-        view = TokenAdminView()
-        view.app = mock_app
-        return view
-
-    @pytest.fixture
-    def mock_request(self) -> MagicMock:
-        request = MagicMock(spec=Request)
-        request.query_params = {"pks": "1,2,3"}
-        request.url_for = MagicMock()
-        request.url_for.return_value = "/admin/tokens/list"
-        return request
-
-    @pytest.fixture
-    def mock_user(self) -> MockUser:
-        return MockUser(id=1, username="test-user", is_active=True)
-
-    @pytest.fixture
-    def mock_token(self, mock_user: MockUser) -> MagicMock:
-        token = MagicMock(spec=Token)
-        token.id = 1
-        token.user_id = 1
-        token.user = mock_user
-        token.name = "test-token"
-        token.token = "hashed-token-value"
-        token.is_active = True
-        token.expires_at = datetime.datetime.now() + datetime.timedelta(days=30)
-        token.created_at = datetime.datetime.now()
-        return token
-
-    @pytest.fixture
-    def mock_form_data(self) -> dict[str, Any]:
-        return {
-            "user": 1,
-            "name": "test-token",
-            "expires_at": datetime.datetime.now() + datetime.timedelta(days=30),
-        }
-
-    @pytest.fixture
-    def mock_token_repository(self) -> Generator[AsyncMock, Any, None]:
-        with patch("src.modules.admin.views.tokens.TokenRepository") as mock_repo_class:
-            mock_repo = AsyncMock()
-            mock_repo_class.return_value = mock_repo
-            yield mock_repo
-
-    @pytest.fixture
-    def mock_uow(self) -> Generator[AsyncMock, Any, None]:
-        with patch("src.modules.admin.views.tokens.SASessionUOW") as mock_uow_class:
-            mock_uow = AsyncMock()
-            mock_uow_class.return_value.__aenter__.return_value = mock_uow
-            mock_uow_class.return_value.__aexit__.return_value = None
-            yield mock_uow
-
-    @pytest.fixture
-    def mock_cache(self) -> Generator[MagicMock, Any, None]:
-        with patch("src.modules.admin.views.tokens.InMemoryCache") as mock_cache_class:
-            mock_cache = MagicMock()
-            mock_cache_class.return_value = mock_cache
-            yield mock_cache
+@pytest.fixture
+def token_admin_view(test_app: MagicMock) -> TokenAdminView:
+    view = TokenAdminView()
+    view.app = test_app
+    return view
 
 
-class TestTokenAdminViewInsertModel(TestTokenAdminView):
+@pytest.fixture
+def mock_request() -> MagicMock:
+    request = MagicMock(spec=Request)
+    request.query_params = {"pks": "1,2,3"}
+    request.url_for = MagicMock()
+    request.url_for.return_value = "/admin/tokens/list"
+    return request
 
-    @pytest.fixture
-    def mock_make_api_token(self) -> Generator[MagicMock, Any, None]:
-        with patch("src.modules.admin.views.tokens.make_api_token") as mock_make_token:
-            mock_token_info = MagicMock()
-            mock_token_info.hashed_value = "hashed-token-value"
-            mock_token_info.value = "raw-token-value"
-            mock_make_token.return_value = mock_token_info
-            yield mock_make_token
+
+@pytest.fixture
+def mock_user() -> MockUser:
+    return MockUser(id=1, username="test-user", is_active=True)
+
+
+@pytest.fixture
+def mock_token(mock_user: MockUser) -> MagicMock:
+    token = MagicMock(spec=Token)
+    token.id = 1
+    token.user_id = 1
+    token.user = mock_user
+    token.name = "test-token"
+    token.token = "hashed-token-value"
+    token.is_active = True
+    token.expires_at = datetime.datetime.now() + datetime.timedelta(days=30)
+    token.created_at = datetime.datetime.now()
+    return token
+
+
+@pytest.fixture
+def mock_form_data() -> dict[str, Any]:
+    return {
+        "user": 1,
+        "name": "test-token",
+        "expires_at": datetime.datetime.now() + datetime.timedelta(days=30),
+    }
+
+
+@pytest.fixture
+def mock_token_repository() -> Generator[AsyncMock, Any, None]:
+    with patch("src.modules.admin.views.tokens.TokenRepository") as mock_repo_class:
+        mock_repo = AsyncMock()
+        mock_repo_class.return_value = mock_repo
+        yield mock_repo
+
+
+@pytest.fixture
+def mock_uow() -> Generator[AsyncMock, Any, None]:
+    with patch("src.modules.admin.views.tokens.SASessionUOW") as mock_uow_class:
+        mock_uow = AsyncMock()
+        mock_uow_class.return_value.__aenter__.return_value = mock_uow
+        mock_uow_class.return_value.__aexit__.return_value = None
+        yield mock_uow
+
+
+@pytest.fixture
+def mock_cache() -> Generator[MagicMock, Any, None]:
+    with patch("src.modules.admin.views.tokens.InMemoryCache") as mock_cache_class:
+        mock_cache = MagicMock()
+        mock_cache_class.return_value = mock_cache
+        yield mock_cache
+
+
+@pytest.fixture
+def mock_make_api_token() -> Generator[MagicMock, Any, None]:
+    with patch("src.modules.admin.views.tokens.make_api_token") as mock_make_token:
+        mock_token_info = MagicMock()
+        mock_token_info.hashed_value = "hashed-token-value"
+        mock_token_info.value = "raw-token-value"
+        mock_make_token.return_value = mock_token_info
+        yield mock_make_token
+
+
+class TestTokenAdminViewInsertModel:
 
     @pytest.mark.asyncio
     async def test_insert_model_success(
@@ -166,7 +163,7 @@ class TestTokenAdminViewInsertModel(TestTokenAdminView):
         )
 
 
-class TestTokenAdminViewGetObjectForDetails(TestTokenAdminView):
+class TestTokenAdminViewGetObjectForDetails:
 
     @pytest.mark.asyncio
     async def test_get_object_for_details_success(
@@ -213,7 +210,7 @@ class TestTokenAdminViewGetObjectForDetails(TestTokenAdminView):
         mock_cache.invalidate.assert_called_once_with(f"token__{mock_token.id}")
 
 
-class TestTokenAdminViewGetSaveRedirectUrl(TestTokenAdminView):
+class TestTokenAdminViewGetSaveRedirectUrl:
 
     def test_get_save_redirect_url(
         self,
@@ -235,7 +232,7 @@ class TestTokenAdminViewGetSaveRedirectUrl(TestTokenAdminView):
         )
 
 
-class TestTokenAdminViewActions(TestTokenAdminView):
+class TestTokenAdminViewActions:
 
     @pytest.mark.asyncio
     async def test_deactivate_tokens_success(
@@ -276,7 +273,7 @@ class TestTokenAdminViewActions(TestTokenAdminView):
         mock_set_active.assert_called_once_with(mock_request, is_active=True)
 
 
-class TestTokenAdminViewSetActive(TestTokenAdminView):
+class TestTokenAdminViewSetActive:
 
     @pytest.mark.asyncio
     async def test_set_active_success(
@@ -359,7 +356,7 @@ class TestTokenAdminViewSetActive(TestTokenAdminView):
         mock_uow.commit.assert_called_once()
 
 
-class TestTokenAdminViewEdgeCases(TestTokenAdminView):
+class TestTokenAdminViewEdgeCases:
 
     @pytest.mark.asyncio
     async def test_insert_model_database_error(
