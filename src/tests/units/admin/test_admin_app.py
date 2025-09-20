@@ -2,6 +2,7 @@ from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from starlette.datastructures import FormData, URL
 from starlette.responses import Response
 
@@ -393,35 +394,45 @@ class TestAdminAppGetSaveRedirectUrl:
 
 class TestAdminAppRegisterViews:
 
-    def test_register_views(
+    @pytest.fixture
+    def mock_admin_app__with_add_view(
         self,
         admin_app: AdminApp,
+        monkeypatch: MonkeyPatch,
+    ) -> Generator[tuple[AdminApp, MagicMock], Any, None]:
+        with monkeypatch.context() as m:
+            mock_add_view = MagicMock(return_value=None)
+            m.setattr(admin_app, "add_view", mock_add_view)
+            yield admin_app, mock_add_view
+
+    def test_register_views(
+        self,
+        mock_admin_app__with_add_view: tuple[AdminApp, MagicMock],
     ) -> None:
-        admin_app.add_view = MagicMock()
+        admin_app, mock_add_view = mock_admin_app__with_add_view
         admin_app._views = [MagicMock(spec=BaseAPPView), MagicMock(spec=BaseModelView)]
 
         admin_app._register_views()
 
-        assert admin_app.add_view.call_count == len(ADMIN_VIEWS)
+        assert mock_add_view.call_count == len(ADMIN_VIEWS)
         for view in ADMIN_VIEWS:
-            admin_app.add_view.assert_any_call(view)
+            mock_add_view.assert_any_call(view)
 
-        # Check that app is set for view instances
         for view_instance in admin_app._views:
-            assert view_instance.app == admin_app.app
+            assert view_instance.app == admin_app.app  # noqa
 
     def test_register_views_with_custom_views(
         self,
-        admin_app: AdminApp,
+        mock_admin_app__with_add_view: tuple[AdminApp, MagicMock],
     ) -> None:
-        admin_app.add_view = MagicMock()
+        admin_app, mock_add_view = mock_admin_app__with_add_view
         custom_view1 = MagicMock(spec=BaseAPPView)
         custom_view2 = MagicMock(spec=BaseModelView)
         admin_app._views = [custom_view1, custom_view2]
 
         admin_app._register_views()
 
-        assert admin_app.add_view.call_count == len(ADMIN_VIEWS)
+        assert mock_add_view.call_count == len(ADMIN_VIEWS)
 
         # Check that app is set for custom view instances
         assert custom_view1.app == admin_app.app
