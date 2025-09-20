@@ -2,7 +2,6 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from types import TracebackType
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.services import SASessionUOW

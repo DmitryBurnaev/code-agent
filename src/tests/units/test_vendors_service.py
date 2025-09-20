@@ -3,7 +3,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
-from pydantic import BaseModel
 
 from src.services.vendors import (
     VendorModelResponse,
@@ -11,7 +10,7 @@ from src.services.vendors import (
     VendorClient,
     VendorService,
 )
-from src.models import LLMVendor, AIModel
+from src.models import AIModel
 from src.constants import VendorSlug
 
 

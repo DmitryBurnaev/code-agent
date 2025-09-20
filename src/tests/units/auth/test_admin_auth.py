@@ -1,17 +1,11 @@
-"""
-Tests for admin authentication module.
-"""
-
 import datetime
 from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import Request
-from sqladmin.authentication import AuthenticationBackend
 
 from src.modules.admin.auth import AdminAuth, UserPayload
-from src.db.models import User
 from src.settings import AppSettings
 from src.tests.mocks import MockUser
 

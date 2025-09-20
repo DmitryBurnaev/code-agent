@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 from starlette.requests import Request
-from wtforms import Form
 
 from src.modules.admin.views.users import UserAdminView, UserAdminForm
 from src.db.models import User

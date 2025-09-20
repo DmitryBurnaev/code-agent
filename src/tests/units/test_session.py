@@ -2,17 +2,14 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
-from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 from src.db.session import (
     AsyncDBConnectors,
     get_session_factory,
     initialize_database,
     close_database,
-    _db_connectors,
 )
-from src.exceptions import DatabaseError
 
 
 class TestAsyncDBConnectors:
