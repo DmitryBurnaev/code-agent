@@ -65,6 +65,24 @@ def mock_token_repository() -> Generator[AsyncMock, Any, None]:
 
 
 @pytest.fixture
+def mock_super_model_view_insert() -> Generator[MagicMock, Any, None]:
+    with patch("sqladmin.models.ModelView.insert_model") as mock_super:
+        yield mock_super
+
+
+@pytest.fixture
+def mock_super_model_view_get_details() -> Generator[MagicMock, Any, None]:
+    with patch("sqladmin.models.ModelView.get_object_for_details") as mock_super:
+        yield mock_super
+
+
+@pytest.fixture
+def mock_super_model_url_build_for() -> Generator[MagicMock, Any, None]:
+    with patch("sqladmin.models.ModelView._build_url_for") as mock_build_url_for:
+        yield mock_build_url_for
+
+
+@pytest.fixture
 def mock_uow() -> Generator[AsyncMock, Any, None]:
     with patch("src.modules.admin.views.tokens.SASessionUOW") as mock_uow_class:
         mock_uow = AsyncMock()
@@ -102,17 +120,13 @@ class TestTokenAdminViewInsertModel:
         mock_token: Token,
         mock_cache: MagicMock,
         mock_make_api_token: MagicMock,
+        mock_super_model_view_insert: MagicMock,
     ) -> None:
-        # Setup mocks
-        mock_super_insert = AsyncMock(return_value=mock_token)
-        token_admin_view.__class__.__bases__[0].insert_model = mock_super_insert
-
-        # Execute
+        mock_super_model_view_insert.return_value = mock_token
         result = await token_admin_view.insert_model(mock_request, mock_form_data)
 
-        # Verify
         assert result == mock_token
-        mock_super_insert.assert_called_once()
+        mock_super_model_view_insert.assert_called_once()
         mock_cache.set.assert_called_once_with(f"token__{mock_token.id}", "raw-token-value", ttl=10)
 
     @pytest.mark.asyncio
@@ -123,16 +137,15 @@ class TestTokenAdminViewInsertModel:
         mock_token: Token,
         mock_cache: MagicMock,
         mock_make_api_token: MagicMock,
+        mock_super_model_view_insert: MagicMock,
     ) -> None:
-        # Setup mocks
-        form_data = {"user": 1, "name": "test-token"}
-        mock_super_insert = AsyncMock(return_value=mock_token)
-        token_admin_view.__class__.__bases__[0].insert_model = mock_super_insert
+        mock_super_model_view_insert.return_value = mock_token
 
-        # Execute
-        result = await token_admin_view.insert_model(mock_request, form_data)
+        result = await token_admin_view.insert_model(
+            mock_request,
+            data={"user": 1, "name": "test-token"},
+        )
 
-        # Verify
         assert result == mock_token
         mock_make_api_token.assert_called_once_with(
             expires_at=None, settings=token_admin_view.app.settings
@@ -146,24 +159,23 @@ class TestTokenAdminViewInsertModel:
         mock_token: Token,
         mock_cache: MagicMock,
         mock_make_api_token: MagicMock,
+        mock_super_model_view_insert: MagicMock,
     ) -> None:
-        # Setup mocks
+        mock_super_model_view_insert.return_value = mock_token
         expires_at = datetime.datetime.now() + datetime.timedelta(days=30)
-        form_data = {"user": 1, "name": "test-token", "expires_at": expires_at}
-        mock_super_insert = AsyncMock(return_value=mock_token)
-        token_admin_view.__class__.__bases__[0].insert_model = mock_super_insert
 
-        # Execute
-        result = await token_admin_view.insert_model(mock_request, form_data)
+        result = await token_admin_view.insert_model(
+            mock_request,
+            data={"user": 1, "name": "test-token", "expires_at": expires_at},
+        )
 
-        # Verify
         assert result == mock_token
         mock_make_api_token.assert_called_once_with(
             expires_at=expires_at, settings=token_admin_view.app.settings
         )
 
 
-class TestTokenAdminViewGetObjectForDetails:
+class TestTokenAdminViewOperations:
 
     @pytest.mark.asyncio
     async def test_get_object_for_details_success(
@@ -172,16 +184,14 @@ class TestTokenAdminViewGetObjectForDetails:
         mock_request: MagicMock,
         mock_token: Token,
         mock_cache: MagicMock,
+        mock_super_model_view_get_details: MagicMock,
     ) -> None:
         # Setup mocks
-        mock_super_get = AsyncMock(return_value=mock_token)
-        token_admin_view.__class__.__bases__[0].get_object_for_details = mock_super_get
+        mock_super_model_view_get_details.return_value = mock_token
         mock_cache.get.return_value = "raw-token-value"
 
-        # Execute
-        result = await token_admin_view.get_object_for_details(1)
+        result = await token_admin_view.get_object_for_details(value=mock_token.id)
 
-        # Verify
         assert result == mock_token
         assert result.raw_token == "raw-token-value"
         mock_cache.get.assert_called_once_with(f"token__{mock_token.id}")
@@ -194,81 +204,66 @@ class TestTokenAdminViewGetObjectForDetails:
         mock_request: MagicMock,
         mock_token: Token,
         mock_cache: MagicMock,
+        mock_super_model_view_get_details: MagicMock,
     ) -> None:
-        # Setup mocks
-        mock_super_get = AsyncMock(return_value=mock_token)
-        token_admin_view.__class__.__bases__[0].get_object_for_details = mock_super_get
+        mock_super_model_view_get_details.return_value = mock_token
         mock_cache.get.return_value = None
 
-        # Execute
         result = await token_admin_view.get_object_for_details(1)
 
-        # Verify
         assert result == mock_token
         assert result.raw_token == "None"
         mock_cache.get.assert_called_once_with(f"token__{mock_token.id}")
         mock_cache.invalidate.assert_called_once_with(f"token__{mock_token.id}")
-
-
-class TestTokenAdminViewGetSaveRedirectUrl:
 
     def test_get_save_redirect_url(
         self,
         token_admin_view: TokenAdminView,
         mock_request: MagicMock,
         mock_token: Token,
+        mock_super_model_url_build_for: MagicMock,
     ) -> None:
-        # Setup mocks
-        mock_build_url = MagicMock(return_value=URL("/admin/tokens/details/1"))
-        token_admin_view._build_url_for = mock_build_url
+        mock_super_model_url_build_for.return_value = URL("/admin/tokens/details/1")
 
-        # Execute
         result = token_admin_view.get_save_redirect_url(mock_request, mock_token)
 
         # Verify
         assert result == URL("/admin/tokens/details/1")
-        mock_build_url.assert_called_once_with(
+        mock_super_model_url_build_for.assert_called_once_with(
             "admin:details", request=mock_request, obj=mock_token
         )
 
 
+@pytest.mark.asyncio
 class TestTokenAdminViewActions:
 
-    @pytest.mark.asyncio
+    @pytest.fixture
+    def mock_set_active(self) -> Generator[MagicMock, Any, None]:
+        with patch("src.modules.admin.views.tokens.TokenAdminView._set_active") as mock_set_active:
+            yield mock_set_active
+
     async def test_deactivate_tokens_success(
         self,
         token_admin_view: TokenAdminView,
         mock_request: MagicMock,
-        mock_token_repository: AsyncMock,
-        mock_uow: AsyncMock,
+        mock_set_active: MagicMock,
     ) -> None:
-        # Setup mocks
-        mock_set_active = AsyncMock(return_value=RedirectResponse("/admin/tokens/list"))
-        token_admin_view._set_active = mock_set_active
-
-        # Execute
+        mock_set_active.return_value = RedirectResponse("/admin/tokens/list")
         result = await token_admin_view.deactivate_tokens(mock_request)
 
-        # Verify
         assert isinstance(result, RedirectResponse)
         mock_set_active.assert_called_once_with(mock_request, is_active=False)
 
-    @pytest.mark.asyncio
     async def test_activate_tokens_success(
         self,
         token_admin_view: TokenAdminView,
         mock_request: MagicMock,
-        mock_token_repository: AsyncMock,
-        mock_uow: AsyncMock,
+        mock_set_active: MagicMock,
     ) -> None:
-        # Setup mocks
-        mock_set_active = AsyncMock(return_value=RedirectResponse("/admin/tokens/list"))
-        token_admin_view._set_active = mock_set_active
+        mock_set_active.return_value = RedirectResponse("/admin/tokens/list")
 
-        # Execute
         result = await token_admin_view.activate_tokens(mock_request)
 
-        # Verify
         assert isinstance(result, RedirectResponse)
         mock_set_active.assert_called_once_with(mock_request, is_active=True)
 
@@ -364,13 +359,10 @@ class TestTokenAdminViewEdgeCases:
         token_admin_view: TokenAdminView,
         mock_request: MagicMock,
         mock_form_data: dict[str, Any],
-        mock_cache: MagicMock,
+        mock_super_model_view_insert: MagicMock,
     ) -> None:
-        # Setup mocks
-        mock_super_insert = AsyncMock(side_effect=Exception("Database error"))
-        token_admin_view.__class__.__bases__[0].insert_model = mock_super_insert
+        mock_super_model_view_insert.side_effect = Exception("Database error")
 
-        # Execute and expect exception
         with pytest.raises(Exception, match="Database error"):
             await token_admin_view.insert_model(mock_request, mock_form_data)
 
@@ -380,12 +372,10 @@ class TestTokenAdminViewEdgeCases:
         token_admin_view: TokenAdminView,
         mock_request: MagicMock,
         mock_cache: MagicMock,
+        mock_super_model_view_get_details: MagicMock,
     ) -> None:
-        # Setup mocks
-        mock_super_get = AsyncMock(side_effect=Exception("Database error"))
-        token_admin_view.__class__.__bases__[0].get_object_for_details = mock_super_get
+        mock_super_model_view_get_details.side_effect = Exception("Database error")
 
-        # Execute and expect exception
         with pytest.raises(Exception, match="Database error"):
             await token_admin_view.get_object_for_details(1)
 
@@ -397,11 +387,9 @@ class TestTokenAdminViewEdgeCases:
         mock_token_repository: AsyncMock,
         mock_uow: AsyncMock,
     ) -> None:
-        # Setup mocks
         mock_uow.session = MagicMock()
         mock_token_repository.set_active.side_effect = Exception("Database error")
 
-        # Execute and expect exception
         with pytest.raises(Exception, match="Database error"):
             await token_admin_view._set_active(mock_request, is_active=True)
 
@@ -410,11 +398,9 @@ class TestTokenAdminViewEdgeCases:
         token_admin_view: TokenAdminView,
         mock_request: MagicMock,
         mock_token: Token,
+        mock_super_model_url_build_for: MagicMock,
     ) -> None:
-        # Setup mocks
-        mock_build_url = MagicMock(side_effect=Exception("URL build error"))
-        token_admin_view._build_url_for = mock_build_url
+        mock_super_model_url_build_for.side_effect = Exception("URL build error")
 
-        # Execute and expect exception
         with pytest.raises(Exception, match="URL build error"):
             token_admin_view.get_save_redirect_url(mock_request, mock_token)
