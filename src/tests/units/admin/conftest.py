@@ -11,6 +11,12 @@ def mock_super_model_view_insert() -> Generator[MagicMock, Any, None]:
 
 
 @pytest.fixture
+def mock_super_model_view_update() -> Generator[MagicMock, Any, None]:
+    with patch("sqladmin.models.ModelView.update_model") as mock_super:
+        yield mock_super
+
+
+@pytest.fixture
 def mock_super_model_view_get_details() -> Generator[MagicMock, Any, None]:
     with patch("sqladmin.models.ModelView.get_object_for_details") as mock_super:
         yield mock_super
