@@ -8,7 +8,7 @@ on:
     - cron: "0 0 * * 1" # Every Monday at 00:00
 
 jobs:
-  analize:
+  analyze:
     name: analyze
     runs-on: ubuntu-latest
     permissions:

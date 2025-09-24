@@ -108,6 +108,7 @@ class ProxyService:
                 exc_value,
             )
 
+        logger.info("ProxyService: closing resources and cleanup | client: %r", self._http_client)
         # TODO: think about normally closing transport
         # await self._http_client.aclose()
 
