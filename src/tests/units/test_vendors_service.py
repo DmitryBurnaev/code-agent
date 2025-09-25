@@ -10,6 +10,8 @@ from src.services.vendors import (
 )
 from src.models import AIModel, LLMVendor
 from src.constants import VendorSlug
+from src.settings import AppSettings
+from src.tests.conftest import app_settings_test
 
 
 @pytest.fixture
@@ -72,7 +74,7 @@ def mock_vendor() -> LLMVendor:
 
 class TestVendorClient:
 
-    def test_init(self, mock_vendor, mock_http_client) -> None:
+    def test_init(self, mock_vendor: LLMVendor, mock_http_client: MagicMock) -> None:
         client = VendorClient(mock_vendor, mock_http_client)
 
         assert client._vendor == mock_vendor
@@ -80,7 +82,9 @@ class TestVendorClient:
         assert client._http_client == mock_http_client
 
     @pytest.mark.asyncio
-    async def test_get_list_models_success(self, mock_vendor, mock_logger) -> None:
+    async def test_get_list_models_success(
+        self, mock_vendor: LLMVendor, mock_logger: MagicMock
+    ) -> None:
         mock_http_client = AsyncMock(spec=httpx.AsyncClient)
         mock_response = MagicMock()
         mock_response.status_code = httpx.codes.OK
@@ -104,7 +108,9 @@ class TestVendorClient:
         assert models[1].vendor == "openai"
 
     @pytest.mark.asyncio
-    async def test_get_list_models_http_error(self, mock_vendor, mock_logger) -> None:
+    async def test_get_list_models_http_error(
+        self, mock_vendor: LLMVendor, mock_logger: MagicMock
+    ) -> None:
         mock_http_client = AsyncMock(spec=httpx.AsyncClient)
         mock_response = MagicMock()
         mock_response.status_code = 500
@@ -123,7 +129,9 @@ class TestVendorClient:
         assert models == []
 
     @pytest.mark.asyncio
-    async def test_get_list_models_no_data(self, mock_vendor, mock_logger) -> None:
+    async def test_get_list_models_no_data(
+        self, mock_vendor: LLMVendor, mock_logger: MagicMock
+    ) -> None:
         mock_http_client = AsyncMock(spec=httpx.AsyncClient)
         mock_response = MagicMock()
         mock_response.status_code = httpx.codes.OK
@@ -142,7 +150,9 @@ class TestVendorClient:
         assert models == []
 
     @pytest.mark.asyncio
-    async def test_get_list_models_exception(self, mock_vendor, mock_logger) -> None:
+    async def test_get_list_models_exception(
+        self, mock_vendor: LLMVendor, mock_logger: MagicMock
+    ) -> None:
         mock_http_client = AsyncMock(spec=httpx.AsyncClient)
         mock_http_client.get.side_effect = Exception("Network error")
 
@@ -177,21 +187,30 @@ class TestVendorClient:
 
 class TestVendorService:
 
-    def test_init(self, mock_settings, mock_vendor_http_client) -> None:
-        service = VendorService(mock_settings)
+    def test_init(self, app_settings_test: AppSettings, mock_vendor_http_client: MagicMock) -> None:
+        service = VendorService(app_settings_test)
 
-        assert service._settings == mock_settings
+        assert service._settings == app_settings_test
         assert service._cache is not None
         assert service._vendor_clients == {}
         assert service._http_client is not None
 
-    def test_init_with_http_client(self, mock_settings, mock_http_client) -> None:
-        service = VendorService(mock_settings, http_client=mock_http_client)
+    def test_init_with_http_client(
+        self,
+        app_settings_test: AppSettings,
+        mock_http_client: MagicMock,
+    ) -> None:
+        service = VendorService(app_settings_test, http_client=mock_http_client)
 
         assert service._http_client == mock_http_client
 
-    def test_get_client_new(self, mock_settings, mock_http_client, mock_vendor_http_client) -> None:
-        service = VendorService(mock_settings, http_client=mock_http_client)
+    def test_get_client_new(
+        self,
+        app_settings_test: AppSettings,
+        mock_http_client: MagicMock,
+        mock_vendor_http_client: MagicMock,
+    ) -> None:
+        service = VendorService(app_settings_test, http_client=mock_http_client)
 
         vendor = MagicMock()
         vendor.slug = VendorSlug.OPENAI
@@ -202,9 +221,12 @@ class TestVendorService:
         assert service._vendor_clients[vendor.slug] == client
 
     def test_get_client_existing(
-        self, mock_settings, mock_http_client, mock_vendor_http_client
+        self,
+        app_settings_test: AppSettings,
+        mock_http_client: MagicMock,
+        mock_vendor_http_client: MagicMock,
     ) -> None:
-        service = VendorService(mock_settings, http_client=mock_http_client)
+        service = VendorService(app_settings_test, http_client=mock_http_client)
 
         vendor = MagicMock()
         vendor.slug = VendorSlug.OPENAI
@@ -218,13 +240,13 @@ class TestVendorService:
     @pytest.mark.asyncio
     async def test_get_list_models_no_active_vendors(
         self,
-        mock_settings,
-        mock_http_client,
-        mock_vendor_http_client,
-        mock_session_uow,
-        mock_logger,
+        app_settings_test: AppSettings,
+        mock_http_client: MagicMock,
+        mock_vendor_http_client: MagicMock,
+        mock_session_uow: MagicMock,
+        mock_logger: MagicMock,
     ) -> None:
-        service = VendorService(mock_settings, http_client=mock_http_client)
+        service = VendorService(app_settings_test, http_client=mock_http_client)
 
         mock_repo = AsyncMock()
         mock_repo.filter.return_value = []
@@ -245,12 +267,15 @@ class TestVendorService:
 
     @pytest.mark.asyncio
     async def test_get_list_models_offline_mode(
-        self, mock_http_client, mock_vendor_http_client, mock_session_uow
+        self,
+        mock_http_client: MagicMock,
+        mock_vendor_http_client: MagicMock,
+        mock_session_uow: MagicMock,
     ) -> None:
-        mock_settings = MagicMock()
-        mock_settings.flags.offline_mode = True
+        app_settings_test = MagicMock()
+        app_settings_test.flags.offline_mode = True
 
-        service = VendorService(mock_settings, http_client=mock_http_client)
+        service = VendorService(app_settings_test, http_client=mock_http_client)
 
         mock_repo = AsyncMock()
         mock_repo.filter.return_value = [
@@ -277,9 +302,13 @@ class TestVendorService:
 
     @pytest.mark.asyncio
     async def test_get_list_models_with_cache(
-        self, mock_settings, mock_http_client, mock_vendor_http_client, mock_session_uow
+        self,
+        app_settings_test: AppSettings,
+        mock_http_client,
+        mock_vendor_http_client,
+        mock_session_uow,
     ) -> None:
-        service = VendorService(mock_settings, http_client=mock_http_client)
+        service = VendorService(app_settings_test, http_client=mock_http_client)
 
         # Mock cached data
         cached_models = [
@@ -309,13 +338,13 @@ class TestVendorService:
     @pytest.mark.asyncio
     async def test_get_list_models_force_refresh(
         self,
-        mock_settings,
+        app_settings_test: AppSettings,
         mock_http_client,
         mock_vendor_http_client,
         mock_session_uow,
         mock_llm_vendor_from_vendor,
     ) -> None:
-        service = VendorService(mock_settings, http_client=mock_http_client)
+        service = VendorService(app_settings_test, http_client=mock_http_client)
 
         # Mock cached data
         cached_models = [AIModel.from_vendor("openai", "gpt-4")]
@@ -345,14 +374,14 @@ class TestVendorService:
     @pytest.mark.asyncio
     async def test_get_list_models_vendor_exception(
         self,
-        mock_settings,
+        app_settings_test: AppSettings,
         mock_http_client,
         mock_vendor_http_client,
         mock_session_uow,
         mock_llm_vendor_from_vendor,
         mock_logger,
     ) -> None:
-        service = VendorService(mock_settings, http_client=mock_http_client)
+        service = VendorService(app_settings_test, http_client=mock_http_client)
 
         with patch("src.services.vendors.VendorRepository") as mock_repo_class:
             mock_repo_instance = AsyncMock()
@@ -374,13 +403,13 @@ class TestVendorService:
     @pytest.mark.asyncio
     async def test_get_list_models_client_exception(
         self,
-        mock_settings,
-        mock_http_client,
-        mock_vendor_http_client,
-        mock_session_uow,
-        mock_llm_vendor_from_vendor,
+        app_settings_test: AppSettings,
+        mock_http_client: MagicMock,
+        mock_vendor_http_client: MagicMock,
+        mock_session_uow: MagicMock,
+        mock_llm_vendor_from_vendor: MagicMock,
     ) -> None:
-        service = VendorService(mock_settings, http_client=mock_http_client)
+        service = VendorService(app_settings_test, http_client=mock_http_client)
 
         # Clear cache to ensure fresh data
         service._cache.clear()
@@ -412,8 +441,13 @@ class TestVendorService:
                 # Verify empty result when client fails
                 assert models == []
 
-    def test_cache_set_data(self, mock_settings, mock_http_client, mock_vendor_http_client) -> None:
-        service = VendorService(mock_settings, http_client=mock_http_client)
+    def test_cache_set_data(
+        self,
+        app_settings_test: AppSettings,
+        mock_http_client: MagicMock,
+        mock_vendor_http_client: MagicMock,
+    ) -> None:
+        service = VendorService(app_settings_test, http_client=mock_http_client)
 
         models = [
             AIModel.from_vendor("openai", "gpt-4"),
@@ -430,9 +464,12 @@ class TestVendorService:
         assert cached[1]["vendor_id"] == "gpt-3.5-turbo"
 
     def test_cache_get_data_hit(
-        self, mock_settings, mock_http_client, mock_vendor_http_client
+        self,
+        app_settings_test: AppSettings,
+        mock_http_client: MagicMock,
+        mock_vendor_http_client: MagicMock,
     ) -> None:
-        service = VendorService(mock_settings, http_client=mock_http_client)
+        service = VendorService(app_settings_test, http_client=mock_http_client)
 
         # Set up cache
         models_data = [
@@ -449,9 +486,13 @@ class TestVendorService:
         assert models[1].vendor_id == "gpt-3.5-turbo"
 
     def test_cache_get_data_miss(
-        self, mock_settings, mock_http_client, mock_vendor_http_client, mock_logger
+        self,
+        app_settings_test: AppSettings,
+        mock_http_client: MagicMock,
+        mock_vendor_http_client: MagicMock,
+        mock_logger: MagicMock,
     ) -> None:
-        service = VendorService(mock_settings, http_client=mock_http_client)
+        service = VendorService(app_settings_test, http_client=mock_http_client)
 
         models = service._cache_get_data("nonexistent")
 
@@ -463,9 +504,13 @@ class TestVendorService:
         assert models is None
 
     def test_cache_get_data_invalid_data(
-        self, mock_settings, mock_http_client, mock_vendor_http_client, mock_logger
+        self,
+        app_settings_test: AppSettings,
+        mock_http_client: MagicMock,
+        mock_vendor_http_client: MagicMock,
+        mock_logger: MagicMock,
     ) -> None:
-        service = VendorService(mock_settings, http_client=mock_http_client)
+        service = VendorService(app_settings_test, http_client=mock_http_client)
 
         # Set invalid cache data
         service._cache.set("openai", "invalid_data")
