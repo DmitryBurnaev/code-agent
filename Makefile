@@ -75,4 +75,4 @@ downgrade: .env ## Downgrade (unapply) DB migration (last revision)
 .PHONY: secrets
 secrets: .env ## Create new secrets
 	@echo Encryption: creating new key
-	uv run python -m src.cli.generate_secrets
+	uv run python -m src.modules.cli.generate_secrets
