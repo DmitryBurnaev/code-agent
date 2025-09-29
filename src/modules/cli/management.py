@@ -4,11 +4,13 @@ CLI for some management operations
 
 import asyncio
 import os
+from typing import Any, AsyncGenerator
+
 import click
 import secrets
+from contextlib import asynccontextmanager
 
 from src.db import (
-    get_session_factory,
     initialize_database,
     close_database,
     SASessionUOW,
@@ -17,33 +19,36 @@ from src.db import (
 )
 
 DEFAULT_ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
-MIN_PASSWORD_LENGTH: int = int(os.getenv("MIN_PASSWORD_LENGTH", 1))
-DEFAULT_PASSWORD_LENGTH: int = int(os.getenv("DEFAULT_PASSWORD_LENGTH", MIN_PASSWORD_LENGTH))
+MIN_PASSWORD_LENGTH: int = int(os.getenv("MIN_PASSWORD_LENGTH", "16"))
+DEFAULT_PASSWORD_LENGTH: int = int(os.getenv("DEFAULT_PASSWORD_LENGTH", "32"))
+
+
+@asynccontextmanager
+async def db_connection() -> AsyncGenerator[SASessionUOW, Any]:
+    """Care about initialize and finish DB connection"""
+    await initialize_database()
+    try:
+        async with SASessionUOW() as uow:
+            yield uow
+    except Exception as exc:
+        click.echo(f"Unable to make DB operation user: {exc!r}", err=True)
+    finally:
+        await close_database()
 
 
 async def update_user(username: str, new_password: str) -> bool:
     """Make users find and update operations"""
-
-    await initialize_database()
     success = False
-    try:
-        async with SASessionUOW() as uow:
-            user_repo = UserRepository(session=uow.session)
-            user = await user_repo.get_by_username(username)
-            if user is not None:
-                click.echo(f"Found user {username}. Lets update him password :)")
-                user.password = User.make_password(new_password)
-                uow.mark_for_commit()
-                success = True
-            else:
-                click.echo(f"User {username} not found.")
-
-    except Exception as exc:
-        click.echo(f"Unable to update user: {exc!r}", err=True)
-        success = False
-
-    finally:
-        await close_database()
+    async with db_connection() as uow:
+        user_repo = UserRepository(session=uow.session)
+        user = await user_repo.get_by_username(username)
+        if user is not None:
+            click.echo(f"Found user {username}. Lets update him password :)")
+            user.password = User.make_password(new_password)
+            uow.mark_for_commit()
+            success = True
+        else:
+            click.echo(f"User {username} not found.")
 
     return success
 
@@ -69,6 +74,7 @@ def change_admin_password(
     random_password: bool = False,
     random_password_length: int = DEFAULT_PASSWORD_LENGTH,
 ) -> None:
+    """Change specific user's password."""
     click.echo("===")
     click.echo("Changing admin password...")
     password: str
