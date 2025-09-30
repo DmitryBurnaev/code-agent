@@ -181,7 +181,7 @@ Note: Make sure your domain's DNS records are properly configured and pointing t
 1. Generate Secrets
    ```bash
    # Generate secure secrets and write them to .env file
-   python -m src.cli.generate_secrets
+   uv run python -m src.cli.generate_secrets
    
    # This will automatically:
    # - Generate random secrets for APP_SECRET_KEY, VENDOR_ENCRYPTION_KEY, DB_PASSWORD, ADMIN_PASSWORD
@@ -191,29 +191,50 @@ Note: Make sure your domain's DNS records are properly configured and pointing t
 
 2. Simple AI Client
    ```bash   
-   usage: simple_ai_client.py [-h] [--vendor VENDOR] [--vendor-url VENDOR_URL] [--model MODEL] [--token TOKEN] [--stream] [--prompt PROMPT]
-
-   CLI for interacting with AI models (DeepSeek/OpenAI compatible API)
-
-   options:
-   -h, --help            show this help message and exit
-   --vendor VENDOR       AI vendor (deepseek, ...)
-   --vendor-url VENDOR_URL
-                           AI vendor URL (https://api.deepseek.com/v1, ...)
-   --model MODEL         Model name (e.g. deepseek-chat)
-   --token TOKEN         Authorization token (or environment variable)
-   --stream              Stream mode
-   --prompt PROMPT       Prompt text
+   # usage: simple_ai_client.py [-h] [--vendor VENDOR] [--vendor-url VENDOR_URL] [--model MODEL] [--token TOKEN] [--stream] [--prompt PROMPT]
+   #
+   # CLI for interacting with AI models (DeepSeek/OpenAI compatible API)
+   #
+   # options:
+   #    -h, --help            show this help message and exit
+   #    --vendor VENDOR       AI vendor (deepseek, ...)
+   #    --vendor-url VENDOR_URL
+   #                         AI vendor URL (https://api.deepseek.com/v1, ...)
+   #    --model MODEL         Model name (e.g. deepseek-chat)
+   #    --token TOKEN         Authorization token (or environment variable)
+   #    --stream              Stream mode
+   #    --prompt PROMPT       Prompt text
 
    # Example of running simple_ai_client via CLI
-   python -m src.cli.simple_ai_client --vendor openai --prompt "Hi, how are you?" --user-id 1
+   uv run python -m src.cli.simple_ai_client --vendor openai --prompt "Hi, how are you?" --user-id 1
 
    # Example with additional parameters
-   python -m src.cli.simple_ai_client --vendor openai --prompt "Tell me a joke" \
+   uv run python -m src.cli.simple_ai_client --vendor openai --prompt "Tell me a joke" \
      --user-id 1 --model gpt-3.5-turbo --temperature 0.7
 
    # To get help on all available options
-   python -m src.cli.simple_ai_client --help
+   uv run python -m src.cli.simple_ai_client --help
+   ```
+3. User management (change password)
+   ```bash
+   # Usage: python -m src.modules.cli.management [OPTIONS]
+   # Change the admin password.   
+   # Options:
+   #   --help                           Show this help message
+   #   --username TEXT                  Admin username
+   #   --random-password                Generate a random password.
+   #   --random-password-length INTEGER Set length of generated random password.
+
+   # Example: change password for admin to auto-generated password with length 32 symbols
+   uv run python -m src.modules.cli.management --username admin --random-password --random-password-length 32
+
+   # Example: change password for my-user to password from stdin
+   uv run python -m src.modules.cli.management --username my-user
+   # ===
+   # Changing admin password...
+   # Set a new password for my-user
+   # New Password: <INPUT>
+   # Repeat for confirmation: <INPUT>
    ```
 
 
