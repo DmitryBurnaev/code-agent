@@ -37,7 +37,7 @@ class AdminSettings(BaseSettings):
     )
     session_expiration_time: int = 2 * 24 * 3600
     base_url: str = "/cadm"
-    title: str = "CodeAgent Admin"
+    title: str = "CodeAgent"
 
 
 class AppSettings(BaseSettings):
