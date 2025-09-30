@@ -282,7 +282,7 @@ class TestUserAdminViewUpdateModel:
         # Verify
         assert result == mock_user
         mock_super_model_view_update.assert_called_once_with()
-        # Check that username was removed and password was not changed
+        # Check that username was removed and the password was not changed
         call_args = mock_super_model_view_update.call_args[0]
         assert "password" not in call_args[2]
         assert "username" not in call_args[2]

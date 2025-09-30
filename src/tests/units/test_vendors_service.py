@@ -48,30 +48,6 @@ def mock_vendor() -> LLMVendor:
     return vendor
 
 
-# @pytest.fixture
-# def mock_http_response():
-#     response = AsyncMock()
-#     response.status_code = httpx.codes.OK
-#     response.json.return_value = {"data": [{"id": "gpt-4"}, {"id": "gpt-3.5-turbo"}]}
-#     return response
-
-#
-# @pytest.fixture
-# def mock_repository():
-#     mock_repo = AsyncMock()
-#     mock_repo.filter.return_value = []
-#     return mock_repo
-#
-#
-# @pytest.fixture
-# def mock_session_with_repo(mock_repository):
-#     mock_session = AsyncMock()
-#     mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-#     mock_session.__aexit__ = AsyncMock(return_value=None)
-#     mock_session.session = mock_repository
-#     return mock_session
-
-
 class TestVendorClient:
 
     def test_init(self, mock_vendor: LLMVendor, mock_http_client: MagicMock) -> None:
@@ -99,13 +75,12 @@ class TestVendorClient:
         mock_http_client.get.assert_awaited_once_with(
             "https://api.openai.com/v1/models", headers=mock_vendor.auth_headers
         )
-
-        # Verify models
-        assert len(models) == 2
-        assert models[0].vendor_id == "gpt-4"
-        assert models[1].vendor_id == "gpt-3.5-turbo"
-        assert models[0].vendor == "openai"
-        assert models[1].vendor == "openai"
+        expected_models = [
+            ("gpt-4", "openai"),
+            ("gpt-3.5-turbo", "openai"),
+        ]
+        actual_models = [(m.vendor_id, m.vendor) for m in models]
+        assert actual_models == expected_models
 
     @pytest.mark.asyncio
     async def test_get_list_models_http_error(
@@ -304,9 +279,9 @@ class TestVendorService:
     async def test_get_list_models_with_cache(
         self,
         app_settings_test: AppSettings,
-        mock_http_client,
-        mock_vendor_http_client,
-        mock_session_uow,
+        mock_http_client: MagicMock,
+        mock_vendor_http_client: MagicMock,
+        mock_session_uow: MagicMock,
     ) -> None:
         service = VendorService(app_settings_test, http_client=mock_http_client)
 
@@ -457,11 +432,11 @@ class TestVendorService:
         service._cache_set_data("openai", models)
 
         # Verify data was cached
-        cached = service._cache.get("openai")
+        cached: list[dict[str, str]] = service._cache.get("openai")
         assert cached is not None
-        assert len(cached) == 2
-        assert cached[0]["vendor_id"] == "gpt-4"
-        assert cached[1]["vendor_id"] == "gpt-3.5-turbo"
+        expected_vendors = ["gpt-4", "gpt-3.5-turbo"]
+        cached_vendors = [c["vendor_id"] for c in cached]
+        assert cached_vendors == expected_vendors
 
     def test_cache_get_data_hit(
         self,
