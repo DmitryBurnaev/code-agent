@@ -305,7 +305,7 @@ class TestTokenAdminViewSetActive:
         mock_uow.session = MagicMock()
         mock_token_repository.set_active.return_value = None
 
-        # Execute - should work with empty list
+        # Execute - should work with an empty list
         result = await token_admin_view._set_active(mock_request, is_active=True)
 
         # Verify
