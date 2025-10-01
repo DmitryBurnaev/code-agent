@@ -79,12 +79,12 @@ class TestProxyAPI:
             ProxyRequestData(
                 method="POST",
                 headers={
-                    "host": "test-server",
+                    "host": "testserver",
                     "accept": "*/*",
                     "accept-encoding": "gzip, deflate",
                     "connection": "keep-alive",
                     "authorization": f"Bearer {auth_test_token}",
-                    "user-agent": "test-client",
+                    "user-agent": "testclient",
                     "content-length": "197",
                     "content-type": "application/json",
                 },
@@ -163,11 +163,11 @@ class TestProxyAPI:
             ProxyRequestData(
                 method="POST",
                 headers={
-                    "host": "test-server",
+                    "host": "testserver",
                     "accept-encoding": "gzip, deflate",
                     "connection": "keep-alive",
                     "authorization": f"Bearer {auth_test_token}",
-                    "user-agent": "test-client",
+                    "user-agent": "testclient",
                     "accept": "text/event-stream",
                     "content-length": "196",
                     "content-type": "application/json",
@@ -205,12 +205,12 @@ class TestProxyAPI:
             ProxyRequestData(
                 method="DELETE",
                 headers={
-                    "host": "test-server",
+                    "host": "testserver",
                     "accept": "*/*",
                     "accept-encoding": "gzip, deflate",
                     "connection": "keep-alive",
                     "authorization": f"Bearer {auth_test_token}",
-                    "user-agent": "test-client",
+                    "user-agent": "testclient",
                 },
                 query_params={},
                 body=None,

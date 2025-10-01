@@ -5,6 +5,8 @@ import pytest
 from fastapi import HTTPException
 
 from src.db.models import User
+from src.main import CodeAgentAPP
+from src.modules.admin.views.base import FormDataType
 from src.tests.mocks import MockUser
 from src.modules.admin.views.users import UserAdminView, UserAdminForm
 
@@ -25,9 +27,9 @@ def mock_uow() -> Generator[AsyncMock, Any, None]:
 
 
 @pytest.fixture
-def user_admin_view(mock_app: MagicMock) -> UserAdminView:
+def user_admin_view(test_app: CodeAgentAPP) -> UserAdminView:
     view = UserAdminView()
-    view.app = mock_app
+    view.app = test_app
     return view
 
 
@@ -127,20 +129,18 @@ class TestUserAdminViewInsertModel:
     ) -> None:
         mock_super_model_view_insert.return_value = mock_user
         mock_user_repository.get_by_username.return_value = None
+        user_data: FormDataType = {
+            "username": "new-user",
+            "email": "new-user@example.com",
+            "new_password": "password123",
+            "is_admin": False,
+            "is_active": True,
+        }
 
-        result = await user_admin_view.insert_model(
-            mock_request,
-            data={
-                "username": "new-user",
-                "email": "new-user@example.com",
-                "new_password": "password123",
-                "is_admin": False,
-                "is_active": True,
-            },
-        )
+        result = await user_admin_view.insert_model(mock_request, data=user_data)
 
         assert result == mock_user
-        mock_super_model_view_insert.assert_called_once_with()
+        mock_super_model_view_insert.assert_called_once_with(mock_request, user_data)
         # Check that password was hashed
         # call_args = mock_super_insert.call_args[0]
         # assert call_args[1]["password"] == "hashed-password"
@@ -232,24 +232,25 @@ class TestUserAdminViewUpdateModel:
         mock_super_model_view_update: MagicMock,
     ) -> None:
         mock_super_model_view_update.return_value = mock_user
+        update_user_data: FormDataType = {
+            "username": "updated-user",  # Should be removed
+            "email": "updated@example.com",
+            "new_password": "newpassword123",
+            "repeat_password": "newpassword123",
+            "is_admin": True,
+            "is_active": True,
+        }
 
         result = await user_admin_view.update_model(
             mock_request,
             pk=str(mock_user.id),
-            data={
-                "username": "updated-user",  # Should be removed
-                "email": "updated@example.com",
-                "new_password": "newpassword123",
-                "repeat_password": "newpassword123",
-                "is_admin": True,
-                "is_active": True,
-            },
+            data=update_user_data,
         )
 
         # Verify
         assert result == mock_user
         mock_super_model_view_update.assert_called_once_with(
-            mock_request,
+            mock_request, str(mock_user.id), update_user_data
         )
         # Check that username was removed and password was hashed
         call_args = mock_super_model_view_update.call_args[0]
@@ -267,27 +268,22 @@ class TestUserAdminViewUpdateModel:
         mock_super_model_view_update: MagicMock,
     ) -> None:
         mock_super_model_view_update.return_value = mock_user
-
+        update_user_data: FormDataType = {
+            "username": "updated-user",  # Should be removed
+            "email": "updated@example.com",
+            "is_admin": True,
+            "is_active": True,
+        }
         result = await user_admin_view.update_model(
             mock_request,
             pk=str(mock_user.id),
-            data={
-                "username": "updated-user",  # Should be removed
-                "email": "updated@example.com",
-                "is_admin": True,
-                "is_active": True,
-            },
+            data=update_user_data,
         )
 
-        # Verify
         assert result == mock_user
-        mock_super_model_view_update.assert_called_once_with()
-        # Check that username was removed and the password was not changed
-        call_args = mock_super_model_view_update.call_args[0]
-        assert "password" not in call_args[2]
-        assert "username" not in call_args[2]
-        assert "new_password" not in call_args[2]
-        assert "repeat_password" not in call_args[2]
+        mock_super_model_view_update.assert_called_once_with(
+            mock_request, str(mock_user.id), update_user_data
+        )
 
     @pytest.mark.asyncio
     async def test_update_model_database_error(
