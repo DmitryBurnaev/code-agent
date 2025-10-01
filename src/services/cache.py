@@ -17,7 +17,7 @@ class CacheProtocol(Protocol):
     def set(self, key: str, value: CacheValueType, ttl: int | None = None) -> None:
         pass
 
-    def invalidate(self, key: str) -> None:
+    def invalidate(self, key: str | None = None) -> None:
         pass
 
 
