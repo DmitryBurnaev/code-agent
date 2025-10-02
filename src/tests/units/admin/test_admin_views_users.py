@@ -293,8 +293,7 @@ class TestUserAdminViewUpdateModel:
         mock_user: MockUser,
         mock_super_model_view_update: MagicMock,
     ) -> None:
-        mock_super_model_view_update.return_value = mock_user
-
+        mock_super_model_view_update.side_effect = Exception("Database error")
         with pytest.raises(Exception, match="Database error"):
             await user_admin_view.update_model(
                 mock_request,
