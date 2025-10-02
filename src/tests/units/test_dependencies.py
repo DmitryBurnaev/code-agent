@@ -1,5 +1,7 @@
 """Comprehensive tests for src/db/dependencies.py module."""
 
+from typing import AsyncGenerator
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,7 +36,7 @@ class TestGetDbSession:
         mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
 
         with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger") as mock_logger:
+            with patch("src.db.dependencies.logger"):
                 async for session in get_db_session():
                     assert session == mock_session
                     break
@@ -60,7 +62,7 @@ class TestGetDbSession:
         mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
 
         with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger") as mock_logger:
+            with patch("src.db.dependencies.logger"):
                 # Simulate exception during session usage
                 test_exception = ValueError("Test error")
 
@@ -91,7 +93,7 @@ class TestGetDbSession:
         mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
 
         with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger") as mock_logger:
+            with patch("src.db.dependencies.logger"):
                 # Test that we can iterate through the generator
                 session_generator = get_db_session()
                 session = await session_generator.__anext__()
@@ -126,7 +128,7 @@ class TestGetTransactionalSession:
         mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
 
         with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger") as mock_logger:
+            with patch("src.db.dependencies.logger"):
                 async for session in get_transactional_session():
                     assert session == mock_session
                     break
@@ -157,11 +159,11 @@ class TestGetTransactionalSession:
         mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
 
         with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger") as mock_logger:
+            with patch("src.db.dependencies.logger"):
                 # Simulate exception during session usage
                 test_exception = ValueError("Test error")
 
-                async def session_generator():
+                async def session_generator() -> AsyncGenerator[AsyncSession, None]:
                     async for session in get_transactional_session():
                         raise test_exception
                         yield session
@@ -253,7 +255,7 @@ class TestGetTransactionalSession:
         mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
 
         with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger") as mock_logger:
+            with patch("src.db.dependencies.logger"):
                 # Test that we can iterate through the generator
                 session_generator = get_transactional_session()
                 session = await session_generator.__anext__()
@@ -368,7 +370,7 @@ class TestDependenciesIntegration:
         mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
 
         with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger") as mock_logger:
+            with patch("src.db.dependencies.logger"):
                 # Test get_db_session
                 async for session in get_db_session():
                     assert session == mock_session
@@ -405,11 +407,11 @@ class TestDependenciesIntegration:
         mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
 
         with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger") as mock_logger:
+            with patch("src.db.dependencies.logger"):
                 # Test that exceptions are properly handled in get_db_session
                 test_exception = ValueError("Test error")
 
-                async def test_db_session():
+                async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
                     async for session in get_db_session():
                         raise test_exception
                         yield session
@@ -419,7 +421,7 @@ class TestDependenciesIntegration:
                         pass
 
                 # Test that exceptions are properly handled in get_transactional_session
-                async def test_transactional_session():
+                async def test_transactional_session() -> AsyncGenerator[AsyncSession, None]:
                     async for session in get_transactional_session():
                         raise test_exception
                         yield session

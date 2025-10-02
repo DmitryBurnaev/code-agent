@@ -3,11 +3,12 @@ from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from jwt import PyJWTError
 from fastapi import Request
 
-from src.modules.admin.auth import AdminAuth, UserPayload
 from src.settings import AppSettings
 from src.tests.mocks import MockUser
+from src.modules.admin.auth import AdminAuth, UserPayload
 
 
 class TestAdminAuth:
@@ -461,23 +462,10 @@ class TestAdminAuthTokenHandling(TestAdminAuth):
         app_settings: AppSettings,
     ) -> None:
         """Test token decoding with expired token."""
-        # Setup - create expired token
-        user_payload: UserPayload = {
-            "id": 1,
-            "username": "admin",
-            "email": "admin@test.com",
-        }
-
-        # Mock jwt_decode to raise PyJWTError for expired token
         with patch("src.modules.admin.auth.jwt_decode") as mock_decode:
-            from jwt import PyJWTError
-
             mock_decode.side_effect = PyJWTError("Token expired")
-
-            # Execute
             user_id = admin_auth._decode_token("expired.token.here")
 
-        # Verify
         assert user_id is None
 
 

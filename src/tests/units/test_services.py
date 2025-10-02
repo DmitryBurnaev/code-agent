@@ -137,7 +137,7 @@ class TestSASessionUOW:
             mock_factory.return_value = lambda: mock_session
             uow = SASessionUOW()
 
-            with patch("src.db.services.logger") as mock_logger:
+            with patch("src.db.services.logger"):
                 await uow.__aexit__(None, None, None)
 
                 # Verify flush and commit were called (default behavior)
@@ -152,7 +152,7 @@ class TestSASessionUOW:
         uow = SASessionUOW(session=mock_session)
         uow.mark_for_commit()
 
-        with patch("src.db.services.logger") as mock_logger:
+        with patch("src.db.services.logger"):
             await uow.__aexit__(None, None, None)
 
             # Verify flush and commit were called, but not close
@@ -166,7 +166,7 @@ class TestSASessionUOW:
         mock_session = AsyncMock(spec=AsyncSession)
         uow = SASessionUOW(session=mock_session)
 
-        with patch("src.db.services.logger") as mock_logger:
+        with patch("src.db.services.logger"):
             await uow.__aexit__(ValueError, ValueError("test error"), None)
 
             # Verify flush and rollback were called, but not close
@@ -179,7 +179,7 @@ class TestSASessionUOW:
         """Test exiting UOW context when session is already closed."""
         uow = SASessionUOW(session=None)
 
-        with patch("src.db.services.logger") as mock_logger:
+        with patch("src.db.services.logger"):
             await uow.__aexit__(None, None, None)
 
             # Verify early return - when session is None, it should return early

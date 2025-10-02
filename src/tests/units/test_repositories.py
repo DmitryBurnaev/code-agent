@@ -12,6 +12,7 @@ from src.db.repositories import (
     TokenRepository,
     VendorsFilter,
     ActiveVendorsStat,
+    FilterT,
 )
 from src.db.models import User, Vendor, Token
 
@@ -164,25 +165,23 @@ class TestBaseRepository:
 
     def test_prepare_statement_with_ids_filter(self, base_repo: BaseRepository) -> None:
         """Test _prepare_statement with ids filter."""
-        filters = {"ids": [1, 2, 3], "username": "testuser"}
+        filters: dict[str, FilterT] = {"ids": [1, 2, 3], "username": "testuser"}
 
-        statement = base_repo._prepare_statement(filters)
+        base_repo._prepare_statement(filters)
 
-        # Verify that ids filter was processed
         assert "ids" not in filters  # Should be popped from filters
 
     def test_prepare_statement_without_ids_filter(self, base_repo: BaseRepository) -> None:
         """Test _prepare_statement without ids filter."""
-        filters = {"username": "testuser"}
+        filters: dict[str, FilterT] = {"username": "testuser"}
 
-        statement = base_repo._prepare_statement(filters)
+        base_repo._prepare_statement(filters)
 
-        # Verify that filters remain unchanged
         assert "username" in filters
 
     def test_prepare_statement_with_entities(self, base_repo: BaseRepository) -> None:
         """Test _prepare_statement with custom entities."""
-        filters = {"username": "testuser"}
+        filters: dict[str, FilterT] = {"username": "testuser"}
         entities = [User.id, User.username]
 
         statement = base_repo._prepare_statement(filters, entities)
@@ -471,7 +470,7 @@ class TestTokenRepository:
         token_repo.session.execute = AsyncMock(return_value=mock_result)
         token_repo.session.flush = AsyncMock()
 
-        with patch("src.db.repositories.logger") as mock_logger:
+        with patch("src.db.repositories.logger"):
             await token_repo.set_active(token_ids, True)
 
             token_repo.session.execute.assert_awaited_once()
