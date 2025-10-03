@@ -1,5 +1,3 @@
-"""Comprehensive tests for src/db/services.py module."""
-
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,10 +6,8 @@ from src.db.services import SASessionUOW
 
 
 class TestSASessionUOW:
-    """Tests for SASessionUOW class."""
 
     def test_init_standalone_mode(self) -> None:
-        """Test UOW initialization in standalone mode."""
         mock_session_factory = MagicMock()
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session_factory.return_value = mock_session
@@ -26,7 +22,6 @@ class TestSASessionUOW:
             assert uow.need_to_commit is False
 
     def test_init_dependency_mode(self) -> None:
-        """Test UOW initialization in dependency mode."""
         mock_session = AsyncMock(spec=AsyncSession)
 
         uow = SASessionUOW(session=mock_session)
@@ -38,7 +33,6 @@ class TestSASessionUOW:
 
     @pytest.mark.asyncio
     async def test_aenter_standalone_mode(self) -> None:
-        """Test entering UOW context in standalone mode."""
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.in_transaction.return_value = False
         mock_session.begin = AsyncMock()
@@ -58,7 +52,6 @@ class TestSASessionUOW:
 
     @pytest.mark.asyncio
     async def test_aenter_dependency_mode_with_transaction(self) -> None:
-        """Test entering UOW context in dependency mode with existing transaction."""
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.in_transaction.return_value = True
         mock_session.begin = AsyncMock()
@@ -75,7 +68,6 @@ class TestSASessionUOW:
 
     @pytest.mark.asyncio
     async def test_aenter_dependency_mode_without_transaction(self) -> None:
-        """Test entering UOW context in dependency mode without existing transaction."""
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.in_transaction.return_value = False
         mock_session.begin = AsyncMock()
@@ -93,7 +85,6 @@ class TestSASessionUOW:
 
     @pytest.mark.asyncio
     async def test_aexit_standalone_mode_success(self) -> None:
-        """Test exiting UOW context in standalone mode with success."""
         mock_session = AsyncMock(spec=AsyncSession)
 
         with patch("src.db.services.get_session_factory") as mock_factory:
@@ -112,7 +103,6 @@ class TestSASessionUOW:
 
     @pytest.mark.asyncio
     async def test_aexit_standalone_mode_exception(self) -> None:
-        """Test exiting UOW context in standalone mode with exception."""
         mock_session = AsyncMock(spec=AsyncSession)
 
         with patch("src.db.services.get_session_factory") as mock_factory:
@@ -130,7 +120,6 @@ class TestSASessionUOW:
 
     @pytest.mark.asyncio
     async def test_aexit_standalone_mode_no_commit_no_exception(self) -> None:
-        """Test exiting UOW context in standalone mode with no commit and no exception."""
         mock_session = AsyncMock(spec=AsyncSession)
 
         with patch("src.db.services.get_session_factory") as mock_factory:
@@ -147,7 +136,6 @@ class TestSASessionUOW:
 
     @pytest.mark.asyncio
     async def test_aexit_dependency_mode_success(self) -> None:
-        """Test exiting UOW context in dependency mode with success."""
         mock_session = AsyncMock(spec=AsyncSession)
         uow = SASessionUOW(session=mock_session)
         uow.mark_for_commit()
@@ -162,7 +150,6 @@ class TestSASessionUOW:
 
     @pytest.mark.asyncio
     async def test_aexit_dependency_mode_exception(self) -> None:
-        """Test exiting UOW context in dependency mode with exception."""
         mock_session = AsyncMock(spec=AsyncSession)
         uow = SASessionUOW(session=mock_session)
 
@@ -176,7 +163,6 @@ class TestSASessionUOW:
 
     @pytest.mark.asyncio
     async def test_aexit_session_already_closed(self) -> None:
-        """Test exiting UOW context when session is already closed."""
         uow = SASessionUOW(session=None)
 
         with patch("src.db.services.logger"):
@@ -188,7 +174,6 @@ class TestSASessionUOW:
 
     @pytest.mark.asyncio
     async def test_aexit_exception_during_cleanup(self) -> None:
-        """Test exiting UOW context with exception during cleanup."""
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.flush.side_effect = Exception("Flush failed")
 
@@ -211,7 +196,6 @@ class TestSASessionUOW:
 
     @pytest.mark.asyncio
     async def test_commit_success(self) -> None:
-        """Test successful commit."""
         mock_session = AsyncMock(spec=AsyncSession)
         uow = SASessionUOW(session=mock_session)
         uow.mark_for_commit()
@@ -227,7 +211,6 @@ class TestSASessionUOW:
 
     @pytest.mark.asyncio
     async def test_commit_failure(self) -> None:
-        """Test commit failure with rollback."""
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.commit.side_effect = Exception("Commit failed")
         uow = SASessionUOW(session=mock_session)
@@ -248,7 +231,6 @@ class TestSASessionUOW:
 
     @pytest.mark.asyncio
     async def test_rollback_success(self) -> None:
-        """Test successful rollback."""
         mock_session = AsyncMock(spec=AsyncSession)
         uow = SASessionUOW(session=mock_session)
         uow.mark_for_commit()
@@ -264,7 +246,6 @@ class TestSASessionUOW:
 
     @pytest.mark.asyncio
     async def test_rollback_failure(self) -> None:
-        """Test rollback failure."""
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.rollback.side_effect = Exception("Rollback failed")
         uow = SASessionUOW(session=mock_session)
@@ -281,7 +262,6 @@ class TestSASessionUOW:
             assert len(error_calls) > 0
 
     def test_need_to_commit_property(self) -> None:
-        """Test need_to_commit property getter and setter."""
         uow = SASessionUOW(session=AsyncMock(spec=AsyncSession))
 
         # Test getter
@@ -295,7 +275,6 @@ class TestSASessionUOW:
         assert uow.need_to_commit is False
 
     def test_owns_session_property(self) -> None:
-        """Test owns_session property."""
         # Standalone mode
         with patch("src.db.services.get_session_factory") as mock_factory:
             mock_factory.return_value = lambda: AsyncMock(spec=AsyncSession)
@@ -307,7 +286,6 @@ class TestSASessionUOW:
         assert uow.owns_session is False
 
     def test_mark_for_commit(self) -> None:
-        """Test mark_for_commit method."""
         uow = SASessionUOW(session=AsyncMock(spec=AsyncSession))
 
         assert uow.need_to_commit is False
@@ -320,7 +298,6 @@ class TestSASessionUOWIntegration:
 
     @pytest.mark.asyncio
     async def test_context_manager_standalone_mode(self) -> None:
-        """Test using UOW as context manager in standalone mode."""
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.in_transaction.return_value = False
         mock_session.begin = AsyncMock()
@@ -344,7 +321,6 @@ class TestSASessionUOWIntegration:
 
     @pytest.mark.asyncio
     async def test_context_manager_dependency_mode(self) -> None:
-        """Test using UOW as context manager in dependency mode."""
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.in_transaction.return_value = False
         mock_session.begin = AsyncMock()
@@ -365,7 +341,6 @@ class TestSASessionUOWIntegration:
 
     @pytest.mark.asyncio
     async def test_context_manager_with_exception(self) -> None:
-        """Test using UOW as context manager with exception."""
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.in_transaction.return_value = False
         mock_session.begin = AsyncMock()
@@ -387,7 +362,6 @@ class TestSASessionUOWIntegration:
 
     @pytest.mark.asyncio
     async def test_multiple_operations(self) -> None:
-        """Test multiple operations within UOW context."""
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.in_transaction.return_value = False
         mock_session.begin = AsyncMock()
