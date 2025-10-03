@@ -15,7 +15,7 @@ def mock_logger() -> Generator[MagicMock, None]:
 
 class TestSASessionUOW:
 
-    def test_init_standalone_mode(
+    def test_init_standalone_mode__new(
         self,
         mock_db_session: MagicMock,
         mock_db_session_factory: MagicMock,
@@ -28,6 +28,20 @@ class TestSASessionUOW:
         assert uow.session == mock_db_session
         assert uow.owns_session is True
         assert uow.need_to_commit is False
+
+    def test_init_standalone_mode(self) -> None:
+        mock_session_factory = MagicMock()
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_session_factory.return_value = mock_session
+
+        with patch("src.db.session.get_session_factory", return_value=mock_session_factory):
+            uow = SASessionUOW()
+
+            # Verify session was created
+            mock_session_factory.assert_called_once()
+            assert uow.session == mock_session
+            assert uow.owns_session is True
+            assert uow.need_to_commit is False
 
     def test_init_dependency_mode(self) -> None:
         mock_session = AsyncMock(spec=AsyncSession)

@@ -15,9 +15,9 @@ class DBSettings(BaseSettings):
 
     driver: str = "postgresql+asyncpg"
     host: str = "localhost"
-    port: int = 5433
+    port: int = 5432
     user: str = "postgres"
-    password: str = "PG360892"
+    password: str = "postgres"
     name: str = "code_agent"
     pool_min_size: int | None = Field(default_factory=lambda: None, description="Pool Min Size")
     pool_max_size: int | None = Field(default_factory=lambda: None, description="Pool Max Size")
