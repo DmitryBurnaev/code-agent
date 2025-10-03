@@ -6,11 +6,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.services import SASessionUOW
-from src.db.dependencies import (
-    get_db_session,
-    get_transactional_session,
-    get_uow_with_session,
-)
+from src.db.dependencies import get_db_session, get_transactional_session, get_uow_with_session
 
 
 class MockSessionFactory:
@@ -31,7 +27,9 @@ class MockSessionFactory:
 
 @pytest.fixture
 def mock_session() -> AsyncSession:
-    return AsyncMock(spec=SASessionUOW)
+    s = AsyncMock(spec=AsyncSession)
+    s.begin = AsyncMock()
+    return s
 
 
 @pytest.fixture
@@ -56,164 +54,128 @@ class TestGetDbSession:
         mock_session_factory: MagicMock,
         mock_logger: MagicMock,
     ) -> None:
-        async for session in get_db_session():
-            assert session == mock_session
-            break
+        session = await anext(get_db_session())
+        assert session == mock_session
 
         mock_session_factory.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_db_session_with_exception(self) -> None:
-        mock_session = AsyncMock(spec=AsyncSession)
+    async def test_get_db_session_with_exception(
+        self,
+        mock_session: MagicMock,
+        mock_session_factory: MagicMock,
+        mock_logger: MagicMock,
+    ) -> None:
 
-        mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
+        async def session_generator() -> AsyncGenerator[AsyncSession, None]:
+            _ = await anext(get_db_session())
+            raise ValueError("Test error")
+            # noinspection PyUnreachableCode
+            yield _
 
-        with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger"):
-                # Simulate exception during session usage
-                test_exception = ValueError("Test error")
-
-                async def session_generator() -> AsyncGenerator[AsyncSession, None]:
-                    async for _ in get_db_session():
-                        raise test_exception
-                        yield _
-
-                with pytest.raises(ValueError, match="Test error"):
-                    async for _ in session_generator():
-                        pass
+        with pytest.raises(ValueError, match="Test error"):
+            await anext(session_generator())
 
     @pytest.mark.asyncio
-    async def test_get_db_session_context_manager(self) -> None:
-        mock_session = AsyncMock(spec=AsyncSession)
+    async def test_get_db_session_context_manager(
+        self,
+        mock_session: MagicMock,
+        mock_session_factory: MagicMock,
+        mock_logger: MagicMock,
+    ) -> None:
+        session_generator = get_db_session()
+        session = await anext(session_generator)
 
-        mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
+        assert session == mock_session
 
-        with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger"):
-                # Test that we can iterate through the generator
-                session_generator = get_db_session()
-                session = await session_generator.__anext__()
-
-                assert session == mock_session
-
-                # Test that generator raises StopAsyncIteration when done
-                with pytest.raises(StopAsyncIteration):
-                    await session_generator.__anext__()
+        with pytest.raises(StopAsyncIteration):
+            await anext(session_generator)
 
 
 class TestGetTransactionalSession:
-    """Tests for get_transactional_session dependency."""
 
     @pytest.mark.asyncio
-    async def test_get_transactional_session_success(self) -> None:
-        mock_session = AsyncMock(spec=AsyncSession)
+    async def test_get_transactional_session_success(
+        self,
+        mock_session: MagicMock,
+        mock_session_factory: MagicMock,
+        mock_logger: MagicMock,
+    ) -> None:
         mock_session.in_transaction.return_value = False
-        mock_session.begin = AsyncMock()
+        session = await anext(get_transactional_session())
+        assert session == mock_session
 
-        mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
-
-        with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger"):
-                async for session in get_transactional_session():
-                    assert session == mock_session
-                    break
-
-                # Verify session factory was called
-                mock_session_factory.assert_called_once()
-
-                # Verify transaction was started
-                mock_session.begin.assert_awaited_once()
+        mock_session_factory.assert_called_once()
+        mock_session.begin.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_get_transactional_session_with_exception(self) -> None:
-        mock_session = AsyncMock(spec=AsyncSession)
+    async def test_get_transactional_session_with_exception(
+        self,
+        mock_session: MagicMock,
+        mock_session_factory: MagicMock,
+        mock_logger: MagicMock,
+    ) -> None:
         mock_session.in_transaction.return_value = False
-        mock_session.begin = AsyncMock()
 
-        mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
+        async def session_generator() -> AsyncGenerator[AsyncSession, None]:
+            _ = await anext(get_transactional_session())
+            raise ValueError("Test error")
+            yield _  # noqa
 
-        with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger"):
-                # Simulate exception during session usage
-                test_exception = ValueError("Test error")
+        with pytest.raises(ValueError, match="Test error"):
+            await anext(session_generator())
 
-                async def session_generator() -> AsyncGenerator[AsyncSession, None]:
-                    async for session in get_transactional_session():
-                        raise test_exception
-                        yield session
-
-                with pytest.raises(ValueError, match="Test error"):
-                    async for _ in session_generator():
-                        pass
-
-                # Verify transaction was started
-                mock_session.begin.assert_awaited_once()
+        mock_session.begin.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_get_transactional_session_uncommitted_warning(self) -> None:
-        mock_session = AsyncMock(spec=AsyncSession)
+    async def test_get_transactional_session_uncommitted_warning(
+        self,
+        mock_session: MagicMock,
+        mock_session_factory: MagicMock,
+        mock_logger: MagicMock,
+    ) -> None:
         mock_session.in_transaction.return_value = True  # Transaction still active
-        mock_session.begin = AsyncMock()
 
-        mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
+        session_generator = get_transactional_session()
+        session = await anext(session_generator)
+        assert session == mock_session
 
-        with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger") as mock_logger:
-                # Use the generator properly to trigger the finally block
-                session_generator = get_transactional_session()
-                session = await session_generator.__anext__()
-                assert session == mock_session
+        # Close the generator to trigger finally block
+        await session_generator.aclose()
 
-                # Close the generator to trigger finally block
-                await session_generator.aclose()
-
-                # Verify warning was logged (check if it was called at least once)
-                assert mock_logger.warning.called
+        # Verify warning was logged (check if it was called at least once)
+        assert mock_logger.warning.called
 
     @pytest.mark.asyncio
-    async def test_get_transactional_session_no_warning_when_committed(self) -> None:
-        mock_session = AsyncMock(spec=AsyncSession)
+    async def test_get_transactional_session_no_warning_when_committed(
+        self,
+        mock_session: MagicMock,
+        mock_session_factory: MagicMock,
+        mock_logger: MagicMock,
+    ) -> None:
         mock_session.in_transaction.return_value = False  # Transaction completed
-        mock_session.begin = AsyncMock()
+        await anext(get_transactional_session())
 
-        mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
-
-        with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger") as mock_logger:
-                async for session in get_transactional_session():
-                    assert session == mock_session
-                    break
-
-                # Verify no warning was logged
-                mock_logger.warning.assert_not_called()
+        mock_logger.warning.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_get_transactional_session_context_manager(self) -> None:
-        mock_session = AsyncMock(spec=AsyncSession)
+    async def test_get_transactional_session_context_manager(
+        self,
+        mock_session: MagicMock,
+        mock_session_factory: MagicMock,
+        mock_logger: MagicMock,
+    ) -> None:
         mock_session.in_transaction.return_value = False
-        mock_session.begin = AsyncMock()
+        session_generator = get_transactional_session()
+        session = await anext(session_generator)
 
-        mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
+        assert session == mock_session
 
-        with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger"):
-                # Test that we can iterate through the generator
-                session_generator = get_transactional_session()
-                session = await session_generator.__anext__()
-
-                assert session == mock_session
-
-                # Test that generator raises StopAsyncIteration when done
-                with pytest.raises(StopAsyncIteration):
-                    await session_generator.__anext__()
+        with pytest.raises(StopAsyncIteration):
+            await anext(session_generator)
 
 
 class TestGetUowWithSession:
-    """Tests for get_uow_with_session dependency."""
-
-    @pytest.fixture
-    def mock_session(self) -> AsyncMock:
-        return AsyncMock(spec=AsyncSession)
 
     @pytest.mark.asyncio
     async def test_get_uow_with_session_success(self, mock_session: AsyncMock) -> None:
@@ -282,62 +244,49 @@ class TestGetUowWithSession:
 
 
 class TestDependenciesIntegration:
-    """Integration tests for dependencies working together."""
 
     @pytest.mark.asyncio
-    async def test_dependencies_work_together(self) -> None:
-        mock_session = AsyncMock(spec=AsyncSession)
+    async def test_dependencies_work_together(
+        self,
+        mock_session: MagicMock,
+        mock_session_factory: MagicMock,
+        mock_logger: MagicMock,
+    ) -> None:
         mock_session.in_transaction.return_value = False
-        mock_session.begin = AsyncMock()
+        session = await anext(get_db_session())
+        assert session == mock_session
 
-        mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
+        tr_session = await anext(get_transactional_session())
+        assert tr_session == mock_session
 
-        with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger"):
-                # Test get_db_session
-                async for session in get_db_session():
-                    assert session == mock_session
-                    break
-
-                # Test get_transactional_session
-                async for session in get_transactional_session():
-                    assert session == mock_session
-                    break
-
-                # Test get_uow_with_session
-                async for uow in get_uow_with_session(session=mock_session):
-                    assert isinstance(uow, SASessionUOW)
-                    assert uow.session == mock_session
-                    break
+        uow = await anext(get_uow_with_session(session=mock_session))
+        assert isinstance(uow, SASessionUOW)
+        assert uow.session == mock_session
 
     @pytest.mark.asyncio
-    async def test_dependencies_error_handling(self) -> None:
-        mock_session = AsyncMock(spec=AsyncSession)
+    async def test_dependencies_error_handling(
+        self,
+        mock_session: MagicMock,
+        mock_session_factory: MagicMock,
+        mock_logger: MagicMock,
+    ) -> None:
         mock_session.in_transaction.return_value = False
-        mock_session.begin = AsyncMock()
 
-        mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_session))
+        test_exception = ValueError("Test error")
 
-        with patch("src.db.dependencies.get_session_factory", return_value=mock_session_factory):
-            with patch("src.db.dependencies.logger"):
-                # Test that exceptions are properly handled in get_db_session
-                test_exception = ValueError("Test error")
+        async def t_get_db_session() -> AsyncGenerator[AsyncSession, None]:
+            _ = await anext(get_db_session())
+            raise test_exception
+            yield _  # noqa
 
-                async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
-                    async for session in get_db_session():
-                        raise test_exception
-                        yield session
+        with pytest.raises(ValueError, match="Test error"):
+            await anext(t_get_db_session())
 
-                with pytest.raises(ValueError, match="Test error"):
-                    async for _ in test_db_session():
-                        pass
+        # Test that exceptions are properly handled in get_transactional_session
+        async def t_get_db_transactional_session() -> AsyncGenerator[AsyncSession, None]:
+            _ = await anext(get_transactional_session())
+            raise test_exception
+            yield _  # noqa
 
-                # Test that exceptions are properly handled in get_transactional_session
-                async def test_transactional_session() -> AsyncGenerator[AsyncSession, None]:
-                    async for session in get_transactional_session():
-                        raise test_exception
-                        yield session
-
-                with pytest.raises(ValueError, match="Test error"):
-                    async for _ in test_transactional_session():
-                        pass
+        with pytest.raises(ValueError, match="Test error"):
+            await anext(t_get_db_transactional_session())
