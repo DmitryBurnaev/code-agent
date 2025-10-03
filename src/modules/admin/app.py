@@ -20,7 +20,7 @@ from src.modules.admin.views import (
     AIModelsAdminView,
     TokenAdminView,
 )
-from src.db.session import get_session_factory
+from src.db import session as db_session
 from src.services.counters import AdminCounter
 from src.services.vendors import VendorService
 from src.settings import get_app_settings
@@ -135,7 +135,7 @@ def make_admin(app: "CodeAgentAPP") -> Admin:
         app,
         base_url=app.settings.admin.base_url,
         title=app.settings.admin.title,
-        session_maker=get_session_factory(),
+        session_maker=db_session.get_session_factory(),
         authentication_backend=AdminAuth(
             secret_key=app.settings.app_secret_key.get_secret_value(),
             settings=app.settings,

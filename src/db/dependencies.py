@@ -6,7 +6,7 @@ from typing import AsyncGenerator
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db.session import get_session_factory
+from src.db import session as db_session
 from src.db.services import SASessionUOW
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
             user_repo = UserRepository(session=session)
             return await user_repo.get(id)
     """
-    session_factory = get_session_factory()
+    session_factory = db_session.get_session_factory()
     async with session_factory() as session:
         try:
             yield session
@@ -57,7 +57,7 @@ async def get_transactional_session() -> AsyncGenerator[AsyncSession, None]:
 
             await session.commit()  # Manual commit required
     """
-    session_factory = get_session_factory()
+    session_factory = db_session.get_session_factory()
     async with session_factory() as session:
         try:
             # Start transaction

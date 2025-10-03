@@ -4,7 +4,7 @@ from typing import Self
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db.session import get_session_factory
+from src.db import session as db_session
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ class SASessionUOW:
     Unit Of Work around SQLAlchemy-session related items: repositories, ops
 
     This UOW can work in two modes:
-    1. Standalone mode: creates its own session from the session factory
+    1. Standalone mode: creates its own session from session factory
     2. Dependency mode: accepts a session from FastAPI dependency injection
 
     In both modes, it provides explicit transaction control for atomic operations.
@@ -49,7 +49,7 @@ class SASessionUOW:
         self.__owns_session: bool = False
         if session is None:
             # Standalone mode: create new session
-            session_factory = get_session_factory()
+            session_factory = db_session.get_session_factory()
             self.__session: AsyncSession = session_factory()
             self.__owns_session = True
         else:
@@ -99,8 +99,8 @@ class SASessionUOW:
                 logger.debug("[DB] Session closed")
 
             else:
-                # Dependency mode - let the dependency handle session lifecycle
-                # But we can still control transaction
+                # Dependency mode - let the dependency handle session lifecycle,
+                # but we can still control transaction
                 if self.__need_to_commit and exc_type is None:
                     await self.commit()
 

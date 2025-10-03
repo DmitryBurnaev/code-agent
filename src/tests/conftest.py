@@ -1,8 +1,10 @@
 import os
+from inspect import Traceback
 from typing import Any, Generator, AsyncGenerator
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.testclient import TestClient
 
 from src.db import initialize_database
@@ -63,6 +65,48 @@ def mock_request() -> MagicMock:
     request = MagicMock()
     request.method = "GET"
     return request
+
+
+class MockSessionFactory:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    def __call__(self) -> AsyncSession:
+        return self.session
+
+    async def __aenter__(self) -> AsyncSession:
+        return self.session
+
+    async def __aexit__(
+        self,
+        exc_type: type[Exception],
+        exc_val: Exception,
+        exc_tb: Traceback,
+    ) -> None:
+        pass
+
+
+@pytest.fixture
+def mock_db_session() -> AsyncMock:
+    s = AsyncMock(spec=AsyncSession)
+    s.begin = AsyncMock()
+    return s
+
+
+@pytest.fixture
+def mock_db_session_factory(mock_db_session: AsyncSession) -> Generator[MagicMock, None]:
+    mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_db_session))
+    with patch("src.db.session.get_session_factory", return_value=mock_session_factory):
+        yield mock_session_factory
+
+
+@pytest.fixture
+def mock_db_session_factory__nonwork(
+    mock_db_session: AsyncSession,
+) -> Generator[MockSessionFactory, None]:
+    mock_session_factory = MockSessionFactory(mock_db_session)
+    with patch("src.db.session.get_session_factory", return_value=mock_session_factory):
+        yield mock_session_factory
 
 
 @pytest.fixture
