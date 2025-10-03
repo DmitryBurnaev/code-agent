@@ -4,13 +4,7 @@ from src.db.dependencies import get_db_session, get_transactional_session, get_u
 from src.db.models import BaseModel, Vendor, User, Token
 from src.db.repositories import UserRepository, VendorRepository, TokenRepository
 from src.db.services import SASessionUOW
-from src.db.session import (
-    get_session_factory,
-    initialize_database,
-    close_database,
-    # make_sa_session,
-    # session_scope,
-)
+from src.db.session import get_session_factory, initialize_database, close_database
 
 __all__ = (
     # Models
@@ -28,9 +22,6 @@ __all__ = (
     "get_session_factory",
     "initialize_database",
     "close_database",
-    # "make_sa_session",
-    # "session_scope",
-    # Dependencies
     "get_db_session",
     "get_transactional_session",
     "get_uow_with_session",
