@@ -67,9 +67,11 @@ def mock_request() -> MagicMock:
     return request
 
 
-class MockSessionFactory:
-    def __init__(self, session: AsyncSession) -> None:
-        self.session = session
+class MockSessionFactory(MagicMock):
+
+    def __init__(self, return_value: AsyncSession) -> None:
+        self.session = return_value
+        super().__init__(return_value)
 
     def __call__(self) -> AsyncSession:
         return self.session
@@ -93,20 +95,20 @@ def mock_db_session() -> AsyncMock:
     return s
 
 
-@pytest.fixture
-def mock_db_session_factory(mock_db_session: AsyncSession) -> Generator[MagicMock, None]:
-    mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_db_session))
-    with patch("src.db.session.get_session_factory", return_value=mock_session_factory):
-        yield mock_session_factory
+# @pytest.fixture
+# def mock_db_session_factory(mock_db_session: AsyncSession) -> Generator[MagicMock, None]:
+#     mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_db_session))
+#     with patch("src.db.session.get_session_factory", return_value=mock_session_factory):
+#         yield mock_session_factory
 
 
 @pytest.fixture
-def mock_db_session_factory__nonwork(
-    mock_db_session: AsyncSession,
-) -> Generator[MockSessionFactory, None]:
-    mock_session_factory = MockSessionFactory(mock_db_session)
-    with patch("src.db.session.get_session_factory", return_value=mock_session_factory):
-        yield mock_session_factory
+def mock_db_session_factory(mock_db_session: AsyncMock) -> Generator[MagicMock, None]:
+    _session_factory = MagicMock(return_value=mock_db_session)
+    _session_factory.__aenter__ = AsyncMock(return_value=mock_db_session)
+    _session_factory.__aexit__ = AsyncMock(return_value=None)
+    with patch("src.db.session.get_session_factory", return_value=_session_factory) as _mock:
+        yield _mock
 
 
 @pytest.fixture

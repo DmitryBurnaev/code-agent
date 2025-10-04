@@ -22,7 +22,7 @@ def mock_session_factory() -> MagicMock:
 
 @pytest.fixture
 def admin_app(test_app: CodeAgentAPP, mock_session_factory: MagicMock) -> AdminApp:
-    with patch("src.modules.admin.app.get_session_factory", return_value=mock_session_factory):
+    with patch("src.db.session.get_session_factory", return_value=mock_session_factory):
         with patch("sqladmin.helpers.is_async_session_maker", return_value=True):
             return AdminApp(
                 test_app,
