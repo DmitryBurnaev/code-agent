@@ -15,7 +15,7 @@ def mock_logger() -> Generator[MagicMock, None]:
 
 class TestSASessionUOW:
 
-    def test_init_standalone_mode__new(
+    def test_init_standalone_mode(
         self,
         mock_db_session: MagicMock,
         mock_db_session_factory: MagicMock,
@@ -28,20 +28,6 @@ class TestSASessionUOW:
         assert uow.session == mock_db_session
         assert uow.owns_session is True
         assert uow.need_to_commit is False
-
-    def test_init_standalone_mode(self) -> None:
-        mock_session_factory = MagicMock()
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_session_factory.return_value = mock_session
-
-        with patch("src.db.session.get_session_factory", return_value=mock_session_factory):
-            uow = SASessionUOW()
-
-            # Verify session was created
-            mock_session_factory.assert_called_once()
-            assert uow.session == mock_session
-            assert uow.owns_session is True
-            assert uow.need_to_commit is False
 
     def test_init_dependency_mode(self) -> None:
         mock_session = AsyncMock(spec=AsyncSession)
@@ -179,8 +165,7 @@ class TestSASessionUOW:
         mock_logger: MagicMock,
     ) -> None:
 
-        mock_session = AsyncMock(spec=AsyncSession)
-        uow = SASessionUOW(session=mock_session)
+        uow = SASessionUOW(session=mock_db_session)
 
         await uow.__aexit__(ValueError, ValueError("test error"), None)
 
@@ -316,19 +301,16 @@ class TestSASessionUOW:
         uow.need_to_commit = False
         assert uow.need_to_commit is False
 
-    def test_owns_session_property(self) -> None:
-        # Standalone mode
-        with patch("src.db.services.get_session_factory") as mock_factory:
-            mock_factory.return_value = lambda: AsyncMock(spec=AsyncSession)
-            uow = SASessionUOW()
-            assert uow.owns_session is True
+    def test_owns_session_property(self, mock_db_session_factory: MagicMock) -> None:
+        uow = SASessionUOW()
+        assert uow.owns_session is True
 
         # Dependency mode
         uow = SASessionUOW(session=AsyncMock(spec=AsyncSession))
         assert uow.owns_session is False
 
-    def test_mark_for_commit(self) -> None:
-        uow = SASessionUOW(session=AsyncMock(spec=AsyncSession))
+    def test_mark_for_commit(self, mock_db_session: AsyncMock) -> None:
+        uow = SASessionUOW(session=mock_db_session)
 
         assert uow.need_to_commit is False
         uow.mark_for_commit()
