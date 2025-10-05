@@ -4,8 +4,8 @@ from typing import Any, Generator, AsyncGenerator
 from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.testclient import TestClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.db import initialize_database
 from src.main import make_app, CodeAgentAPP
@@ -91,7 +91,7 @@ class MockSessionFactory(MagicMock):
 @pytest.fixture
 def mock_db_session() -> AsyncMock:
     s = AsyncMock(spec=AsyncSession)
-    s.begin = AsyncMock()
+    # s.begin = AsyncMock()
     return s
 
 
@@ -104,9 +104,9 @@ def mock_db_session() -> AsyncMock:
 
 @pytest.fixture
 def mock_db_session_factory(mock_db_session: AsyncMock) -> Generator[MagicMock, None]:
-    _session_factory = MagicMock(return_value=mock_db_session)
-    _session_factory.__aenter__ = AsyncMock(return_value=mock_db_session)
-    _session_factory.__aexit__ = AsyncMock(return_value=None)
+    _session_factory = MagicMock(spec=async_sessionmaker, return_value=mock_db_session)
+    # _session_factory.__aenter__ = AsyncMock(return_value=mock_db_session)
+    # _session_factory.__aexit__ = AsyncMock(return_value=None)
     with patch("src.db.session.get_session_factory", return_value=_session_factory) as _mock:
         yield _mock
 
