@@ -2,7 +2,6 @@ from src.utils import singleton
 
 
 class TestSingleton:
-    """Tests for singleton decorator."""
 
     def test_same_instance(self) -> None:
 
