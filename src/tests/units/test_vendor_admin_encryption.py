@@ -1,3 +1,5 @@
+from typing import Generator, Any
+
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 
@@ -12,6 +14,18 @@ def vendor_admin_view(test_app: CodeAgentAPP) -> VendorAdminView:
     admin_view = VendorAdminView()
     admin_view.app = test_app
     return admin_view
+
+
+@pytest.fixture
+def mock_super_model_view_update() -> Generator[MagicMock, Any, None]:
+    with patch("sqladmin.models.ModelView.update_model") as mock_super:
+        yield mock_super
+
+
+@pytest.fixture
+def mock_super_model_view_insert() -> Generator[MagicMock, Any, None]:
+    with patch("sqladmin.models.ModelView.insert_model") as mock_super:
+        yield mock_super
 
 
 class TestVendorAdminEncryption:
@@ -45,19 +59,16 @@ class TestVendorAdminEncryption:
         mock_validate: AsyncMock,
         vendor_admin_view: VendorAdminView,
         mock_request: MagicMock,
+        mock_super_model_view_insert: MagicMock,
     ) -> None:
         original_key = "sk-test123456789"
         mock_validate.return_value = {"new_api_key": original_key, "slug": "test"}
 
-        # Mock the base insert_model method
-        with patch.object(
-            vendor_admin_view.__class__.__bases__[0], "insert_model", new_callable=AsyncMock
-        ) as mock_base_insert:
-            await vendor_admin_view.insert_model(
-                mock_request, data={"new_api_key": original_key, "slug": "test"}
-            )
-            mock_base_insert.assert_awaited_once()
-        encrypted_api_key = mock_base_insert.call_args_list[0].args[1]["api_key"]
+        await vendor_admin_view.insert_model(
+            mock_request, data={"new_api_key": original_key, "slug": "test"}
+        )
+        mock_super_model_view_insert.assert_awaited_once_with()
+        encrypted_api_key = mock_super_model_view_insert.call_args_list[0].args[1]["api_key"]
         assert encrypted_api_key != original_key
 
         encryption = VendorKeyEncryption(vendor_admin_view.app.settings.vendor_encryption_key)
@@ -69,18 +80,16 @@ class TestVendorAdminEncryption:
         mock_validate: AsyncMock,
         vendor_admin_view: VendorAdminView,
         mock_request: MagicMock,
+        mock_super_model_view_update: MagicMock,
     ) -> None:
         original_key = "sk-test123456789"
         mock_validate.return_value = {"new_api_key": original_key, "slug": "test"}
 
-        # Mock the base update_model method
-        with patch.object(
-            vendor_admin_view.__class__.__bases__[0], "update_model", new_callable=AsyncMock
-        ) as mock_base_update:
-            await vendor_admin_view.update_model(
-                mock_request, "1", data={"new_api_key": original_key, "slug": "test"}
-            )
-            mock_base_update.assert_awaited_once()
+        await vendor_admin_view.update_model(
+            mock_request, "1", data={"new_api_key": original_key, "slug": "test"}
+        )
+        mock_super_model_view_update.assert_awaited_once()
+
         encrypted_api_key = mock_base_update.call_args_list[0].args[2]["api_key"]
         assert encrypted_api_key != original_key
 
