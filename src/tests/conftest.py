@@ -91,7 +91,7 @@ class MockSessionFactory(MagicMock):
 @pytest.fixture
 def mock_db_session() -> AsyncMock:
     s = AsyncMock(spec=AsyncSession)
-    # s.begin = AsyncMock()
+    s.begin = AsyncMock()
     return s
 
 
