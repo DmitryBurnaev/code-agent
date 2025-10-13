@@ -1,5 +1,4 @@
 import os
-from inspect import Traceback
 from typing import Any, Generator, AsyncGenerator
 from unittest.mock import MagicMock, patch, AsyncMock
 
@@ -67,46 +66,17 @@ def mock_request() -> MagicMock:
     return request
 
 
-class MockSessionFactory(MagicMock):
-
-    def __init__(self, return_value: AsyncSession) -> None:
-        self.session = return_value
-        super().__init__(return_value)
-
-    def __call__(self) -> AsyncSession:
-        return self.session
-
-    async def __aenter__(self) -> AsyncSession:
-        return self.session
-
-    async def __aexit__(
-        self,
-        exc_type: type[Exception],
-        exc_val: Exception,
-        exc_tb: Traceback,
-    ) -> None:
-        pass
-
-
 @pytest.fixture
 def mock_db_session() -> AsyncMock:
     s = AsyncMock(spec=AsyncSession)
     s.begin = AsyncMock()
+    s.__aenter__ = AsyncMock(return_value=s)
     return s
-
-
-# @pytest.fixture
-# def mock_db_session_factory(mock_db_session: AsyncSession) -> Generator[MagicMock, None]:
-#     mock_session_factory = MagicMock(return_value=MockSessionFactory(mock_db_session))
-#     with patch("src.db.session.get_session_factory", return_value=mock_session_factory):
-#         yield mock_session_factory
 
 
 @pytest.fixture
 def mock_db_session_factory(mock_db_session: AsyncMock) -> Generator[MagicMock, None]:
     _session_factory = MagicMock(spec=async_sessionmaker, return_value=mock_db_session)
-    # _session_factory.__aenter__ = AsyncMock(return_value=mock_db_session)
-    # _session_factory.__aexit__ = AsyncMock(return_value=None)
     with patch("src.db.session.get_session_factory", return_value=_session_factory) as _mock:
         yield _mock
 
