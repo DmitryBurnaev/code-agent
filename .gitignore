@@ -180,3 +180,4 @@ cython_debug/
 .local
 .data
 .cursor
+.github/.debug/
