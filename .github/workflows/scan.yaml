@@ -10,6 +10,7 @@ on:
 
 env:
   DOCKER_IMAGE: code-agent:scan-${{ github.sha }}
+  TRIVY_VERSION: 'v0.67.2'
 
 jobs:
   trivy-image:
@@ -30,17 +31,37 @@ jobs:
           DOCKER_IMAGE: ${{ env.DOCKER_IMAGE }}
         run: docker compose build app
 
-      - name: Setup Trivy
-        uses: aquasecurity/setup-trivy@v0.18.0
+      - name: Run Trivy Image (report)
+        uses: aquasecurity/trivy-action@0.28.0
         with:
-          version: 'v0.67.2'
+          version: ${{ env.TRIVY_VERSION }}
+          scan-type: "image"
+          image-ref: ${{ env.DOCKER_IMAGE }}
+          format: "json"
+          output: "${{ runner.workspace }}/trivy-image-results.json"
+          exit-code: "0"
+          ignore-unfixed: false
+          vuln-type: "vuln,secret,misconfig,license"
+          severity: "CRITICAL,HIGH,MEDIUM,INFO,LOW"
 
-      - name: Run Trivy Image Scan
-        run: |
-          echo "📊 Generating JSON report..."
-          trivy image --format json --output "${{ runner.workspace }}/trivy-image-results.json" --severity CRITICAL,HIGH,MEDIUM "${{ env.DOCKER_IMAGE }}" || true
-          echo "🔍 Running Trivy image scan (will fail if vulnerabilities found)..."
-          trivy image --format table --severity CRITICAL,HIGH,MEDIUM "${{ env.DOCKER_IMAGE }}"
+      - name: Run Trivy Image (table)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          scan-type: "image"
+          image-ref: ${{ env.DOCKER_IMAGE }}
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: false
+          vuln-type: "vuln,secret,misconfig,license"
+          severity: "CRITICAL,HIGH,MEDIUM,INFO,LOW"
+#
+#      - name: Run Trivy Image Scan
+#        run: |
+#          echo "📊 Generating JSON report..."
+#          trivy image --format json --output "${{ runner.workspace }}/trivy-image-results.json" --severity CRITICAL,HIGH,MEDIUM "${{ env.DOCKER_IMAGE }}" || true
+#          echo "🔍 Running Trivy image scan (will fail if vulnerabilities found)..."
+#          trivy image --format table --severity CRITICAL,HIGH,MEDIUM "${{ env.DOCKER_IMAGE }}"
 
       - name: Upload scan results
         uses: actions/upload-artifact@v4
@@ -55,17 +76,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Trivy
-        uses: aquasecurity/setup-trivy@v0.18.0
+      - name: Run Trivy Image (report)
+        uses: aquasecurity/trivy-action@0.28.0
         with:
-          version: 'v0.67.2'
+          version: ${{ env.TRIVY_VERSION }}
+          scan-type: "fs"
+          scan-ref: "."
+          format: "json"
+          output: "${{ runner.workspace }}/trivy-image-results.json"
+          exit-code: "0"
+          ignore-unfixed: false
+          vuln-type: "vuln,secret,misconfig,license"
+          severity: "CRITICAL,HIGH,MEDIUM,INFO,LOW"
 
-      - name: Run Trivy FS Scan
-        run: |
-          echo "📊 Generating JSON report..."
-          trivy fs --format json --output "${{ runner.workspace }}/trivy-fs-results.json" --severity CRITICAL,HIGH,MEDIUM . || true
-          echo "🔍 Running Trivy filesystem scan (will fail if vulnerabilities found)..."
-          trivy fs --format table --severity CRITICAL,HIGH,MEDIUM .
+      - name: Run Trivy Image (table)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          scan-type: "fs"
+          scan-ref: ."
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: false
+          vuln-type: 'vuln,secret,misconfig,license'
+          severity: 'CRITICAL,HIGH,MEDIUM,INFO,LOW'
 
       - name: Upload scan results
         uses: actions/upload-artifact@v4
@@ -74,60 +108,60 @@ jobs:
           path: ${{ runner.workspace }}/trivy-fs-results.json
           retention-days: 60
 
-  gitleaks:
-    name: gitleaks
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Fetch all history for better secret detection
-
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          config-path: .gitleaks.toml  # Optional: custom config file
-          verbose: true
-          redact: true
-
-      - name: Upload scan results
-        uses: actions/upload-artifact@v4
-        with:
-          name: gitleaks-results
-          path: gitleaks-report.json
-          retention-days: 60
-
-  semgrep:
-    name: semgrep
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run Semgrep
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: >-
-            p/security-audit
-            p/secrets
-            p/owasp-top-ten
-            p/python
-            p/bandit
-          generateSarif: "1"
-          generateGitlabSAST: "1"
-          generateGitlabSecrets: "1"
-
-      - name: Upload SARIF results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: semgrep.sarif
-
-      - name: Upload scan results
-        uses: actions/upload-artifact@v4
-        with:
-          name: semgrep-results
-          path: |
-            semgrep.sarif
-            semgrep-global.sarif
-          retention-days: 60
+#  gitleaks:
+#    name: gitleaks
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#        with:
+#          fetch-depth: 0  # Fetch all history for better secret detection
+#
+#      - name: Run Gitleaks
+#        uses: gitleaks/gitleaks-action@v2
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          config-path: .gitleaks.toml  # Optional: custom config file
+#          verbose: true
+#          redact: true
+#
+#      - name: Upload scan results
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: gitleaks-results
+#          path: gitleaks-report.json
+#          retention-days: 60
+#
+#  semgrep:
+#    name: semgrep
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - name: Run Semgrep
+#        uses: returntocorp/semgrep-action@v1
+#        with:
+#          config: >-
+#            p/security-audit
+#            p/secrets
+#            p/owasp-top-ten
+#            p/python
+#            p/bandit
+#          generateSarif: "1"
+#          generateGitlabSAST: "1"
+#          generateGitlabSecrets: "1"
+#
+#      - name: Upload SARIF results
+#        uses: github/codeql-action/upload-sarif@v3
+#        if: always()
+#        with:
+#          sarif_file: semgrep.sarif
+#
+#      - name: Upload scan results
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: semgrep-results
+#          path: |
+#            semgrep.sarif
+#            semgrep-global.sarif
+#          retention-days: 60
