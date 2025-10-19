@@ -41,7 +41,7 @@ jobs:
           output: "${{ runner.workspace }}/trivy-image-results.json"
           exit-code: "0"
           ignore-unfixed: false
-          vuln-type: "vuln,secret,misconfig,license"
+          vuln-type: "os,library"
           severity: "CRITICAL,HIGH,MEDIUM,INFO,LOW"
 
       - name: Run Trivy Image (table)
@@ -53,7 +53,7 @@ jobs:
           format: "table"
           exit-code: "1"
           ignore-unfixed: false
-          vuln-type: "vuln,secret,misconfig,license"
+          vuln-type: "os,library"
           severity: "CRITICAL,HIGH,MEDIUM,INFO,LOW"
 #
 #      - name: Run Trivy Image Scan
@@ -86,7 +86,7 @@ jobs:
           output: "${{ runner.workspace }}/trivy-image-results.json"
           exit-code: "0"
           ignore-unfixed: false
-          vuln-type: "vuln,secret,misconfig,license"
+          vuln-type: "os,library"
           severity: "CRITICAL,HIGH,MEDIUM,INFO,LOW"
 
       - name: Run Trivy Image (table)
@@ -98,7 +98,7 @@ jobs:
           format: "table"
           exit-code: "1"
           ignore-unfixed: false
-          vuln-type: 'vuln,secret,misconfig,license'
+          vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH,MEDIUM,INFO,LOW'
 
       - name: Upload scan results
