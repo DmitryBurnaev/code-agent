@@ -44,6 +44,7 @@ jobs:
           ignore-unfixed: false
           vuln-type: "os,library"
           severity: "${{ env.TRIVY_SEVERITY }}"
+          hide-progress: "true"
 
       - name: Run Trivy Image (table)
         uses: aquasecurity/trivy-action@0.28.0
@@ -56,13 +57,7 @@ jobs:
           ignore-unfixed: false
           vuln-type: "os,library"
           severity: "${{ env.TRIVY_SEVERITY }}"
-#
-#      - name: Run Trivy Image Scan
-#        run: |
-#          echo "📊 Generating JSON report..."
-#          trivy image --format json --output "${{ runner.workspace }}/trivy-image-results.json" --severity CRITICAL,HIGH,MEDIUM "${{ env.DOCKER_IMAGE }}" || true
-#          echo "🔍 Running Trivy image scan (will fail if vulnerabilities found)..."
-#          trivy image --format table --severity CRITICAL,HIGH,MEDIUM "${{ env.DOCKER_IMAGE }}"
+          hide-progress: "true"
 
       - name: Upload scan results
         uses: actions/upload-artifact@v4
@@ -84,23 +79,25 @@ jobs:
           scan-type: "fs"
           scan-ref: "."
           format: "json"
-          output: "${{ runner.workspace }}/trivy-image-results.json"
+          output: "${{ runner.workspace }}/trivy-fs-results.json"
           exit-code: "0"
           ignore-unfixed: false
           vuln-type: "os,library"
           severity: "${{ env.TRIVY_SEVERITY }}"
+          hide-progress: "true"
 
       - name: Run Trivy FS (table)
         uses: aquasecurity/trivy-action@0.28.0
         with:
           version: ${{ env.TRIVY_VERSION }}
           scan-type: "fs"
-          scan-ref: ."
+          scan-ref: "."
           format: "table"
           exit-code: "1"
           ignore-unfixed: false
           vuln-type: 'os,library'
           severity: "${{ env.TRIVY_SEVERITY }}"
+          hide-progress: "true"
 
       - name: Upload scan results
         uses: actions/upload-artifact@v4
