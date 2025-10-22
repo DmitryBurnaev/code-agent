@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - "main"
-      - "feature/15-code-scan"
+#      - "feature/15-code-scan"
   schedule:
     - cron: "0 0 * * 1" # Every Monday at 00:00
 
