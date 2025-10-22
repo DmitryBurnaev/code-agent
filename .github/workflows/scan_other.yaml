@@ -1,0 +1,80 @@
+name: Scan
+
+on:
+  push:
+    branches:
+#      - "main"
+      - "feature/15-code-scan"
+  schedule:
+    - cron: "0 0 * * 1" # Every Monday at 00:00
+
+env:
+  DOCKER_IMAGE: code-agent:scan-${{ github.sha }}
+  OPENGREP_VERSION: "1.11.2"
+
+jobs:
+#  gitleaks:
+#    name: gitleaks
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#        with:
+#          fetch-depth: 0  # Fetch all history for better secret detection
+#
+#      - name: Run Gitleaks
+#        uses: gitleaks/gitleaks-action@v2
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          config-path: .gitleaks.toml  # Optional: custom config file
+#          verbose: true
+#          redact: true
+#
+#      - name: Upload scan results
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: gitleaks-results
+#          path: gitleaks-report.json
+#          retention-days: 60
+#
+  semgrep:
+    name: semgrep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Opengrep
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash
+
+      - name: Run Opengrep Scan
+        run: |
+          opengrep scan
+
+#      - name: Run Semgrep
+#        uses: returntocorp/semgrep-action@v1
+#        with:
+#          config: >-
+#            p/security-audit
+#            p/secrets
+#            p/owasp-top-ten
+#            p/python
+#            p/bandit
+#          generateSarif: "1"
+#          generateGitlabSAST: "1"
+#          generateGitlabSecrets: "1"
+
+#      - name: Upload SARIF results
+#        uses: github/codeql-action/upload-sarif@v3
+#        if: always()
+#        with:
+#          sarif_file: semgrep.sarif
+
+#      - name: Upload scan results
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: semgrep-results
+#          path: |
+#            semgrep.sarif
+#            semgrep-global.sarif
+#          retention-days: 60
