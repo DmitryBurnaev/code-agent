@@ -37,8 +37,8 @@ jobs:
 #          path: gitleaks-report.json
 #          retention-days: 60
 #
-  semgrep:
-    name: semgrep
+  opengrep:
+    name: opengrep
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,11 +46,28 @@ jobs:
       - name: Install Opengrep
         run: |
           curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash
-          export PATH='/home/runner/.opengrep/cli/latest':$PATH
 
-      - name: Run Opengrep Scan
+      - name: Clone Opengrep Rules
         run: |
-          opengrep scan
+          git clone https://github.com/opengrep/opengrep-rules.git
+
+      - name: Run Opengrep Scan (report)
+        run: |
+          export PATH='/home/runner/.opengrep/cli/latest':$PATH
+          opengrep scan --config opengrep-rules/python --json -o "${{ runner.workspace }}/opengrep-results.json" .
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: opengrep-results
+          path: "${{ runner.workspace }}/opengrep-results.json"
+          retention-days: 60
+
+      - name: Run Opengrep Scan (show-stopper)
+        run: |
+          export PATH='/home/runner/.opengrep/cli/latest':$PATH
+          opengrep scan --config opengrep-rules/python --error .
+
 
 #      - name: Run Semgrep
 #        uses: returntocorp/semgrep-action@v1
