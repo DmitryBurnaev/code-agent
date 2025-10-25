@@ -13,13 +13,29 @@ env:
   OPENGREP_VERSION: "1.11.2"
 
 jobs:
-#  gitleaks:
-#    name: gitleaks
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v4
-#        with:
-#          fetch-depth: 0  # Fetch all history for better secret detection
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for better secret detection
+
+      - name: Install GitLeaks
+        run: |
+          git clone https://github.com/gitleaks/gitleaks.git
+          cd gitleaks
+          make build
+          pwd
+          ls -lah
+
+      - name: Run Gitleaks
+        run: |          
+          gitleaks git --report-format json --report-path "${{ runner.workspace }}/opengrep-results.json"
+
+#      - uses: gitleaks/gitleaks-action@v2
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 #
 #      - name: Run Gitleaks
 #        uses: gitleaks/gitleaks-action@v2
@@ -29,70 +45,47 @@ jobs:
 #          config-path: .gitleaks.toml  # Optional: custom config file
 #          verbose: true
 #          redact: true
-#
-#      - name: Upload scan results
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: gitleaks-results
-#          path: gitleaks-report.json
-#          retention-days: 60
-#
-  opengrep:
-    name: opengrep
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Opengrep
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash
-
-      - name: Clone Opengrep Rules
-        run: |
-          git clone https://github.com/opengrep/opengrep-rules.git
-
-      - name: Run Opengrep Scan (report)
-        run: |
-          export PATH='/home/runner/.opengrep/cli/latest':$PATH
-          opengrep scan --config opengrep-rules/python --json -o "${{ runner.workspace }}/opengrep-results.json" .
 
       - name: Upload scan results
         uses: actions/upload-artifact@v4
         with:
-          name: opengrep-results
+          name: gitleaks-results
           path: "${{ runner.workspace }}/opengrep-results.json"
           retention-days: 60
 
-      - name: Run Opengrep Scan (show-stopper)
-        run: |
-          export PATH='/home/runner/.opengrep/cli/latest':$PATH
-          opengrep scan --config opengrep-rules/python --error .
 
 
-#      - name: Run Semgrep
-#        uses: returntocorp/semgrep-action@v1
-#        with:
-#          config: >-
-#            p/security-audit
-#            p/secrets
-#            p/owasp-top-ten
-#            p/python
-#            p/bandit
-#          generateSarif: "1"
-#          generateGitlabSAST: "1"
-#          generateGitlabSecrets: "1"
 
-#      - name: Upload SARIF results
-#        uses: github/codeql-action/upload-sarif@v3
-#        if: always()
-#        with:
-#          sarif_file: semgrep.sarif
-
+# ====
+# WORKS!!
+# ====
+#  opengrep:
+#    name: opengrep
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - name: Install Opengrep
+#        run: |
+#          curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash
+#
+#      - name: Clone Opengrep Rules
+#        run: |
+#          git clone https://github.com/opengrep/opengrep-rules.git
+#
+#      - name: Run Opengrep Scan (report)
+#        run: |
+#          export PATH='/home/runner/.opengrep/cli/latest':$PATH
+#          opengrep scan --config opengrep-rules/python --json -o "${{ runner.workspace }}/opengrep-results.json" .
+#
 #      - name: Upload scan results
 #        uses: actions/upload-artifact@v4
 #        with:
-#          name: semgrep-results
-#          path: |
-#            semgrep.sarif
-#            semgrep-global.sarif
+#          name: opengrep-results
+#          path: "${{ runner.workspace }}/opengrep-results.json"
 #          retention-days: 60
+#
+#      - name: Run Opengrep Scan (show-stopper)
+#        run: |
+#          export PATH='/home/runner/.opengrep/cli/latest':$PATH
+#          opengrep scan --config opengrep-rules/python --error .
