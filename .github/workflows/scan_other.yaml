@@ -17,20 +17,22 @@ jobs:
     name: gitleaks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Fetch all history for better secret detection
 
       - name: Install GitLeaks
         run: |
-          git clone https://github.com/gitleaks/gitleaks.git
-          cd gitleaks
+          git clone https://github.com/gitleaks/gitleaks.git /home/runner/.gitleaks
+          cd /home/runner/.gitleaks
           make build
           pwd
           ls -lah
 
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for better secret detection
+
       - name: Run Gitleaks
-        run: |          
+        run: |
+          export PATH='/home/runner/.gitleaks':$PATH
           gitleaks git --report-format json --report-path "${{ runner.workspace }}/opengrep-results.json"
 
 #      - uses: gitleaks/gitleaks-action@v2
