@@ -30,32 +30,22 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for better secret detection
 
-      - name: Run Gitleaks
+      - name: Run Gitleaks (report)
         run: |
           export PATH='/home/runner/.gitleaks':$PATH
-          gitleaks git --report-format json --report-path "${{ runner.workspace }}/opengrep-results.json"
-
-#      - uses: gitleaks/gitleaks-action@v2
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#
-#      - name: Run Gitleaks
-#        uses: gitleaks/gitleaks-action@v2
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          config-path: .gitleaks.toml  # Optional: custom config file
-#          verbose: true
-#          redact: true
+          gitleaks git . --exit-code 0 --report-format json --report-path "${{ runner.workspace }}/gitleaks-results.json"
 
       - name: Upload scan results
         uses: actions/upload-artifact@v4
         with:
           name: gitleaks-results
-          path: "${{ runner.workspace }}/opengrep-results.json"
+          path: "${{ runner.workspace }}/gitleaks-results.json"
           retention-days: 60
 
-
+      - name: Run Gitleaks (alert)
+        run: |
+          export PATH='/home/runner/.gitleaks':$PATH
+          gitleaks git . --verbose
 
 
 # ====
