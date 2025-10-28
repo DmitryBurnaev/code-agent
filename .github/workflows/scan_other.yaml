@@ -11,8 +11,41 @@ on:
 env:
   DOCKER_IMAGE: code-agent:scan-${{ github.sha }}
   OPENGREP_VERSION: "1.11.2"
+  TRUFFLEHOG_VERSION: "v3.90.12"
+  GITLEAKS_VERSION: "v8.28.0"
 
 jobs:
+  trufflehog:
+    name: trufflehog
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Install Trufflehog
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin ${{ env.TRUFFLEHOG_VERSION }}
+
+      - uses: actions/checkout@v4
+
+      - name: Run Trufflehog FS (alert)
+        run: |
+          trufflehog filesystem . --results=verified,unknown
+
+      - name: Run Trufflehog Image (alert)
+        run: |
+          trufflehog docker --image ${{ env.DOCKER_IMAGE }} --results=verified,unknown
+
+#      - name: Upload scan results
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: gitleaks-results
+#          path: "${{ runner.workspace }}/gitleaks-results.json"
+#          retention-days: 60
+#
+#      - name: Run Gitleaks (alert)
+#        run: |
+#          export PATH='/home/runner/.gitleaks':$PATH
+#          gitleaks git . --verbose
+
   gitleaks:
     name: gitleaks
     runs-on: ubuntu-latest
@@ -20,7 +53,7 @@ jobs:
 
       - name: Install GitLeaks
         run: |
-          git clone https://github.com/gitleaks/gitleaks.git /home/runner/.gitleaks
+          git clone --branch ${{ env.GITLEAKS_VERSION }} https://github.com/gitleaks/gitleaks.git /home/runner/.gitleaks
           cd /home/runner/.gitleaks
           make build
           pwd
@@ -47,37 +80,34 @@ jobs:
           export PATH='/home/runner/.gitleaks':$PATH
           gitleaks git . --verbose
 
+  opengrep:
+    name: opengrep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-# ====
-# WORKS!!
-# ====
-#  opengrep:
-#    name: opengrep
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v4
-#
-#      - name: Install Opengrep
-#        run: |
-#          curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash
-#
-#      - name: Clone Opengrep Rules
-#        run: |
-#          git clone https://github.com/opengrep/opengrep-rules.git
-#
-#      - name: Run Opengrep Scan (report)
-#        run: |
-#          export PATH='/home/runner/.opengrep/cli/latest':$PATH
-#          opengrep scan --config opengrep-rules/python --json -o "${{ runner.workspace }}/opengrep-results.json" .
-#
-#      - name: Upload scan results
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: opengrep-results
-#          path: "${{ runner.workspace }}/opengrep-results.json"
-#          retention-days: 60
-#
-#      - name: Run Opengrep Scan (show-stopper)
-#        run: |
-#          export PATH='/home/runner/.opengrep/cli/latest':$PATH
-#          opengrep scan --config opengrep-rules/python --error .
+      - name: Install Opengrep
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash -- -l
+          curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash -- -v ${{ env.OPENGREP_VERSION }}
+
+      - name: Clone Opengrep Rules
+        run: |
+          git clone https://github.com/opengrep/opengrep-rules.git
+
+      - name: Run Opengrep Scan (report)
+        run: |
+          export PATH='/home/runner/.opengrep/cli/latest':$PATH
+          opengrep scan --config opengrep-rules/python --json -o "${{ runner.workspace }}/opengrep-results.json" .
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: opengrep-results
+          path: "${{ runner.workspace }}/opengrep-results.json"
+          retention-days: 60
+
+      - name: Run Opengrep Scan (show-stopper)
+        run: |
+          export PATH='/home/runner/.opengrep/cli/latest':$PATH
+          opengrep scan --config opengrep-rules/python --error .
