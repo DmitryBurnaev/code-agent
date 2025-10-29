@@ -26,25 +26,21 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      - name: Run Trufflehog FS (report)
+        run: |
+          ls -lah ${{ runner.workspace }}}
+          trufflehog git file://${{ runner.workspace }}} --results=verified,unknown --results=verified,unknown --json > "${{ runner.workspace }}/trufflehog-results.json"
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-results
+          path: "${{ runner.workspace }}/trufflehog-results.json"
+          retention-days: 60
+
       - name: Run Trufflehog FS (alert)
         run: |
-          trufflehog filesystem . --results=verified,unknown
-
-      - name: Run Trufflehog Image (alert)
-        run: |
-          trufflehog docker --image ${{ env.DOCKER_IMAGE }} --results=verified,unknown
-
-#      - name: Upload scan results
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: gitleaks-results
-#          path: "${{ runner.workspace }}/gitleaks-results.json"
-#          retention-days: 60
-#
-#      - name: Run Gitleaks (alert)
-#        run: |
-#          export PATH='/home/runner/.gitleaks':$PATH
-#          gitleaks git . --verbose
+          trufflehog git file://${{ runner.workspace }}} --results=verified,unknown --results=verified,unknown --fail --github-actions
 
   gitleaks:
     name: gitleaks
@@ -88,8 +84,7 @@ jobs:
 
       - name: Install Opengrep
         run: |
-          curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash -- -l
-          curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash -- -v ${{ env.OPENGREP_VERSION }}
+          curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | sh -c -- -v ${{ env.OPENGREP_VERSION }}
 
       - name: Clone Opengrep Rules
         run: |
@@ -107,7 +102,7 @@ jobs:
           path: "${{ runner.workspace }}/opengrep-results.json"
           retention-days: 60
 
-      - name: Run Opengrep Scan (show-stopper)
+      - name: Run Opengrep Scan (alert)
         run: |
           export PATH='/home/runner/.opengrep/cli/latest':$PATH
           opengrep scan --config opengrep-rules/python --error .
