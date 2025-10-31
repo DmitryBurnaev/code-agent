@@ -29,7 +29,7 @@ jobs:
       - name: Run Trufflehog FS (report)
         run: |
           ls -lah ${{ runner.workspace }}
-          trufflehog git file://${{ runner.workspace }} --results=verified,unknown --json > "${{ runner.workspace }}/trufflehog-results.json"
+          trufflehog filesystem ${{ runner.workspace }} --results=verified,unknown --json > "${{ runner.workspace }}/trufflehog-results.json"
 
       - name: Upload scan results
         uses: actions/upload-artifact@v4
@@ -40,7 +40,7 @@ jobs:
 
       - name: Run Trufflehog FS (alert)
         run: |
-          trufflehog git file://${{ runner.workspace }} --results=verified,unknown --fail --github-actions
+          trufflehog filesystem ${{ runner.workspace }} --results=verified,unknown --fail --github-actions
 
   gitleaks:
     name: gitleaks
