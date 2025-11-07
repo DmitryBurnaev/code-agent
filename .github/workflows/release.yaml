@@ -1,8 +1,6 @@
-name: Deploy
+name: Release
 on:
   push:
-    branches:
-      - "main"
     tags:
       - "v*"
 
@@ -62,7 +60,13 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,event=branch,value=latest
+            type=ref,event=tag
+            type=raw,value=latest
+
+      - name: Debug tags
+        run: |
+          echo "Generated tags:"
+          echo "${{ steps.meta.outputs.tags }}"
 
       - name: Build and push Docker image
         id: push
