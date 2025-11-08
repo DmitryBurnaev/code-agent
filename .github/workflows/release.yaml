@@ -1,8 +1,6 @@
 name: Release
 on:
   push:
-    branches:
-      - "v0.0.1"
     tags:
       - "v*"
 
@@ -78,15 +76,15 @@ jobs:
           echo "Full image name: ${{ needs.build.outputs.full_image_name }}"
           echo "Lowercase image name: ${{ steps.image-name.outputs.lowercase }}"
 
-      # - name: Build and push Docker image
-      #   id: push
-      #   uses: docker/build-push-action@v6
-      #   with:
-      #     context: .
-      #     target: service
-      #     push: true
-      #     tags: ${{ steps.meta.outputs.tags }}
-      #     labels: ${{ steps.meta.outputs.labels }}
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: service
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
   verify:
     needs: [build]
@@ -100,40 +98,39 @@ jobs:
           docker manifest inspect "${IMAGE_TAG}" || exit 1
           echo "✓ Image ${IMAGE_TAG} successfully verified in registry"
 
-  # deploy:
-  #   needs: [verify]
-  #   runs-on: ubuntu-latest
+  deploy:
+    needs: [verify]
+    runs-on: ubuntu-latest
 
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  #     - name: Prepare SSH file
-  #       run: |
-  #         mkdir ~/.ssh
-  #         echo "${{ secrets.SSH_PKEY }}" > ~/.ssh/id_rsa
-  #         chmod 400 ~/.ssh/id_rsa
+      - name: Prepare SSH file
+        run: |
+          mkdir ~/.ssh
+          echo "${{ secrets.SSH_PKEY }}" > ~/.ssh/id_rsa
+          chmod 400 ~/.ssh/id_rsa
 
-  #     - name: Delivery Updates
-  #       run: |
-  #         scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/docker-compose.yml
-  #         scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/deploy ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/deploy
-  #         scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/start ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/start
-  #         scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/stop ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/stop
-  #         scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/service ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/service
-  #         scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./.env.template ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/.env.template
-  #         scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/nginx.conf ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/nginx.conf
+      - name: Delivery Updates
+        run: |
+          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/docker-compose.yml
+          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/deploy ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/deploy
+          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/start ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/start
+          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/stop ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/stop
+          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/service ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/service
+          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./.env.template ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/.env.template
+          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/nginx.conf ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/nginx.conf
 
-  #     - name: Deploy
-  #       uses: appleboy/ssh-action@master
-  #       with:
-  #         host: ${{ secrets.SSH_HOST }}
-  #         port: ${{ secrets.SSH_PORT }}
-  #         username: ${{ secrets.SSH_USER }}
-  #         key: ${{ secrets.SSH_PKEY }}
-  #         script: |
-  #           export DEPLOY_MODE=CI
-  #           export CI_DOCKER_IMAGE=${{ needs.build.outputs.full_image_name }}
-  #           export DOCKER_IMAGE=$(echo $CI_DOCKER_IMAGE | tr '[:upper:]' '[:lower:]')
-  #           cd ${{ secrets.PROD_PROJECT_ROOT }}
-  #           sh bin/deploy
+      - name: Deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PKEY }}
+          script: |
+            export DEPLOY_MODE=CI
+            export DOCKER_IMAGE=${{ needs.build.outputs.full_image_name }}
+            cd ${{ secrets.PROD_PROJECT_ROOT }}
+            sh bin/deploy
