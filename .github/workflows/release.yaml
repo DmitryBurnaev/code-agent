@@ -1,13 +1,23 @@
 name: Release
 on:
   push:
+    branches:
+      - "feature/17-make-version-based-releases"
     tags:
       - "v*"
+  # workflow_dispatch:
+  #   inputs:
+  #     docker_image:
+  #       description: "Docker image to deploy (for debugging)"
+  #       required: false
+  #       default: ""
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   DOCKER_IMAGE: ghcr.io/${{ github.repository }}:latest
+  DEBUG_DOCKER_IMAGE_TAG: v0.1.2-debug
+  # DEBUG_DOCKER_IMAGE: ghcr.io/dmitryburnaev/code-agent:v0.1.0
 
 jobs:
   test:
@@ -42,7 +52,8 @@ jobs:
 
     outputs:
       image_tag: ${{ steps.meta.outputs.tags }}
-      full_image_name: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.lowercase }}:${{ github.ref_name }}
+      full_image_name: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.lowercase }}:${{ env.DEBUG_DOCKER_IMAGE_TAG }}
+      # full_image_name: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.lowercase }}:${{ github.ref_name }}
 
     steps:
       - name: Checkout repository
@@ -124,13 +135,16 @@ jobs:
 
       - name: Deploy
         uses: appleboy/ssh-action@master
+        env:
+          DEPLOY_MODE: CI
+          DOCKER_IMAGE: ${{ needs.build.outputs.full_image_name }}
         with:
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PKEY }}
+          envs: DEPLOY_MODE,DOCKER_IMAGE
           script: |
-            export DEPLOY_MODE=CI
-            export DOCKER_IMAGE=${{ needs.build.outputs.full_image_name }}
+            echo "Deploying with DOCKER_IMAGE=${DOCKER_IMAGE}"
             cd ${{ secrets.PROD_PROJECT_ROOT }}
             sh bin/deploy
