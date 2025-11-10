@@ -5,19 +5,11 @@ on:
       - "feature/17-make-version-based-releases"
     tags:
       - "v*"
-  # workflow_dispatch:
-  #   inputs:
-  #     docker_image:
-  #       description: "Docker image to deploy (for debugging)"
-  #       required: false
-  #       default: ""
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-  DOCKER_IMAGE: ghcr.io/${{ github.repository }}:latest
+  DOCKER_IMAGE_NAME: ${{ github.repository }}
   DEBUG_DOCKER_IMAGE_TAG: v0.1.2-debug
-  # DEBUG_DOCKER_IMAGE: ghcr.io/dmitryburnaev/code-agent:v0.1.0
 
 jobs:
   test:
@@ -51,18 +43,30 @@ jobs:
       id-token: write
 
     outputs:
-      image_tag: ${{ steps.meta.outputs.tags }}
-      full_image_name: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.lowercase }}:${{ env.DEBUG_DOCKER_IMAGE_TAG }}
-      # full_image_name: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.lowercase }}:${{ github.ref_name }}
+      image_tag: ${{ steps.image-name.outputs.image_tag }}
+      image_name_base: ${{ steps.image-name.outputs.image_name_base }}
+      image_name_full: ${{ steps.image-name.outputs.image_name_full }}
+      repository_name: ${{ steps.image-name.outputs.repository_name }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare lowercase image name
+      - name: Prepare names
         id: image-name
         run: |
-          echo "lowercase=$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+          REPOSITORY_NAME=$(basename "${{ github.repository }}")
+          IMAGE_NAME_LOWERCASED=$(echo "${REPOSITORY_NAME}" | tr '[:upper:]' '[:lower:]')
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            IMAGE_TAG="${{ github.ref_name }}"
+          else
+            IMAGE_TAG="${{ env.DEBUG_DOCKER_IMAGE_TAG }}"
+          fi
+          IMAGE_NAME_BASE="${{ env.REGISTRY }}/${IMAGE_NAME_LOWERCASED}"
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "image_name_base=${IMAGE_NAME_BASE}" >> $GITHUB_OUTPUT
+          echo "image_name_full=${IMAGE_NAME_BASE}:${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "repository_name=${REPOSITORY_NAME}" >> $GITHUB_OUTPUT
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
@@ -71,21 +75,28 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
+      - name: Extract metadata for docker image
+        id: docker-image-meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.lowercase }}
           tags: |
             type=ref,event=tag
             type=raw,value=latest
+            type=raw,value=${{ env.DEBUG_DOCKER_IMAGE_TAG }}
 
-      - name: Debug tags
+      - name: Debug metadata
         run: |
+          echo "Image tag: ${{ needs.build.outputs.image_tag }}"
+          echo "Image name base: ${{ needs.build.outputs.image_name_base }}"
+          echo "Image name full: ${{ needs.build.outputs.image_name_full }}"
+          echo "Repository name: ${{ needs.build.outputs.repository_name }}"
+          echo "Ref type: ${{ github.ref_type }}"
+          echo "Ref name: ${{ github.ref_name }}"
           echo "Generated tags:"
-          echo "${{ steps.meta.outputs.tags }}"
-          echo "Full image name: ${{ needs.build.outputs.full_image_name }}"
-          echo "Lowercase image name: ${{ steps.image-name.outputs.lowercase }}"
+          echo "${{ steps.docker-image-meta.outputs.tags }}"
+          echo "Generated labels:"
+          echo "${{ steps.docker-image-meta.outputs.labels }}"
 
       - name: Build and push Docker image
         id: push
@@ -94,20 +105,93 @@ jobs:
           context: .
           target: service
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.docker-image-meta.outputs.tags }}
+          labels: ${{ steps.docker-image-meta.outputs.labels }}
 
   verify:
     needs: [build]
     runs-on: ubuntu-latest
 
     steps:
-      - name: Verify image exists in registry
+      - name: Verify docker images
         run: |
-          IMAGE_TAG="${{ needs.build.outputs.full_image_name }}"
-          echo "Checking if image exists: ${IMAGE_TAG}"
-          docker manifest inspect "${IMAGE_TAG}" || exit 1
-          echo "✓ Image ${IMAGE_TAG} successfully verified in registry"
+          DOCKER_IMAGE="${{ needs.build.outputs.image_name_full }}"
+          echo "Checking if image exists: ${DOCKER_IMAGE}"
+          docker manifest inspect "${DOCKER_IMAGE}" || exit 1
+          echo "✓ Image ${DOCKER_IMAGE} successfully verified in registry"
+
+          DOCKER_IMAGE_LATEST="${{ needs.build.outputs.image_name_base }}:latest"
+          echo "Checking if image exists: ${DOCKER_IMAGE_LATEST}"
+          docker manifest inspect "${DOCKER_IMAGE_LATEST}" || exit 1
+          echo "✓ Image ${DOCKER_IMAGE_LATEST} successfully verified in registry"
+  
+  create-release:
+    needs: [build, verify]
+    runs-on: ubuntu-latest
+    # # Only create release when pushing a tag
+    # if: github.ref_type == 'tag'
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare release metadata
+        id: release-meta
+        run: |
+          DOCKER_IMAGE="${{ needs.build.outputs.image_name_full }}"
+          DOCKER_IMAGE_LATEST="${{ needs.build.outputs.image_name_base }}:latest"
+          DOCKER_IMAGE_TAG="${{ needs.build.outputs.image_tag }}"
+          
+          # Create metadata file
+          cat > release-metadata.json << EOF
+          {
+            "version": "${DOCKER_IMAGE_TAG}",
+            "docker_image": "${DOCKER_IMAGE}",
+            "docker_image_latest": "${DOCKER_IMAGE_LATEST}",
+            "registry": "${{ env.REGISTRY }}",
+            "repository": "${{ needs.build.outputs.image_name_base }}",
+            "created_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          
+          # Prepare release body
+          cat > release-body.md << EOF
+          ## Docker Image
+          
+          **Image:** \`${DOCKER_IMAGE}\`
+          
+          **Pull command:**
+          \`\`\`bash
+          docker pull ${DOCKER_IMAGE}
+          \`\`\`
+          
+          **Latest tag:**
+          \`\`\`bash
+          docker pull ${DOCKER_IMAGE_LATEST}
+          \`\`\`
+          
+          **Registry URL:**
+          https://github.com/${{ github.repository }}/pkgs/container/${{ needs.build.outputs.repository_name }}
+          EOF
+          
+          echo "metadata_file=release-metadata.json" >> $GITHUB_OUTPUT
+          echo "body_file=release-body.md" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.build.outputs.image_tag }}
+          name: Release ${{ needs.build.outputs.image_tag }}
+          body_path: ${{ steps.release-meta.outputs.body_file }}
+          files: ${{ steps.release-meta.outputs.metadata_file }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          make_latest: ${{ !contains(github.ref_name, '-') && !contains(github.ref_name, 'alpha') && !contains(github.ref_name, 'beta') && !contains(github.ref_name, 'rc') }}
 
   deploy:
     needs: [verify]
@@ -137,7 +221,7 @@ jobs:
         uses: appleboy/ssh-action@master
         env:
           DEPLOY_MODE: CI
-          DOCKER_IMAGE: ${{ needs.build.outputs.full_image_name }}
+          DOCKER_IMAGE: ${{ needs.build.outputs.image_name_full }}
         with:
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
