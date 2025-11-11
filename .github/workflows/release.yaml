@@ -79,7 +79,7 @@ jobs:
         id: docker-image-meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.lowercase }}
+          images: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.image_name_base }}
           tags: |
             type=ref,event=tag
             type=raw,value=latest
