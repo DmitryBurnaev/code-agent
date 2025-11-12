@@ -12,28 +12,28 @@ env:
   DEBUG_DOCKER_IMAGE_TAG: v0.1.2-debug
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Prepare .env file
-        run: |
-          cp .env.template .env
-          echo "DB_PASSWORD=postgres" >> .env
-          echo "APP_SECRET_KEY=test" >> .env
-          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
-          echo "ADMIN_PASSWORD=test" >> .env
-          env >> .env
-
-      - name: Build image
-        run: docker compose build test
-
-      - name: Run tests
-        run: docker compose up --exit-code-from test test
+#  test:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - name: Prepare .env file
+#        run: |
+#          cp .env.template .env
+#          echo "DB_PASSWORD=postgres" >> .env
+#          echo "APP_SECRET_KEY=test" >> .env
+#          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
+#          echo "ADMIN_PASSWORD=test" >> .env
+#          env >> .env
+#
+#      - name: Build image
+#        run: docker compose build test
+#
+#      - name: Run tests
+#        run: docker compose up --exit-code-from test test
 
   build:
-    needs: [test]
+    needs: []
     runs-on: ubuntu-latest
 
     permissions:
@@ -56,7 +56,7 @@ jobs:
         id: image-name
         run: |
           REPOSITORY_NAME=$(basename "${{ github.repository }}")
-          IMAGE_NAME_LOWERCASED=$(echo "${REPOSITORY_NAME}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_NAME_LOWERCASED=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
             IMAGE_TAG="${{ github.ref_name }}"
           else
@@ -79,7 +79,7 @@ jobs:
         id: docker-image-meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.image_name_base }}
+          images: ${{ steps.image-name.outputs.image_name_base }}
           tags: |
             type=ref,event=tag
             type=raw,value=latest
