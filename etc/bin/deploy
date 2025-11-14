@@ -1,13 +1,13 @@
 #!/bin/sh
-#set -e
+set -e
 
 export WORKING_DIR=/opt/code-agent/
 
 #echo "=== reading $(pwd)/.env file ==="
 #export $(cat .env | grep -v ^# | xargs)
 
-echo "=== pulling image ${DOCKER_IMAGE} ==="
-docker pull ${DOCKER_IMAGE}
+echo "=== pulling image '${DOCKER_IMAGE_FULL}' ==="
+docker pull ${DOCKER_IMAGE_FULL}
 
 echo "=== restarting service ==="
 sudo systemctl restart code-agent.service

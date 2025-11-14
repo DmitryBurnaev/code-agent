@@ -123,12 +123,12 @@ jobs:
     steps:
       - name: Verify docker images
         run: |
-          DOCKER_IMAGE="${{ needs.build.outputs.image_name_full }}"
+          DOCKER_IMAGE="${{ needs.prepare.outputs.image_name_full }}"
           echo "Checking if image exists: ${DOCKER_IMAGE}"
           docker manifest inspect "${DOCKER_IMAGE}" || exit 1
           echo "✓ Image ${DOCKER_IMAGE} successfully verified in registry"
 
-          DOCKER_IMAGE_LATEST="${{ needs.build.outputs.image_name_base }}:latest"
+          DOCKER_IMAGE_LATEST="${{ needs.prepare.outputs.image_name_base }}:latest"
           echo "Checking if image exists: ${DOCKER_IMAGE_LATEST}"
           docker manifest inspect "${DOCKER_IMAGE_LATEST}" || exit 1
           echo "✓ Image ${DOCKER_IMAGE_LATEST} successfully verified in registry"
@@ -223,15 +223,15 @@ jobs:
         uses: appleboy/ssh-action@master
         env:
           DEPLOY_MODE: CI
-          DOCKER_IMAGE: ${{ needs.prepare.outputs.image_name_full }}
-          DOCKER_IMAGE_F: ${{ needs.prepare.outputs.image_name_full }}
+          DOCKER_IMAGE_FULL: ${{ needs.prepare.outputs.image_name_full }}
+          DOCKER_IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
         with:
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PKEY }}
-          envs: DEPLOY_MODE,DOCKER_IMAGE
+          envs: DEPLOY_MODE,DOCKER_IMAGE_FULL
           script: |
-            echo "Deploying with DOCKER_IMAGE=${DOCKER_IMAGE}"
+            echo "Deploying ${DOCKER_IMAGE_TAG} ('${DOCKER_IMAGE_FULL}')..."
             cd ${{ secrets.PROD_PROJECT_ROOT }}
             sh bin/deploy
