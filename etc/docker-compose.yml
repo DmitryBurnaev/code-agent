@@ -1,6 +1,6 @@
 services:
   app:
-    image: ${DOCKER_IMAGE}
+    image: ${DOCKER_IMAGE_FULL}
     container_name: code-agent-app
     env_file:
       - .env
