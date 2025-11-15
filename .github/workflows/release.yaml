@@ -117,7 +117,7 @@ jobs:
 #          labels: ${{ steps.docker-image-meta.outputs.labels }}
 
   verify:
-    needs: [build]
+    needs: [prepare, build]
     runs-on: ubuntu-latest
 
     steps:
@@ -134,7 +134,7 @@ jobs:
           echo "✓ Image ${DOCKER_IMAGE_LATEST} successfully verified in registry"
   
   create-release:
-    needs: [build, verify]
+    needs: [prepare, build, verify]
     runs-on: ubuntu-latest
     # # Only create release when pushing a tag
     if: github.ref_type == 'tag'
@@ -151,8 +151,8 @@ jobs:
       - name: Prepare release metadata
         id: release-meta
         run: |
-          DOCKER_IMAGE="${{ needs.build.outputs.image_name_full }}"
-          DOCKER_IMAGE_TAG="${{ needs.build.outputs.image_tag }}"
+          DOCKER_IMAGE="${{ needs.prepare.outputs.image_name_full }}"
+          DOCKER_IMAGE_TAG="${{ needs.prepare.outputs.image_tag }}"
           
           # Create metadata file
           cat > release-metadata.json << EOF
