@@ -1,6 +1,6 @@
-# System Info API
+# Code Agent Application
 
-A simple FastAPI application that provides system information and health check endpoints.
+A configurable proxy application designed to route and manage requests across multiple LLM (Large Language Model) vendors.
 
 ## Prerequisites
 

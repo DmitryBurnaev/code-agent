@@ -44,24 +44,24 @@ jobs:
           echo "==="
 
   #  test:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v4
-#
-#      - name: Prepare .env file
-#        run: |
-#          cp .env.template .env
-#          echo "DB_PASSWORD=postgres" >> .env
-#          echo "APP_SECRET_KEY=test" >> .env
-#          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
-#          echo "ADMIN_PASSWORD=test" >> .env
-#          env >> .env
-#
-#      - name: Build image
-#        run: docker compose build test
-#
-#      - name: Run tests
-#        run: docker compose up --exit-code-from test test
+  #    runs-on: ubuntu-latest
+  #    steps:
+  #      - uses: actions/checkout@v4
+  #
+  #      - name: Prepare .env file
+  #        run: |
+  #          cp .env.template .env
+  #          echo "DB_PASSWORD=postgres" >> .env
+  #          echo "APP_SECRET_KEY=test" >> .env
+  #          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
+  #          echo "ADMIN_PASSWORD=test" >> .env
+  #          env >> .env
+  #
+  #      - name: Build image
+  #        run: docker compose build test
+  #
+  #      - name: Run tests
+  #        run: docker compose up --exit-code-from test test
 
   build:
     needs: [prepare]
@@ -106,15 +106,15 @@ jobs:
           echo "Generated labels:"
           echo "${{ steps.docker-image-meta.outputs.labels }}"
 
-#      - name: Build and push Docker image
-#        id: push
-#        uses: docker/build-push-action@v6
-#        with:
-#          context: .
-#          target: service
-#          push: true
-#          tags: ${{ steps.docker-image-meta.outputs.tags }}
-#          labels: ${{ steps.docker-image-meta.outputs.labels }}
+  #      - name: Build and push Docker image
+  #        id: push
+  #        uses: docker/build-push-action@v6
+  #        with:
+  #          context: .
+  #          target: service
+  #          push: true
+  #          tags: ${{ steps.docker-image-meta.outputs.tags }}
+  #          labels: ${{ steps.docker-image-meta.outputs.labels }}
 
   verify:
     needs: [prepare, build]
@@ -132,7 +132,7 @@ jobs:
           echo "Checking if image exists: ${DOCKER_IMAGE_LATEST}"
           docker manifest inspect "${DOCKER_IMAGE_LATEST}" || exit 1
           echo "✓ Image ${DOCKER_IMAGE_LATEST} successfully verified in registry"
-  
+
   create-release:
     needs: [prepare, build, verify]
     runs-on: ubuntu-latest
@@ -153,7 +153,7 @@ jobs:
         run: |
           DOCKER_IMAGE="${{ needs.prepare.outputs.image_name_full }}"
           DOCKER_IMAGE_TAG="${{ needs.prepare.outputs.image_tag }}"
-          
+
           # Create metadata file
           cat > release-metadata.json << EOF
           {
@@ -162,11 +162,11 @@ jobs:
             "created_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
           EOF
-          
+
           # Prepare release body
           cat > release-body.md << EOF
           ## Docker Image
-          
+
           **Image:** \`${DOCKER_IMAGE}\`
 
           **Pull command:**
@@ -174,7 +174,7 @@ jobs:
           docker pull ${DOCKER_IMAGE}
           \`\`\`
           EOF
-          
+
           echo "metadata_file=release-metadata.json" >> $GITHUB_OUTPUT
           echo "body_file=release-body.md" >> $GITHUB_OUTPUT
 
@@ -232,6 +232,8 @@ jobs:
           key: ${{ secrets.SSH_PKEY }}
           envs: DEPLOY_MODE,DOCKER_IMAGE_FULL
           script: |
+            echo "Providing current version..."
+            echo "DOCKER_IMAGE_FULL=${DOCKER_IMAGE_FULL}" >> .version
             echo "Deploying ${DOCKER_IMAGE_TAG} ('${DOCKER_IMAGE_FULL}')..."
             cd ${{ secrets.PROD_PROJECT_ROOT }}
             sh bin/deploy
