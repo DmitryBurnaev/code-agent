@@ -105,16 +105,16 @@ jobs:
           echo "${{ steps.docker-image-meta.outputs.tags }}"
           echo "Generated labels:"
           echo "${{ steps.docker-image-meta.outputs.labels }}"
-
-      - name: Build and push Docker image
-        id: push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: service
-          push: true
-          tags: ${{ steps.docker-image-meta.outputs.tags }}
-          labels: ${{ steps.docker-image-meta.outputs.labels }}
+#
+#      - name: Build and push Docker image
+#        id: push
+#        uses: docker/build-push-action@v6
+#        with:
+#          context: .
+#          target: service
+#          push: true
+#          tags: ${{ steps.docker-image-meta.outputs.tags }}
+#          labels: ${{ steps.docker-image-meta.outputs.labels }}
 
   verify:
     needs: [prepare, build]
@@ -223,17 +223,17 @@ jobs:
         uses: appleboy/ssh-action@master
         env:
           DEPLOY_MODE: CI
-          DOCKER_IMAGE_NAME_FULL: ${{ needs.prepare.outputs.image_name_full }}
-          DOCKER_IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
+          CI_DOCKER_IMAGE_NAME: ${{ needs.prepare.outputs.image_name_full }}
+          CI_DOCKER_IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
         with:
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PKEY }}
-          envs: DEPLOY_MODE,DOCKER_IMAGE_FULL
+          envs: DEPLOY_MODE,CI_DOCKER_IMAGE_NAME,CI_DOCKER_IMAGE_TAG
           script: |
-            echo "Deploying ${DOCKER_IMAGE_TAG} ('${DOCKER_IMAGE_NAME_FULL}')..."
+            echo "Deploying ${CI_DOCKER_IMAGE_TAG} ('${CI_DOCKER_IMAGE_NAME}')..."
             cd ${{ secrets.PROD_PROJECT_ROOT }}
             echo "Providing current version to file '.version' ... "
-            echo "DOCKER_IMAGE=${DOCKER_IMAGE_NAME_FULL}" > .version
+            echo "DOCKER_IMAGE=${CI_DOCKER_IMAGE_NAME}" > .version
             sh bin/deploy
