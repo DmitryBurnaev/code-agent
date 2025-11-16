@@ -9,7 +9,7 @@ on:
 env:
   REGISTRY: ghcr.io
   DOCKER_IMAGE_NAME: ${{ github.repository }}
-  DEBUG_DOCKER_IMAGE_TAG: v0.1.2-debug
+  DEBUG_DOCKER_IMAGE_TAG: v0.1.3-debug
 
 jobs:
   prepare:
@@ -43,25 +43,25 @@ jobs:
           cat $GITHUB_OUTPUT
           echo "==="
 
-  #  test:
-  #    runs-on: ubuntu-latest
-  #    steps:
-  #      - uses: actions/checkout@v4
-  #
-  #      - name: Prepare .env file
-  #        run: |
-  #          cp .env.template .env
-  #          echo "DB_PASSWORD=postgres" >> .env
-  #          echo "APP_SECRET_KEY=test" >> .env
-  #          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
-  #          echo "ADMIN_PASSWORD=test" >> .env
-  #          env >> .env
-  #
-  #      - name: Build image
-  #        run: docker compose build test
-  #
-  #      - name: Run tests
-  #        run: docker compose up --exit-code-from test test
+    test:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+
+        - name: Prepare .env file
+          run: |
+            cp .env.template .env
+            echo "DB_PASSWORD=postgres" >> .env
+            echo "APP_SECRET_KEY=test" >> .env
+            echo "VENDOR_ENCRYPTION_KEY=test" >> .env
+            echo "ADMIN_PASSWORD=test" >> .env
+            env >> .env
+
+        - name: Build image
+          run: docker compose build test
+
+        - name: Run tests
+          run: docker compose up --exit-code-from test test
 
   build:
     needs: [prepare]
@@ -106,15 +106,15 @@ jobs:
           echo "Generated labels:"
           echo "${{ steps.docker-image-meta.outputs.labels }}"
 
-  #      - name: Build and push Docker image
-  #        id: push
-  #        uses: docker/build-push-action@v6
-  #        with:
-  #          context: .
-  #          target: service
-  #          push: true
-  #          tags: ${{ steps.docker-image-meta.outputs.tags }}
-  #          labels: ${{ steps.docker-image-meta.outputs.labels }}
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: service
+          push: true
+          tags: ${{ steps.docker-image-meta.outputs.tags }}
+          labels: ${{ steps.docker-image-meta.outputs.labels }}
 
   verify:
     needs: [prepare, build]
@@ -233,7 +233,7 @@ jobs:
           envs: DEPLOY_MODE,DOCKER_IMAGE_FULL
           script: |
             echo "Providing current version..."
-            echo "DOCKER_IMAGE_FULL=${DOCKER_IMAGE_FULL}" >> .version
             echo "Deploying ${DOCKER_IMAGE_TAG} ('${DOCKER_IMAGE_FULL}')..."
             cd ${{ secrets.PROD_PROJECT_ROOT }}
+            echo "DOCKER_IMAGE_FULL=${DOCKER_IMAGE_FULL}" >> .version
             sh bin/deploy
