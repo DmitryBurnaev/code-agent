@@ -88,7 +88,7 @@ jobs:
         id: docker-image-meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ steps.prepare.outputs.image_name_base }}
+          images: ${{ needs.prepare.outputs.image_name_base }}
           tags: |
             type=ref,event=tag
             type=raw,value=latest
@@ -182,8 +182,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.build.outputs.image_tag }}
-          name: Release ${{ needs.build.outputs.image_tag }}
+          tag_name: ${{ needs.prepare.outputs.image_tag }}
+          name: Release ${{ needs.prepare.outputs.image_tag }}
           body_path: ${{ steps.release-meta.outputs.body_file }}
           files: ${{ steps.release-meta.outputs.metadata_file }}
           draft: false
