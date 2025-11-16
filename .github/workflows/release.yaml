@@ -1,15 +1,13 @@
 name: Release
 on:
   push:
-    branches:
-      - "feature/17-make-version-based-releases"
     tags:
       - "v*"
 
 env:
   REGISTRY: ghcr.io
   DOCKER_IMAGE_NAME: ${{ github.repository }}
-  DEBUG_DOCKER_IMAGE_TAG: v0.1.4-debug
+  # DEBUG_DOCKER_IMAGE_TAG: v0.1.4-debug
 
 jobs:
   prepare:
@@ -105,16 +103,16 @@ jobs:
           echo "${{ steps.docker-image-meta.outputs.tags }}"
           echo "Generated labels:"
           echo "${{ steps.docker-image-meta.outputs.labels }}"
-#
-#      - name: Build and push Docker image
-#        id: push
-#        uses: docker/build-push-action@v6
-#        with:
-#          context: .
-#          target: service
-#          push: true
-#          tags: ${{ steps.docker-image-meta.outputs.tags }}
-#          labels: ${{ steps.docker-image-meta.outputs.labels }}
+
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: service
+          push: true
+          tags: ${{ steps.docker-image-meta.outputs.tags }}
+          labels: ${{ steps.docker-image-meta.outputs.labels }}
 
   verify:
     needs: [prepare, build]
