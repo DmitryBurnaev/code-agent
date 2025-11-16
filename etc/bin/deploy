@@ -4,7 +4,7 @@ set -e
 export WORKING_DIR=/opt/code-agent/
 
 echo "=== reading $(pwd)/.version file ==="
-export $(cat .env | grep -v ^# | xargs)
+export $(cat .version | grep -v ^# | xargs)
 
 echo "=== pulling image '${DOCKER_IMAGE}' ==="
 docker pull ${DOCKER_IMAGE}
