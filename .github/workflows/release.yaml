@@ -7,7 +7,7 @@ on:
 env:
   REGISTRY: ghcr.io
   DOCKER_IMAGE_NAME: ${{ github.repository }}
-  # DEBUG_DOCKER_IMAGE_TAG: v0.1.4-debug
+  DEBUG_DOCKER_IMAGE_TAG: v0.1.5-debug
 
 jobs:
   prepare:
@@ -89,8 +89,10 @@ jobs:
           images: ${{ needs.prepare.outputs.image_name_base }}
           tags: |
             type=ref,event=tag
-            type=raw,value=latest
+#            type=raw,value=latest
             type=raw,value=${{ env.DEBUG_DOCKER_IMAGE_TAG }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}            
 
       - name: Debug metadata
         run: |
@@ -104,15 +106,15 @@ jobs:
           echo "Generated labels:"
           echo "${{ steps.docker-image-meta.outputs.labels }}"
 
-      - name: Build and push Docker image
-        id: push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: service
-          push: true
-          tags: ${{ steps.docker-image-meta.outputs.tags }}
-          labels: ${{ steps.docker-image-meta.outputs.labels }}
+#      - name: Build and push Docker image
+#        id: push
+#        uses: docker/build-push-action@v6
+#        with:
+#          context: .
+#          target: service
+#          push: true
+#          tags: ${{ steps.docker-image-meta.outputs.tags }}
+#          labels: ${{ steps.docker-image-meta.outputs.labels }}
 
   verify:
     needs: [prepare, build]
@@ -180,10 +182,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare.outputs.image_tag }}
-          name: Release ${{ needs.prepare.outputs.image_tag }}
+          name: ${{ needs.prepare.outputs.image_tag }}
           body_path: ${{ steps.release-meta.outputs.body_file }}
           files: ${{ steps.release-meta.outputs.metadata_file }}
           draft: false
+          append_body: true
           prerelease: ${{ contains(github.ref_name, '-') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
           make_latest: ${{ !contains(github.ref_name, '-') && !contains(github.ref_name, 'alpha') && !contains(github.ref_name, 'beta') && !contains(github.ref_name, 'rc') }}
 
