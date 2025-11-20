@@ -3,6 +3,8 @@ on:
   push:
     tags:
       - "v*"
+    branches:
+      - "feature/22-improve-release-workflow"
 
 env:
   REGISTRY: ghcr.io
@@ -28,6 +30,10 @@ jobs:
           else
             IMAGE_TAG="${{ env.DEBUG_DOCKER_IMAGE_TAG }}"
           fi
+          # Remove leading 'v' from tag if present (e.g., v1.2.3 -> 1.2.3)
+          if [[ "${IMAGE_TAG}" == v* ]]; then
+            IMAGE_TAG="${IMAGE_TAG#v}"
+          fi
           IMAGE_NAME_BASE="${{ env.REGISTRY }}/${IMAGE_NAME_LOWERCASED}"
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
           echo "image_name_base=${IMAGE_NAME_BASE}" >> $GITHUB_OUTPUT
@@ -41,25 +47,25 @@ jobs:
           cat $GITHUB_OUTPUT
           echo "==="
 
-#  test:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v4
-#
-#      - name: Prepare .env file
-#        run: |
-#          cp .env.template .env
-#          echo "DB_PASSWORD=postgres" >> .env
-#          echo "APP_SECRET_KEY=test" >> .env
-#          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
-#          echo "ADMIN_PASSWORD=test" >> .env
-#          env >> .env
-#
-#      - name: Build image
-#        run: docker compose build test
-#
-#      - name: Run tests
-#        run: docker compose up --exit-code-from test test
+  #  test:
+  #    runs-on: ubuntu-latest
+  #    steps:
+  #      - uses: actions/checkout@v4
+  #
+  #      - name: Prepare .env file
+  #        run: |
+  #          cp .env.template .env
+  #          echo "DB_PASSWORD=postgres" >> .env
+  #          echo "APP_SECRET_KEY=test" >> .env
+  #          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
+  #          echo "ADMIN_PASSWORD=test" >> .env
+  #          env >> .env
+  #
+  #      - name: Build image
+  #        run: docker compose build test
+  #
+  #      - name: Run tests
+  #        run: docker compose up --exit-code-from test test
 
   build:
     needs: [prepare]
@@ -88,11 +94,9 @@ jobs:
         with:
           images: ${{ needs.prepare.outputs.image_name_base }}
           tags: |
-            type=ref,event=tag
-#            type=raw,value=latest
+            type=raw,value=latest
+            type=raw,value=${{ needs.prepare.outputs.image_tag }}
             type=raw,value=${{ env.DEBUG_DOCKER_IMAGE_TAG }}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}            
 
       - name: Debug metadata
         run: |
@@ -106,15 +110,15 @@ jobs:
           echo "Generated labels:"
           echo "${{ steps.docker-image-meta.outputs.labels }}"
 
-#      - name: Build and push Docker image
-#        id: push
-#        uses: docker/build-push-action@v6
-#        with:
-#          context: .
-#          target: service
-#          push: true
-#          tags: ${{ steps.docker-image-meta.outputs.tags }}
-#          labels: ${{ steps.docker-image-meta.outputs.labels }}
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: service
+          push: true
+          tags: ${{ steps.docker-image-meta.outputs.tags }}
+          labels: ${{ steps.docker-image-meta.outputs.labels }}
 
   verify:
     needs: [prepare, build]
