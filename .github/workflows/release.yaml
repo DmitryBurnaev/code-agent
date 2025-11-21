@@ -20,6 +20,29 @@ jobs:
       image_name_full: ${{ steps.names.outputs.image_name_full }}
 
     steps:
+
+      - name: Extract metadata for docker image
+        id: docker-image-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ needs.prepare.outputs.image_name_base }}
+          tags: |
+            type=raw,value=${{ env.DEBUG_DOCKER_IMAGE_TAG }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Debug metadata
+        run: |
+          echo "Image tag: ${{ needs.prepare.outputs.image_tag }}"
+          echo "Image name base: ${{ needs.prepare.outputs.image_name_base }}"
+          echo "Image name full: ${{ needs.prepare.outputs.image_name_full }}"
+          echo "Ref type: ${{ github.ref_type }}"
+          echo "Ref name: ${{ github.ref_name }}"
+          echo "Generated tags:"
+          echo "${{ steps.docker-image-meta.outputs.tags }}"
+          echo "Generated labels:"
+          echo "${{ steps.docker-image-meta.outputs.labels }}"
+
       - name: Prepare names
         id: names
         run: |
@@ -87,38 +110,38 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+#
+#      - name: Extract metadata for docker image
+#        id: docker-image-meta
+#        uses: docker/metadata-action@v5
+#        with:
+#          images: ${{ needs.prepare.outputs.image_name_base }}
+#          tags: |
+#            type=raw,value=latest
+#            type=raw,value=${{ needs.prepare.outputs.image_tag }}
+#            type=raw,value=${{ env.DEBUG_DOCKER_IMAGE_TAG }}
+#
+#      - name: Debug metadata
+#        run: |
+#          echo "Image tag: ${{ needs.prepare.outputs.image_tag }}"
+#          echo "Image name base: ${{ needs.prepare.outputs.image_name_base }}"
+#          echo "Image name full: ${{ needs.prepare.outputs.image_name_full }}"
+#          echo "Ref type: ${{ github.ref_type }}"
+#          echo "Ref name: ${{ github.ref_name }}"
+#          echo "Generated tags:"
+#          echo "${{ steps.docker-image-meta.outputs.tags }}"
+#          echo "Generated labels:"
+#          echo "${{ steps.docker-image-meta.outputs.labels }}"
 
-      - name: Extract metadata for docker image
-        id: docker-image-meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ needs.prepare.outputs.image_name_base }}
-          tags: |
-            type=raw,value=latest
-            type=raw,value=${{ needs.prepare.outputs.image_tag }}
-            type=raw,value=${{ env.DEBUG_DOCKER_IMAGE_TAG }}
-
-      - name: Debug metadata
-        run: |
-          echo "Image tag: ${{ needs.prepare.outputs.image_tag }}"
-          echo "Image name base: ${{ needs.prepare.outputs.image_name_base }}"
-          echo "Image name full: ${{ needs.prepare.outputs.image_name_full }}"
-          echo "Ref type: ${{ github.ref_type }}"
-          echo "Ref name: ${{ github.ref_name }}"
-          echo "Generated tags:"
-          echo "${{ steps.docker-image-meta.outputs.tags }}"
-          echo "Generated labels:"
-          echo "${{ steps.docker-image-meta.outputs.labels }}"
-
-      - name: Build and push Docker image
-        id: push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: service
-          push: true
-          tags: ${{ steps.docker-image-meta.outputs.tags }}
-          labels: ${{ steps.docker-image-meta.outputs.labels }}
+#      - name: Build and push Docker image
+#        id: push
+#        uses: docker/build-push-action@v6
+#        with:
+#          context: .
+#          target: service
+#          push: true
+#          tags: ${{ steps.docker-image-meta.outputs.tags }}
+#          labels: ${{ steps.docker-image-meta.outputs.labels }}
 
   verify:
     needs: [prepare, build]
@@ -194,51 +217,51 @@ jobs:
           prerelease: ${{ contains(github.ref_name, '-') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
           make_latest: ${{ !contains(github.ref_name, '-') && !contains(github.ref_name, 'alpha') && !contains(github.ref_name, 'beta') && !contains(github.ref_name, 'rc') }}
 
-  deploy:
-    needs: [verify, prepare]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Debug outputs
-        env:
-          DOCKER_IMAGE_F: ${{ needs.prepare.outputs.image_name_full }}
-        run: |
-          echo image_name_full="${{ needs.prepare.outputs.image_name_full }}"
-
-      - name: Prepare SSH file
-        run: |
-          mkdir ~/.ssh
-          echo "${{ secrets.SSH_PKEY }}" > ~/.ssh/id_rsa
-          chmod 400 ~/.ssh/id_rsa
-
-      - name: Delivery Updates
-        run: |
-          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/docker-compose.yml
-          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/deploy ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/deploy
-          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/start ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/start
-          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/stop ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/stop
-          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/service ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/service
-          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./.env.template ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/.env.template
-          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/nginx.conf ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/nginx.conf
-
-      - name: Deploy
-        uses: appleboy/ssh-action@master
-        env:
-          DEPLOY_MODE: CI
-          CI_DOCKER_IMAGE_NAME: ${{ needs.prepare.outputs.image_name_full }}
-          CI_DOCKER_IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PKEY }}
-          envs: DEPLOY_MODE,CI_DOCKER_IMAGE_NAME,CI_DOCKER_IMAGE_TAG
-          script: |
-            echo "Deploying ${CI_DOCKER_IMAGE_TAG} ('${CI_DOCKER_IMAGE_NAME}')..."
-            cd ${{ secrets.PROD_PROJECT_ROOT }}
-            echo "Providing current version to file '.version' ... "
-            echo "DOCKER_IMAGE=${CI_DOCKER_IMAGE_NAME}" > .version
-            sh bin/deploy
+#  deploy:
+#    needs: [verify, prepare]
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v4
+#
+#      - name: Debug outputs
+#        env:
+#          DOCKER_IMAGE_F: ${{ needs.prepare.outputs.image_name_full }}
+#        run: |
+#          echo image_name_full="${{ needs.prepare.outputs.image_name_full }}"
+#
+#      - name: Prepare SSH file
+#        run: |
+#          mkdir ~/.ssh
+#          echo "${{ secrets.SSH_PKEY }}" > ~/.ssh/id_rsa
+#          chmod 400 ~/.ssh/id_rsa
+#
+#      - name: Delivery Updates
+#        run: |
+#          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/docker-compose.yml
+#          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/deploy ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/deploy
+#          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/start ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/start
+#          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/stop ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/stop
+#          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/service ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/service
+#          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./.env.template ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/.env.template
+#          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/nginx.conf ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/nginx.conf
+#
+#      - name: Deploy
+#        uses: appleboy/ssh-action@master
+#        env:
+#          DEPLOY_MODE: CI
+#          CI_DOCKER_IMAGE_NAME: ${{ needs.prepare.outputs.image_name_full }}
+#          CI_DOCKER_IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
+#        with:
+#          host: ${{ secrets.SSH_HOST }}
+#          port: ${{ secrets.SSH_PORT }}
+#          username: ${{ secrets.SSH_USER }}
+#          key: ${{ secrets.SSH_PKEY }}
+#          envs: DEPLOY_MODE,CI_DOCKER_IMAGE_NAME,CI_DOCKER_IMAGE_TAG
+#          script: |
+#            echo "Deploying ${CI_DOCKER_IMAGE_TAG} ('${CI_DOCKER_IMAGE_NAME}')..."
+#            cd ${{ secrets.PROD_PROJECT_ROOT }}
+#            echo "Providing current version to file '.version' ... "
+#            echo "DOCKER_IMAGE=${CI_DOCKER_IMAGE_NAME}" > .version
+#            sh bin/deploy
