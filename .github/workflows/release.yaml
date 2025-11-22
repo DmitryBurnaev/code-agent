@@ -2,12 +2,12 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - "[0-9]+.[0-9]+.[0-9]+"
 
 env:
   REGISTRY: ghcr.io
   DOCKER_IMAGE_NAME: ${{ github.repository }}
-  # DEBUG_DOCKER_IMAGE_TAG: v0.1.5-debug
+  # DEBUG_DOCKER_IMAGE_TAG: 0.1.5-debug
 
 jobs:
   prepare:
