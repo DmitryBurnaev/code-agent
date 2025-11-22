@@ -3,13 +3,11 @@ on:
   push:
     tags:
       - "v*"
-    branches:
-      - "feature/22-improve-release-workflow"
 
 env:
   REGISTRY: ghcr.io
   DOCKER_IMAGE_NAME: ${{ github.repository }}
-  DEBUG_DOCKER_IMAGE_TAG: v0.1.5-debug
+  # DEBUG_DOCKER_IMAGE_TAG: v0.1.5-debug
 
 jobs:
   prepare:
@@ -49,28 +47,28 @@ jobs:
           cat $GITHUB_OUTPUT
           echo "==="
 
-#  test:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v4
-#
-#      - name: Prepare .env file
-#        run: |
-#          cp .env.template .env
-#          echo "DB_PASSWORD=postgres" >> .env
-#          echo "APP_SECRET_KEY=test" >> .env
-#          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
-#          echo "ADMIN_PASSWORD=test" >> .env
-#          env >> .env
-#
-#      - name: Build image
-#        run: docker compose build test
-#
-#      - name: Run tests
-#        run: docker compose up --exit-code-from test test
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare .env file
+        run: |
+          cp .env.template .env
+          echo "DB_PASSWORD=postgres" >> .env
+          echo "APP_SECRET_KEY=test" >> .env
+          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
+          echo "ADMIN_PASSWORD=test" >> .env
+          env >> .env
+
+      - name: Build image
+        run: docker compose build test
+
+      - name: Run tests
+        run: docker compose up --exit-code-from test test
 
   build:
-    needs: [prepare]
+    needs: [prepare, test]
     runs-on: ubuntu-latest
 
     permissions:
