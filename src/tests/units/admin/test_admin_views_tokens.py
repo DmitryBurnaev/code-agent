@@ -172,7 +172,7 @@ class TestTokenAdminViewOperations:
         mock_super_model_view_get_details.return_value = mock_token
         mock_cache.get.return_value = "raw-token-value"
 
-        result = await token_admin_view.get_object_for_details(value=mock_token.id)
+        result = await token_admin_view.get_object_for_details(mock_request)
 
         assert result == mock_token
         assert result.raw_token == "raw-token-value"
@@ -191,7 +191,7 @@ class TestTokenAdminViewOperations:
         mock_super_model_view_get_details.return_value = mock_token
         mock_cache.get.return_value = None
 
-        result = await token_admin_view.get_object_for_details(1)
+        result = await token_admin_view.get_object_for_details(mock_request)
 
         assert result == mock_token
         assert result.raw_token == "None"
@@ -359,7 +359,7 @@ class TestTokenAdminViewEdgeCases:
         mock_super_model_view_get_details.side_effect = Exception("Database error")
 
         with pytest.raises(Exception, match="Database error"):
-            await token_admin_view.get_object_for_details(1)
+            await token_admin_view.get_object_for_details(mock_request)
 
     @pytest.mark.asyncio
     async def test_set_active_database_error(
