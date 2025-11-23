@@ -1,6 +1,6 @@
 import logging
 import datetime
-from typing import cast, Any
+from typing import cast
 
 from sqladmin import action
 from starlette.datastructures import URL
@@ -56,11 +56,11 @@ class TokenAdminView(BaseModelView, model=Token):
         cache.set(f"token__{token.id}", token_info.value, ttl=10)  # 10 seconds for showing to user
         return token
 
-    async def get_object_for_details(self, value: Any) -> Token:
+    async def get_object_for_details(self, request: Request) -> Token:
         """
         Get token object and show it in the details page.
         """
-        token: Token = await super().get_object_for_details(value)
+        token: Token = await super().get_object_for_details(request)
         cache: InMemoryCache = InMemoryCache()
         cache_key = f"token__{token.id}"
         token.raw_token = str(cache.get(cache_key))
