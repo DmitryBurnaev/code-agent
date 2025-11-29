@@ -10,7 +10,7 @@ COPY etc/docker-entrypoint .
 FROM python:3.13-alpine AS requirements-layer
 WORKDIR /usr/src
 ARG DEV_DEPS="false"
-ARG UV_VERSION=0.8.15
+ARG UV_VERSION=0.9.13
 
 COPY pyproject.toml .
 COPY uv.lock .
@@ -25,13 +25,13 @@ RUN pip install uv==${UV_VERSION} && \
 
 FROM python:3.13-alpine AS base
 ARG PIP_DEFAULT_TIMEOUT=300
+ARG PIP_VERSION=25.3
 WORKDIR /app
 
 COPY --from=requirements-layer /usr/src/requirements.txt .
 
-RUN pip install --timeout "${PIP_DEFAULT_TIMEOUT}" \
-      --no-cache-dir --require-hashes \
-      -r requirements.txt
+RUN pip install --upgrade pip==${PIP_VERSION} && \
+    pip install --timeout "${PIP_DEFAULT_TIMEOUT}" --no-cache-dir --require-hashes -r requirements.txt
 
 RUN addgroup -S code-agent -g 1007 && \
     adduser -S -G code-agent -u 1007 -H code-agent

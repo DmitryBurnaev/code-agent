@@ -21,7 +21,7 @@ format: ## Apply formatting using black
 .PHONY: install
 install: ## Install dependencies
 	@echo Installing dependencies...
-	uv venv
+	uv venv --clear
 	uv sync
 
 .PHONY: deps
