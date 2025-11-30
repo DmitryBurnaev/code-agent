@@ -97,9 +97,11 @@ class TokenAdminView(BaseModelView, model=Token):
     async def _set_active(self, request: Request, is_active: bool) -> Response:
         """Set active status for tokens by their IDs"""
 
-        token_ids = request.query_params.get("pks", "").split(",")
+        token_ids: list[int] = [
+            int(pk) for pk in request.query_params.get("pks", "").split(",") if pk
+        ]
         if not token_ids:
-            raise RuntimeError("No pks provided")
+            raise ValueError("No pks provided")
 
         logger.info(
             "[ADMIN] %s tokens: %r", "Deactivating" if not is_active else "Activating", token_ids

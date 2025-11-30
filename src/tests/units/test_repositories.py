@@ -436,10 +436,9 @@ class TestTokenRepository:
             token_repo.session.execute.assert_awaited_once()
             token_repo.session.flush.assert_awaited_once()
 
-            # Check log calls
-            assert mock_logger.info.call_count == 2
-            mock_logger.info.assert_any_call("[DB] %s tokens: %r", "Activating", [1, 2, 3])
-            mock_logger.info.assert_any_call("[DB] %s %d tokens", "Activated", 3)
+            mock_logger.info.assert_any_call("[DB] %s %i tokens: %r", "Activating", 3, [1, 2, 3])
+            mock_logger.info.assert_any_call("[DB] Updating %i instances: %r", 3, [1, 2, 3])
+            mock_logger.info.assert_any_call("[DB] Updated %i instances", 3)
 
     @pytest.mark.asyncio
     async def test_set_active_false(self, token_repo: TokenRepository) -> None:
@@ -457,9 +456,9 @@ class TestTokenRepository:
             token_repo.session.flush.assert_awaited_once()
 
             # Check log calls
-            assert mock_logger.info.call_count == 2
-            mock_logger.info.assert_any_call("[DB] %s tokens: %r", "Deactivating", [1, 2, 3])
-            mock_logger.info.assert_any_call("[DB] %s %d tokens", "Deactivated", 2)
+            mock_logger.info.assert_any_call("[DB] %s %i tokens: %r", "Deactivating", 3, [1, 2, 3])
+            mock_logger.info.assert_any_call("[DB] Updating %i instances: %r", 3, [1, 2, 3])
+            mock_logger.info.assert_any_call("[DB] Updated %i instances", 2)
 
     @pytest.mark.asyncio
     async def test_set_active_with_string_ids(self, token_repo: TokenRepository) -> None:

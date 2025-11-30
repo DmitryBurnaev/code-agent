@@ -8,9 +8,10 @@ from typing import (
     TypedDict,
     Sequence,
     ParamSpec,
+    cast,
 )
 
-from sqlalchemy import select, BinaryExpression, delete, Select, func, update
+from sqlalchemy import select, BinaryExpression, delete, Select, func, update, CursorResult
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import SQLCoreOperations
@@ -105,6 +106,16 @@ class BaseRepository(Generic[ModelT]):
         """Remove the instances from the DB."""
         statement = delete(self.model).filter(self.model.id.in_(removing_ids))
         await self.session.execute(statement)
+
+    async def update_by_ids(self, updating_ids: Sequence[int], value: dict[str, Any]) -> None:
+        """Update the instances by their IDs"""
+        logger.info("[DB] Updating %i instances: %r", len(updating_ids), updating_ids)
+        statement = update(self.model).filter(self.model.id.in_(updating_ids))
+        result: CursorResult[Any] = cast(
+            CursorResult[Any], await self.session.execute(statement, value)
+        )
+        await self.session.flush()
+        logger.info("[DB] Updated %i instances", result.rowcount)
 
     def _prepare_statement(
         self,
@@ -205,14 +216,12 @@ class TokenRepository(BaseRepository[Token]):
 
         return filtered_tokens[0]
 
-    async def set_active(self, token_ids: Sequence[int | str], is_active: bool) -> None:
+    async def set_active(self, token_ids: Sequence[int], is_active: bool) -> None:
         """Set active status for tokens by their IDs"""
         logger.info(
-            "[DB] %s tokens: %r", "Deactivating" if not is_active else "Activating", token_ids
+            "[DB] %s %i tokens: %r",
+            "Deactivating" if not is_active else "Activating",
+            len(token_ids),
+            token_ids,
         )
-        statement = update(self.model).filter(self.model.id.in_(int(id_) for id_ in token_ids))
-        result = await self.session.execute(statement, {"is_active": is_active})
-        await self.session.flush()
-        logger.info(
-            "[DB] %s %d tokens", "Deactivated" if not is_active else "Activated", result.rowcount
-        )
+        await self.update_by_ids(token_ids, {"is_active": is_active})
