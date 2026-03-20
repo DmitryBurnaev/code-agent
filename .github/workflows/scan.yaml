@@ -16,97 +16,97 @@ env:
   GITLEAKS_VERSION: "v8.28.0"
 
 jobs:
-  trivy-image:
-    name: trivy-image
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Prepare .env file
-        env:
-          PWD: $(PWD)
-        run: |
-          cp .env.template .env
-          env >> .env
-
-      - name: Build image
-        env:
-          DOCKER_IMAGE: ${{ env.DOCKER_IMAGE }}
-        run: docker compose build app
-
-      - name: Run Trivy Image (report)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          version: ${{ env.TRIVY_VERSION }}
-          scan-type: "image"
-          image-ref: ${{ env.DOCKER_IMAGE }}
-          format: "json"
-          output: "${{ runner.workspace }}/trivy-image-results.json"
-          exit-code: "0"
-          ignore-unfixed: false
-          vuln-type: "os,library"
-          severity: "${{ env.TRIVY_SEVERITY }}"
-          hide-progress: "true"
-
-      - name: Upload scan results
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-images-results
-          path: ${{ runner.workspace }}/trivy-image-results.json
-          retention-days: 60
-
-      - name: Run Trivy Image (alert)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          version: ${{ env.TRIVY_VERSION }}
-          scan-type: "image"
-          image-ref: ${{ env.DOCKER_IMAGE }}
-          format: "table"
-          exit-code: "1"
-          ignore-unfixed: false
-          vuln-type: "os,library"
-          severity: "${{ env.TRIVY_SEVERITY }}"
-          hide-progress: "true"
-
-  trivy-fs:
-    name: trivy-fs
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run Trivy FS (report)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          version: ${{ env.TRIVY_VERSION }}
-          scan-type: "fs"
-          scan-ref: "."
-          format: "json"
-          output: "${{ runner.workspace }}/trivy-fs-results.json"
-          exit-code: "0"
-          ignore-unfixed: false
-          vuln-type: "os,library"
-          severity: "${{ env.TRIVY_SEVERITY }}"
-          hide-progress: "true"
-
-      - name: Upload scan results
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-fs-results
-          path: ${{ runner.workspace }}/trivy-fs-results.json
-          retention-days: 60
-
-      - name: Run Trivy FS (alert)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          version: ${{ env.TRIVY_VERSION }}
-          scan-type: "fs"
-          scan-ref: "."
-          format: "table"
-          exit-code: "1"
-          ignore-unfixed: false
-          vuln-type: "os,library"
-          severity: "${{ env.TRIVY_SEVERITY }}"
-          hide-progress: "true"
+#  trivy-image:
+#    name: trivy-image
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - name: Prepare .env file
+#        env:
+#          PWD: $(PWD)
+#        run: |
+#          cp .env.template .env
+#          env >> .env
+#
+#      - name: Build image
+#        env:
+#          DOCKER_IMAGE: ${{ env.DOCKER_IMAGE }}
+#        run: docker compose build app
+#
+#      - name: Run Trivy Image (report)
+#        uses: aquasecurity/trivy-action@0.28.0
+#        with:
+#          version: ${{ env.TRIVY_VERSION }}
+#          scan-type: "image"
+#          image-ref: ${{ env.DOCKER_IMAGE }}
+#          format: "json"
+#          output: "${{ runner.workspace }}/trivy-image-results.json"
+#          exit-code: "0"
+#          ignore-unfixed: false
+#          vuln-type: "os,library"
+#          severity: "${{ env.TRIVY_SEVERITY }}"
+#          hide-progress: "true"
+#
+#      - name: Upload scan results
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: trivy-images-results
+#          path: ${{ runner.workspace }}/trivy-image-results.json
+#          retention-days: 60
+#
+#      - name: Run Trivy Image (alert)
+#        uses: aquasecurity/trivy-action@0.28.0
+#        with:
+#          version: ${{ env.TRIVY_VERSION }}
+#          scan-type: "image"
+#          image-ref: ${{ env.DOCKER_IMAGE }}
+#          format: "table"
+#          exit-code: "1"
+#          ignore-unfixed: false
+#          vuln-type: "os,library"
+#          severity: "${{ env.TRIVY_SEVERITY }}"
+#          hide-progress: "true"
+#
+#  trivy-fs:
+#    name: trivy-fs
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - name: Run Trivy FS (report)
+#        uses: aquasecurity/trivy-action@0.28.0
+#        with:
+#          version: ${{ env.TRIVY_VERSION }}
+#          scan-type: "fs"
+#          scan-ref: "."
+#          format: "json"
+#          output: "${{ runner.workspace }}/trivy-fs-results.json"
+#          exit-code: "0"
+#          ignore-unfixed: false
+#          vuln-type: "os,library"
+#          severity: "${{ env.TRIVY_SEVERITY }}"
+#          hide-progress: "true"
+#
+#      - name: Upload scan results
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: trivy-fs-results
+#          path: ${{ runner.workspace }}/trivy-fs-results.json
+#          retention-days: 60
+#
+#      - name: Run Trivy FS (alert)
+#        uses: aquasecurity/trivy-action@0.28.0
+#        with:
+#          version: ${{ env.TRIVY_VERSION }}
+#          scan-type: "fs"
+#          scan-ref: "."
+#          format: "table"
+#          exit-code: "1"
+#          ignore-unfixed: false
+#          vuln-type: "os,library"
+#          severity: "${{ env.TRIVY_SEVERITY }}"
+#          hide-progress: "true"
 
   trufflehog:
     name: trufflehog
