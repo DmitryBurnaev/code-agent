@@ -16,6 +16,11 @@ LOG_LEVELS_PATTERN = "DEBUG|INFO|WARNING|ERROR|CRITICAL"
 LogLevelString = Annotated[
     str, StringConstraints(to_upper=True, pattern=rf"^(?i:{LOG_LEVELS_PATTERN})$")
 ]
+DEFAULT_LOG_FORMAT = "[%(asctime)s] %(levelname)s [%(filename)s:%(lineno)s] %(message)s"
+JSON_LOG_FORMAT = (
+    '{"time":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s",'
+    '"location":"%(filename)s:%(lineno)s","message":"%(message)s"}'
+)
 
 
 class LogDictConfig(TypedDict):
@@ -43,8 +48,15 @@ class LogSettings(BaseSettings):
 
     level: LogLevelString = "INFO"
     skip_static_access: bool = False
-    format: str = "[%(asctime)s] %(levelname)s [%(filename)s:%(lineno)s] %(message)s"
+    format: str = DEFAULT_LOG_FORMAT
     datefmt: str = "%d.%m.%Y %H:%M:%S"
+
+    @property
+    def formatter_format(self) -> str:
+        if self.format.lower() == "json":
+            return JSON_LOG_FORMAT
+
+        return self.format
 
     @property
     def dict_config(self) -> LogDictConfig:
@@ -57,7 +69,7 @@ class LogSettings(BaseSettings):
             "disable_existing_loggers": False,
             "formatters": {
                 "standard": {
-                    "format": self.format,
+                    "format": self.formatter_format,
                     "datefmt": self.datefmt,
                 },
             },

@@ -5,7 +5,7 @@ import pytest
 from pydantic import SecretStr
 
 from src.settings import AppSettings, get_app_settings
-from src.settings.log import LOG_LEVELS_PATTERN, LogSettings
+from src.settings.log import JSON_LOG_FORMAT, LOG_LEVELS_PATTERN, LogSettings
 
 MINIMAL_ENV_VARS = {
     "SECRET_KEY": "test-key",
@@ -72,6 +72,16 @@ class TestAppSettings:
             log_config["loggers"][logger]["level"] == "DEBUG"
             for logger in ["src", "fastapi", "uvicorn.access", "uvicorn.error"]
         )
+
+    def test_log_config_supports_json_format_alias(self) -> None:
+        settings = AppSettings(
+            app_secret_key=SecretStr("test-token"),
+            vendor_encryption_key=SecretStr("test-encryption-key"),
+            log=LogSettings(level="DEBUG", format="json"),
+            http_proxy_url=None,
+        )
+        log_config = settings.log.dict_config
+        assert log_config["formatters"]["standard"]["format"] == JSON_LOG_FORMAT
 
 
 class TestGetSettings:

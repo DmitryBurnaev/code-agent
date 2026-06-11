@@ -11,7 +11,6 @@ import os
 import sys
 from typing import Any, Optional, ContextManager
 
-
 DEFAULT_VENDOR_URL = "https://api.deepseek.com/v1"
 DEFAULT_VENDOR = "code-agent"
 DEFAULT_MODEL = "deepseek-chat"
