@@ -16,7 +16,6 @@ from pydantic import SecretStr
 
 from src.tests.mocks import MockAPIToken, MockUser, MockVendor, MockTestResponse, MockHTTPxClient
 
-
 MINIMAL_ENV_VARS = {
     "API_DOCS_ENABLED": "true",
     "APP_SECRET_KEY": "test-key",

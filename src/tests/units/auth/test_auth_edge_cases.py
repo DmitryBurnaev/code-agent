@@ -1,4 +1,6 @@
 import datetime
+
+import jwt
 import pytest
 from unittest.mock import MagicMock
 from pydantic import SecretStr
@@ -24,10 +26,9 @@ class TestTokenEdgeCases:
     @pytest.mark.parametrize(
         "secret_key",
         [
-            pytest.param("", id="empty"),
             pytest.param("a" * 1000, id="long"),
-            pytest.param("!@#$%^&*()_+-=[]{}|;:,.<>?`~", id="special-characters"),
-            pytest.param("секретный-ключ", id="unicode"),
+            pytest.param("__!@#$%^&*()_+-=[]{}|;:,.<>?`~__", id="special-characters"),
+            pytest.param("секретный-ключ-4MCfXpYyX1i5FRW5wkStW963MLgUzqsL", id="unicode"),
         ],
     )
     def test_token_with_various_secret_key(self, secret_key: str) -> None:
@@ -45,6 +46,17 @@ class TestTokenEdgeCases:
 
         decoded = decode_api_token(generated.value, app_settings)
         assert decoded.sub is not None
+
+    def test_token_with_empty_secret_key(self) -> None:
+        app_settings = AppSettings(
+            admin_username="test-username",
+            admin_password=SecretStr("test-password"),
+            app_secret_key=SecretStr(""),
+            vendor_encryption_key=SecretStr(""),
+            jwt_algorithm="HS256",
+        )
+        with pytest.raises(jwt.exceptions.InvalidKeyError, match="HMAC key must not be empty."):
+            make_api_token(expires_at=None, settings=app_settings)
 
     def test_token_with_minimal_expiration(self, app_settings_test: AppSettings) -> None:
         minimal_exp = utcnow(skip_tz=False) + datetime.timedelta(seconds=1)

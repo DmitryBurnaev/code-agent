@@ -27,7 +27,6 @@ from src.settings import get_app_settings
 
 if TYPE_CHECKING:
     from src.main import CodeAgentAPP
-    from src.db.models import BaseModel
 
 ADMIN_VIEWS: tuple[type[BaseView], ...] = (
     UserAdminView,
@@ -90,12 +89,12 @@ class AdminApp(Admin):
 
         return response
 
+    @staticmethod
     def get_save_redirect_url(
-        self,
         request: Request,
         form: FormData,
         model_view: ModelView,
-        obj: "BaseModel",
+        obj: Any,
     ) -> str | URL:
         """
         Make more flexable getting redirect URL after saving model instance
@@ -108,7 +107,7 @@ class AdminApp(Admin):
             # required for getting instance ID after base creation's method finished
             redirect_url = str(obj.id)
         else:
-            redirect_url = super().get_save_redirect_url(request, form, model_view, obj)
+            redirect_url = Admin.get_save_redirect_url(request, form, model_view, obj)
 
         return redirect_url
 
