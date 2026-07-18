@@ -56,8 +56,8 @@ class User(BaseModel):
         return (
             f"User("
             f"login='{self.username}', "
-            f"email='{self.email}'"
-            f"is_active='{self.is_active}'"
+            f"email='{self.email}', "
+            f"is_active='{self.is_active}', "
             f"is_admin='{self.is_admin}')"
         )
 

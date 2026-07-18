@@ -5,9 +5,13 @@ from typing import Any, Callable, AsyncGenerator
 
 import uvicorn
 from fastapi import FastAPI, Depends
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.staticfiles import StaticFiles
 
 from src.modules.auth.dependencies import verify_api_token
 from src.modules.admin.app import make_admin
+from src.modules.web import web_router
+from src.constants import APP_DIR
 from src.exceptions import AppSettingsError, StartupError
 from src.settings import get_app_settings, AppSettings
 from src.modules.api import system_router, proxy_router
@@ -79,10 +83,20 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPP:
         lifespan=lifespan,
     )
     app.set_settings(settings)
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=settings.app_secret_key.get_secret_value(),
+        session_cookie=settings.web.session_cookie_name,
+        max_age=settings.web.session_expiration_time,
+        same_site="lax",
+        https_only=settings.web.session_https_only,
+    )
 
     logger.info("Setting up routes...")
     app.include_router(system_router, prefix="/api", dependencies=[Depends(verify_api_token)])
     app.include_router(proxy_router, prefix="/api", dependencies=[Depends(verify_api_token)])
+    app.include_router(web_router)
+    app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 
     logger.info("Application configured!")
     return app

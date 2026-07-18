@@ -31,8 +31,55 @@ class TestAppSettings:
         assert settings.admin.username == "admin"
         assert settings.admin.password.get_secret_value() == "test-password"
         assert settings.admin.session_expiration_time == 2 * 24 * 3600
+        assert settings.web.session_cookie_name == "code_agent_web_session"
+        assert settings.web.session_expiration_time == 2 * 24 * 3600
+        assert settings.web.session_https_only is True
         assert settings.flags.offline_mode is False
         assert settings.vendor_encryption_key.get_secret_value() == "test-encryption-key"
+
+    @patch.dict(os.environ, MINIMAL_ENV_VARS, clear=True)
+    def test_app_version_defaults_to_develop(self) -> None:
+        settings = AppSettings(
+            _env_file=None,
+            app_secret_key=SecretStr("test-key"),
+            vendor_encryption_key=SecretStr("test-encryption-key"),
+        )
+
+        assert settings.app_version == "develop"
+
+    @patch.dict(
+        os.environ,
+        MINIMAL_ENV_VARS | {"DOCKER_IMAGE": "registry:5000/code-agent:v1.2.3"},
+        clear=True,
+    )
+    def test_app_version_uses_docker_image_tag(self) -> None:
+        settings = AppSettings(
+            _env_file=None,
+            app_secret_key=SecretStr("test-key"),
+            vendor_encryption_key=SecretStr("test-encryption-key"),
+        )
+
+        assert settings.app_version == "v1.2.3"
+
+    @patch.dict(os.environ, MINIMAL_ENV_VARS | {"DOCKER_IMAGE": "code-agent"}, clear=True)
+    def test_app_version_uses_latest_for_untagged_image(self) -> None:
+        settings = AppSettings(
+            _env_file=None,
+            app_secret_key=SecretStr("test-key"),
+            vendor_encryption_key=SecretStr("test-encryption-key"),
+        )
+
+        assert settings.app_version == "latest"
+
+    @patch.dict(os.environ, MINIMAL_ENV_VARS | {"APP_VERSION": "v2.0.0"}, clear=True)
+    def test_explicit_app_version_takes_precedence(self) -> None:
+        settings = AppSettings(
+            _env_file=None,
+            app_secret_key=SecretStr("test-key"),
+            vendor_encryption_key=SecretStr("test-encryption-key"),
+        )
+
+        assert settings.app_version == "v2.0.0"
 
     @pytest.mark.parametrize("log_level", LOG_LEVELS_PATTERN.split("|"))
     def test_valid_log_levels(self, log_level: str) -> None:
@@ -94,6 +141,7 @@ class TestGetSettings:
             "APP_PORT": "8081",
             "HTTP_PROXY_URL": "socks5://127.0.0.1:8080",
             "FLAG_OFFLINE_MODE": "true",
+            "WEB_SESSION_HTTPS_ONLY": "false",
         },
     )
     def test_get_app_settings_from_env(self) -> None:
@@ -104,6 +152,7 @@ class TestGetSettings:
         assert settings.app_port == 8081
         assert settings.http_proxy_url == "socks5://127.0.0.1:8080"
         assert settings.flags.offline_mode is True
+        assert settings.web.session_https_only is False
 
     @patch.dict(os.environ, MINIMAL_ENV_VARS | {"LOG_LEVEL": "INVALID"})
     def test_get_app_settings_validation_error(self) -> None:
