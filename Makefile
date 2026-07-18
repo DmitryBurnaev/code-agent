@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := help
 
 MAKEFILE_TARGET := $(filter-out ai-client --help Makefile,$(MAKECMDGOALS))
+TEST_PYTHON_FILES := $(shell find src/tests -type f -name '*.py')
 
 .PHONY: help
 help: ## This help
@@ -11,6 +12,7 @@ lint: ## Linting project
 	@echo Linting...
 	uv run ruff check
 	uv run mypy .
+	uv run mypy $(TEST_PYTHON_FILES)
 
 .PHONY: format
 format: ## Apply formatting using black

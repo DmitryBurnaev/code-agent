@@ -1,7 +1,8 @@
 import json
 import dataclasses
+from dataclasses import field
 from typing import Any, Self
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 
 @dataclasses.dataclass
@@ -9,6 +10,9 @@ class MockUser:
     id: int
     is_active: bool = False
     username: str = "test-user"
+    is_admin: bool = False
+    email: str | None = None
+    verify_password: MagicMock = field(default_factory=lambda: MagicMock(return_value=True))
 
 
 @dataclasses.dataclass
