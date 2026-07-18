@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "snippets/icons.html" import icon_clock %}
+
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">Work sessions</p>
+    <h1>Time Tracker</h1>
+    <p>Track focused engineering work when timers and session history are connected.</p>
+</section>
+
+<section class="empty-state">
+    <span class="card-icon purple large">{{ icon_clock("icon") }}</span>
+    <h2>No active timer</h2>
+    <p>Timer controls and saved work sessions will appear here in a future increment.</p>
+</section>
+{% endblock %}

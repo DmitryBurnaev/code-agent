@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "snippets/icons.html" import icon_dashboard, icon_clock %}
+
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">Developer workspace</p>
+    <h1>Dashboard</h1>
+    <p>Your work hub is ready for projects, tasks, and agent context.</p>
+</section>
+
+<section class="placeholder-grid" aria-label="Dashboard placeholders">
+    <article class="placeholder-card">
+        <span class="card-icon purple">{{ icon_dashboard("icon") }}</span>
+        <div>
+            <h2>No work data yet</h2>
+            <p>Project, task, pull request, and CI context will appear here when connected.</p>
+        </div>
+    </article>
+    <a href="/time-tracker" class="placeholder-card placeholder-link">
+        <span class="card-icon blue">{{ icon_clock("icon") }}</span>
+        <div>
+            <h2>Time Tracker</h2>
+            <p>Open the workspace for a future active timer and work-session history.</p>
+        </div>
+        <span class="card-arrow" aria-hidden="true">→</span>
+    </a>
+</section>
+{% endblock %}
