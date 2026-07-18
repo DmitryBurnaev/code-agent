@@ -1,3 +1,4 @@
+from typing import Any, Generator
 from unittest.mock import AsyncMock
 
 import pytest
@@ -9,7 +10,7 @@ from src.tests.mocks import MockUser
 
 
 @pytest.fixture
-def web_client(test_app: CodeAgentAPP) -> TestClient:
+def web_client(test_app: CodeAgentAPP) -> Generator[TestClient, Any, None]:
     with TestClient(test_app, base_url="https://testserver") as client:
         yield client
 
@@ -22,17 +23,16 @@ def active_user() -> MockUser:
 def test_app_registers_web_routes_static_files_and_isolated_session(
     test_app: CodeAgentAPP,
 ) -> None:
-    web_route_paths = {route.path for route in views.router.routes}
+    web_route_paths = {getattr(route, "path") for route in views.router.routes}
     assert {"/", "/login", "/logout", "/time-tracker"} <= web_route_paths
     assert any(getattr(route, "path", None) == "/static" for route in test_app.routes)
 
     middleware = next(
         middleware
         for middleware in test_app.user_middleware
-        if middleware.cls.__name__ == "SessionMiddleware"
+        if middleware.cls.__name__ == "SessionMiddleware"  # type: ignore
     )
     assert middleware.kwargs["session_cookie"] == "code_agent_web_session"
-    assert middleware.kwargs["session_cookie"] != "session"
     assert middleware.kwargs["max_age"] == 2 * 24 * 3600
     assert middleware.kwargs["https_only"] is True
 

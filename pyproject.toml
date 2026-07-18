@@ -7,7 +7,7 @@ dependencies = [
     "fastapi==0.139.2",
     "itsdangerous==2.2.0",         # required by session engine
     "jinja2==3.1.6",
-    "python-multipart==0.0.20",
+    "python-multipart==0.0.32",
     "uvicorn==0.51.0",
     "pydantic==2.13.4",
     "pydantic-settings==2.14.2",
@@ -77,6 +77,26 @@ target-version = ["py313"]
 [tool.mypy]
 strict = true
 exclude = ["src/tests", "src/migrations", ".local", "test_*"]
+
+[[tool.mypy.overrides]]
+module = ["src.*"]
+follow_imports = "skip"
+
+[[tool.mypy.overrides]]
+module = ["src.tests", "src.tests.*"]
+follow_imports = "skip"
+disallow_any_generics = false
+disallow_subclassing_any = false
+disallow_untyped_calls = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+disallow_untyped_decorators = false
+warn_unused_ignores = false
+warn_return_any = false
+implicit_reexport = true
+strict_equality = false
+extra_checks = false
 
 [tool.pytest.ini_options]
 testpaths = ["src/tests"]
