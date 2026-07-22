@@ -8,21 +8,38 @@
     <p>Your work hub is ready for projects, tasks, and agent context.</p>
 </section>
 
-<section class="placeholder-grid" aria-label="Dashboard placeholders">
-    <article class="placeholder-card">
-        <span class="card-icon purple">{{ icon_dashboard("icon") }}</span>
+<section class="time-summary-grid" aria-label="Current week time tracking">
+    <article class="dashboard-metric-card">
+        <span class="card-icon purple">{{ icon_clock("icon") }}</span>
         <div>
-            <h2>No work data yet</h2>
-            <p>Project, task, pull request, and CI context will appear here when connected.</p>
+            <p class="metric-label">Tracked this week</p>
+            <strong class="metric-value">{{ week_duration }}</strong>
+            <p>Since {{ week_started.strftime('%a, %d %b') }} · {{ week_sessions }} session{% if week_sessions != 1 %}s{% endif %}</p>
         </div>
     </article>
-    <a href="/time-tracker" class="placeholder-card placeholder-link">
+
+    <a href="/time-tracker" class="dashboard-metric-card dashboard-timer-card placeholder-link">
         <span class="card-icon blue">{{ icon_clock("icon") }}</span>
         <div>
-            <h2>Time Tracker</h2>
-            <p>Open the workspace for a future active timer and work-session history.</p>
+            <p class="metric-label">Active timer</p>
+            {% if active_entry %}
+            <strong class="metric-value">{{ active_duration }}</strong>
+            <p>{{ active_entry.project }} · {{ active_entry.task }}</p>
+            {% else %}
+            <strong class="metric-value metric-value-muted">Not running</strong>
+            <p>Start a focused work session from Time Tracker.</p>
+            {% endif %}
         </div>
         <span class="card-arrow" aria-hidden="true">→</span>
     </a>
+
+    <article class="dashboard-metric-card">
+        <span class="card-icon purple">{{ icon_dashboard("icon") }}</span>
+        <div>
+            <p class="metric-label">Next up</p>
+            <strong class="metric-value metric-value-muted">No work data yet</strong>
+            <p>Project, task, pull request, and CI context will appear here when connected.</p>
+        </div>
+    </article>
 </section>
 {% endblock %}

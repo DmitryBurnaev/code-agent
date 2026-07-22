@@ -62,6 +62,103 @@ class User(BaseModel):
         )
 
 
+time_entry_tags = sa.Table(
+    "time_entry_tags",
+    BaseModel.metadata,
+    sa.Column("time_entry_id", sa.ForeignKey("time_entries.id"), primary_key=True),
+    sa.Column("tag_id", sa.ForeignKey("tags.id"), primary_key=True),
+)
+
+
+class Tag(BaseModel):
+    """A reusable, application-wide label for work records."""
+
+    __tablename__ = "tags"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(sa.String(64), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class Client(BaseModel):
+    """A customer that can own one or more projects."""
+
+    __tablename__ = "clients"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(sa.String(128), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Project(BaseModel):
+    """A configurable work project, optionally associated with a client."""
+
+    __tablename__ = "projects"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(sa.String(128), nullable=False, unique=True)
+    client_id: Mapped[int | None] = mapped_column(
+        sa.ForeignKey("clients.id"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    client: Mapped[Client | None] = relationship(
+        Client,
+        backref=backref("projects", lazy="selectin"),
+        lazy="joined",
+    )
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class TimeEntry(BaseModel):
+    """A user's completed or currently running work session."""
+
+    __tablename__ = "time_entries"
+    __table_args__ = (
+        sa.Index(
+            "uq_time_entries_one_active_timer",
+            "user_id",
+            unique=True,
+            postgresql_where=sa.text("ended_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(sa.ForeignKey("users.id"), nullable=False, index=True)
+    project_id: Mapped[int | None] = mapped_column(
+        sa.ForeignKey("projects.id"), nullable=True, index=True
+    )
+    project: Mapped[str] = mapped_column(sa.String(128), nullable=False)
+    task: Mapped[str] = mapped_column(sa.String(128), nullable=False)
+    note: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(nullable=False, index=True)
+    ended_at: Mapped[datetime | None] = mapped_column(nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime | None] = mapped_column(nullable=True, onupdate=utcnow)
+
+    user: Mapped[User] = relationship(
+        User,
+        backref=backref("time_entries", cascade="all, delete-orphan"),
+        lazy="joined",
+    )
+    project_entity: Mapped[Project | None] = relationship(
+        Project,
+        backref=backref("time_entries", lazy="selectin"),
+        lazy="joined",
+    )
+    tags: Mapped[list[Tag]] = relationship(Tag, secondary=time_entry_tags, lazy="selectin")
+
+    @property
+    def is_running(self) -> bool:
+        """Return whether the entry represents the user's active timer."""
+        return self.ended_at is None
+
+
 class Token(BaseModel):
     """Simple token storage for authorizing and API usages"""
 

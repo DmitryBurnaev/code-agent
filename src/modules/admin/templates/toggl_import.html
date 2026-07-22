@@ -1,0 +1,39 @@
+{% extends "sqladmin/layout.html" %}
+
+{% block content %}
+<div class="col-12 col-lg-8">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Import Toggl time entries</h3>
+        </div>
+        <div class="card-body">
+            <p class="text-secondary">Upload a standard Toggl time-entries CSV export. The import creates missing clients, projects, and tags, then adds completed entries for the selected user.</p>
+            <p class="text-secondary">Rows already imported with the same project, task, note, start, and end time are skipped.</p>
+
+            {% if message %}
+            <div class="alert alert-success" role="status">{{ message }}</div>
+            {% endif %}
+            {% if import_error %}
+            <div class="alert alert-danger" role="alert">{{ import_error }}</div>
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="form-label" for="user_id">Import entries for</label>
+                    <select class="form-select" id="user_id" name="user_id" required>
+                        <option value="" disabled {% if selected_user_id is none %}selected{% endif %}>Choose a user</option>
+                        {% for user in users %}
+                        <option value="{{ user.id }}" {% if user.id == selected_user_id %}selected{% endif %}>{{ user.username }}{% if user.email %} · {{ user.email }}{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="csv_file">Toggl CSV file</label>
+                    <input class="form-control" id="csv_file" name="csv_file" type="file" accept=".csv,text/csv" required>
+                </div>
+                <button class="btn btn-primary" type="submit">Import entries</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

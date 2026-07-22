@@ -1,6 +1,7 @@
 """DB-specific module that provides specific operations on the database."""
 
 import logging
+from datetime import datetime
 from typing import (
     Generic,
     TypeVar,
@@ -11,18 +12,23 @@ from typing import (
     cast,
 )
 
-from sqlalchemy import select, BinaryExpression, delete, Select, func, update, CursorResult
+from sqlalchemy import select, BinaryExpression, delete, Select, func, or_, update, CursorResult
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.elements import SQLCoreOperations
 from sqlalchemy.sql.roles import ColumnsClauseRole
 
-from src.db.models import BaseModel, Vendor, User, Token
+from src.db.models import BaseModel, Client, Project, Vendor, User, Token, Tag, TimeEntry
 
 __all__ = (
     "UserRepository",
     "VendorRepository",
     "TokenRepository",
+    "TagRepository",
+    "ClientRepository",
+    "ProjectRepository",
+    "TimeEntryRepository",
 )
 ModelT = TypeVar("ModelT", bound=BaseModel)
 logger = logging.getLogger(__name__)
@@ -225,3 +231,157 @@ class TokenRepository(BaseRepository[Token]):
             token_ids,
         )
         await self.update_by_ids(token_ids, {"is_active": is_active})
+
+
+class TagRepository(BaseRepository[Tag]):
+    """Repository for application-wide reusable tags."""
+
+    model = Tag
+
+    async def get_or_create_by_name(self, name: str) -> Tag:
+        """Return the normalized tag, creating it when it does not exist."""
+        normalized_name = name.strip().lower()
+        statement = select(Tag).filter_by(name=normalized_name)
+        tag = (await self.session.execute(statement)).scalar_one_or_none()
+        if tag is not None:
+            return tag
+
+        tag = Tag(name=normalized_name)
+        self.session.add(tag)
+        await self.session.flush()
+        return tag
+
+
+class ClientRepository(BaseRepository[Client]):
+    """Repository for client configuration."""
+
+    model = Client
+
+    async def get_by_name(self, name: str) -> Client | None:
+        """Return a configured client by its display name."""
+        statement = select(Client).filter_by(name=name)
+        return (await self.session.execute(statement)).scalar_one_or_none()
+
+
+class ProjectRepository(BaseRepository[Project]):
+    """Repository for projects configured in administration."""
+
+    model = Project
+
+    async def get_by_name(self, name: str) -> Project | None:
+        """Return a configured project by its exact display name."""
+        statement = select(Project).filter_by(name=name)
+        return (await self.session.execute(statement)).scalar_one_or_none()
+
+    async def list_names(self) -> list[str]:
+        """Return all project names for the time-entry project autocomplete."""
+        statement = select(Project.name).order_by(Project.name)
+        return list((await self.session.execute(statement)).scalars())
+
+
+class TimeEntryRepository(BaseRepository[TimeEntry]):
+    """Repository for user-owned work sessions."""
+
+    model = TimeEntry
+
+    async def active_for_user(self, user_id: int) -> TimeEntry | None:
+        """Return the single active timer for a user, if one exists."""
+        statement = (
+            select(TimeEntry)
+            .options(selectinload(TimeEntry.tags))
+            .filter_by(user_id=user_id, ended_at=None)
+            .order_by(TimeEntry.started_at.desc())
+        )
+        return (await self.session.execute(statement)).scalar_one_or_none()
+
+    async def list_for_user(
+        self, user_id: int, starts_at: datetime, ends_before: datetime
+    ) -> list[TimeEntry]:
+        """List entries beginning within a calendar period for one user."""
+        statement = (
+            select(TimeEntry)
+            .options(selectinload(TimeEntry.tags))
+            .where(
+                TimeEntry.user_id == user_id,
+                TimeEntry.started_at >= starts_at,
+                TimeEntry.started_at < ends_before,
+            )
+            .order_by(TimeEntry.started_at.desc())
+        )
+        return list((await self.session.execute(statement)).scalars())
+
+    async def list_overlapping_for_user(
+        self, user_id: int, starts_at: datetime, ends_before: datetime
+    ) -> list[TimeEntry]:
+        """List a user's entries that overlap a requested time period."""
+        statement = (
+            select(TimeEntry)
+            .where(
+                TimeEntry.user_id == user_id,
+                TimeEntry.started_at < ends_before,
+                or_(TimeEntry.ended_at.is_(None), TimeEntry.ended_at > starts_at),
+            )
+            .order_by(TimeEntry.started_at.desc())
+        )
+        return list((await self.session.execute(statement)).scalars())
+
+    async def recent_for_user(self, user_id: int, limit: int = 12) -> list[TimeEntry]:
+        """Return recent entries as convenient sources for a new entry."""
+        statement = (
+            select(TimeEntry)
+            .options(selectinload(TimeEntry.tags))
+            .where(TimeEntry.user_id == user_id)
+            .order_by(TimeEntry.started_at.desc())
+            .limit(limit)
+        )
+        return list((await self.session.execute(statement)).scalars())
+
+    async def project_names_for_user(self, user_id: int) -> list[str]:
+        """Return all known project names for browser autocomplete."""
+        statement = (
+            select(TimeEntry.project)
+            .where(TimeEntry.user_id == user_id)
+            .distinct()
+            .order_by(TimeEntry.project)
+        )
+        return list((await self.session.execute(statement)).scalars())
+
+    async def task_names_for_user(self, user_id: int) -> list[str]:
+        """Return all known task names for browser autocomplete."""
+        statement = (
+            select(TimeEntry.task)
+            .where(TimeEntry.user_id == user_id)
+            .distinct()
+            .order_by(TimeEntry.task)
+        )
+        return list((await self.session.execute(statement)).scalars())
+
+    async def get_for_user(self, entry_id: int, user_id: int) -> TimeEntry | None:
+        """Return an entry only when it belongs to the requested user."""
+        statement = (
+            select(TimeEntry)
+            .options(selectinload(TimeEntry.tags))
+            .filter_by(id=entry_id, user_id=user_id)
+        )
+        return (await self.session.execute(statement)).scalar_one_or_none()
+
+    async def find_matching_entry(
+        self,
+        *,
+        user_id: int,
+        project_id: int,
+        task: str,
+        note: str | None,
+        started_at: datetime,
+        ended_at: datetime,
+    ) -> TimeEntry | None:
+        """Find an imported entry with the same identifying Toggl fields."""
+        statement = select(TimeEntry).filter_by(
+            user_id=user_id,
+            project_id=project_id,
+            task=task,
+            note=note,
+            started_at=started_at,
+            ended_at=ended_at,
+        )
+        return (await self.session.execute(statement)).scalars().first()
