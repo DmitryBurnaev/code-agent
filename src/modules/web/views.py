@@ -1,13 +1,17 @@
 """HTML views for the browser-facing Code Agent application."""
 
+from datetime import date, datetime, time, timedelta
 from typing import Any, NamedTuple
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Request
 from starlette.responses import HTMLResponse, RedirectResponse
 from starlette.templating import Jinja2Templates
 
 from src.constants import APP_DIR
-from src.db.models import User
+from src.db.models import TimeEntry, User
+from src.db.repositories import ProjectRepository, TimeEntryRepository
+from src.db.services import SASessionUOW
 from src.modules.web.auth import (
     authenticate_web_user,
     get_current_web_user,
@@ -15,6 +19,9 @@ from src.modules.web.auth import (
     logout_web_user,
 )
 from src.settings import AppSettings, get_app_settings
+from src.modules.time_tracker import TimeTrackerService
+from src.modules.time_tracker.service import TimeTrackerValidationError
+from src.utils import utcnow
 
 router = APIRouter(include_in_schema=False)
 templates = Jinja2Templates(directory=APP_DIR / "modules" / "web" / "templates")
@@ -26,6 +33,25 @@ class NavigationItem(NamedTuple):
     title: str
     path: str
     slug: str
+
+
+class CalendarPeriod(NamedTuple):
+    """The date range and FullCalendar view requested by the user."""
+
+    selected_date: date
+    starts_at: datetime
+    ends_before: datetime
+    view: str
+
+
+class DashboardTimeSummary(NamedTuple):
+    """Time-tracking data rendered on the dashboard for the current week."""
+
+    week_started: date
+    total_seconds: int
+    session_count: int
+    active_entry: TimeEntry | None
+    active_seconds: int
 
 
 NAVIGATION = (
@@ -78,6 +104,133 @@ async def require_web_user(request: Request) -> User | RedirectResponse:
     return user
 
 
+def calendar_period(request: Request) -> CalendarPeriod:
+    """Build a safe calendar period from the optional page query parameters."""
+    try:
+        selected_date = date.fromisoformat(request.query_params.get("date", ""))
+    except ValueError:
+        selected_date = date.today()
+
+    view = request.query_params.get("view", "week")
+    if view == "day":
+        starts_at = datetime.combine(selected_date, time.min)
+        return CalendarPeriod(selected_date, starts_at, starts_at + timedelta(days=1), view)
+
+    week_start = selected_date - timedelta(days=selected_date.weekday())
+    starts_at = datetime.combine(week_start, time.min)
+    return CalendarPeriod(selected_date, starts_at, starts_at + timedelta(days=7), "week")
+
+
+def redirect_to_tracker(message: str | None = None) -> RedirectResponse:
+    """Redirect to the tracker and surface a concise form result."""
+    suffix = f"?{urlencode({'message': message})}" if message else ""
+    return RedirectResponse(url=f"/time-tracker{suffix}", status_code=303)
+
+
+def parse_datetime(value: object, label: str, *, required: bool = True) -> datetime | None:
+    """Parse HTML datetime-local values into the app's naive UTC datetimes."""
+    text = str(value or "").strip()
+    if not text and not required:
+        return None
+    if not text:
+        raise TimeTrackerValidationError(f"{label} is required.")
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError as exc:
+        raise TimeTrackerValidationError(f"{label} must be a valid date and time.") from exc
+
+
+def parse_tags(value: object) -> list[str]:
+    """Split comma-separated tag input while leaving normalization to the service."""
+    return str(value or "").split(",")
+
+
+def entry_event(entry: TimeEntry) -> dict[str, Any]:
+    """Serialize an entry into the event format consumed by FullCalendar."""
+    return {
+        "id": entry.id,
+        "title": f"{entry.project} · {entry.task}",
+        "start": entry.started_at.isoformat(),
+        "end": entry.ended_at.isoformat() if entry.ended_at else None,
+        "classNames": (
+            ["calendar-event", "calendar-event-running"] if entry.is_running else ["calendar-event"]
+        ),
+        "extendedProps": {
+            "note": entry.note or "",
+            "tags": [tag.name for tag in entry.tags],
+        },
+    }
+
+
+def format_duration(total_seconds: int) -> str:
+    """Format a duration compactly for a dashboard metric."""
+    total_minutes = max(total_seconds, 0) // 60
+    hours, minutes = divmod(total_minutes, 60)
+    if hours:
+        return f"{hours}h {minutes:02d}m"
+    return f"{minutes}m"
+
+
+async def dashboard_time_summary(user_id: int) -> DashboardTimeSummary:
+    """Calculate current-week tracked time, including a running timer."""
+    now = utcnow()
+    week_started = now.date() - timedelta(days=now.weekday())
+    starts_at = datetime.combine(week_started, time.min)
+    ends_before = starts_at + timedelta(days=7)
+
+    async with SASessionUOW() as uow:
+        entries = TimeEntryRepository(uow.session)
+        week_entries = await entries.list_overlapping_for_user(user_id, starts_at, ends_before)
+        active_entry = await entries.active_for_user(user_id)
+
+    total_seconds = 0
+    for entry in week_entries:
+        entry_end = entry.ended_at or now
+        clipped_start = max(entry.started_at, starts_at)
+        clipped_end = min(entry_end, ends_before)
+        total_seconds += max(int((clipped_end - clipped_start).total_seconds()), 0)
+
+    active_seconds = 0
+    if active_entry is not None:
+        active_seconds = max(int((now - active_entry.started_at).total_seconds()), 0)
+
+    return DashboardTimeSummary(
+        week_started=week_started,
+        total_seconds=total_seconds,
+        session_count=len(week_entries),
+        active_entry=active_entry,
+        active_seconds=active_seconds,
+    )
+
+
+async def time_tracker_context(user_id: int, period: CalendarPeriod) -> dict[str, Any]:
+    """Load only the signed-in user's tracker data for the requested calendar range."""
+    async with SASessionUOW() as uow:
+        entries = TimeEntryRepository(uow.session)
+        period_entries = await entries.list_for_user(user_id, period.starts_at, period.ends_before)
+        active_entry = await entries.active_for_user(user_id)
+        recent_entries = await entries.recent_for_user(user_id)
+        project_names = await ProjectRepository(uow.session).list_names()
+        task_names = await entries.task_names_for_user(user_id)
+
+    return {
+        "calendar_events": [entry_event(entry) for entry in period_entries],
+        "entries": period_entries,
+        "active_entry": active_entry,
+        "recent_entries": recent_entries,
+        "project_names": project_names,
+        "task_names": task_names,
+        "calendar_date": period.selected_date.isoformat(),
+        "calendar_view": period.view,
+        "previous_date": (
+            period.selected_date - timedelta(days=1 if period.view == "day" else 7)
+        ).isoformat(),
+        "next_date": (
+            period.selected_date + timedelta(days=1 if period.view == "day" else 7)
+        ).isoformat(),
+    }
+
+
 @router.get("/login", response_class=HTMLResponse, response_model=None)
 async def login_page(request: Request) -> HTMLResponse | RedirectResponse:
     """Render the login form for anonymous users."""
@@ -121,26 +274,36 @@ async def logout(request: Request) -> RedirectResponse:
 
 @router.get("/", response_class=HTMLResponse, response_model=None)
 async def dashboard(request: Request) -> HTMLResponse | RedirectResponse:
-    """Render the Dashboard placeholder."""
+    """Render the Dashboard with current-week time-tracking status."""
     user = await require_web_user(request)
     if isinstance(user, RedirectResponse):
         return user
 
+    summary = await dashboard_time_summary(user.id)
     return render_template(
         request,
         "dashboard.html",
         title="Dashboard",
         current="dashboard",
         current_user=user,
+        context={
+            "week_started": summary.week_started,
+            "week_duration": format_duration(summary.total_seconds),
+            "week_sessions": summary.session_count,
+            "active_entry": summary.active_entry,
+            "active_duration": format_duration(summary.active_seconds),
+        },
     )
 
 
 @router.get("/time-tracker", response_class=HTMLResponse, response_model=None)
 async def time_tracker(request: Request) -> HTMLResponse | RedirectResponse:
-    """Render the Time Tracker placeholder."""
+    """Render the authenticated user's calendar and time tracker."""
     user = await require_web_user(request)
     if isinstance(user, RedirectResponse):
         return user
+
+    time_tracker_context_value = await time_tracker_context(user.id, calendar_period(request))
 
     return render_template(
         request,
@@ -148,4 +311,119 @@ async def time_tracker(request: Request) -> HTMLResponse | RedirectResponse:
         title="Time Tracker",
         current="time_tracker",
         current_user=user,
+        context=time_tracker_context_value | {"message": request.query_params.get("message")},
     )
+
+
+@router.post("/time-tracker/timer/start", response_model=None)
+async def start_timer(request: Request) -> RedirectResponse:
+    """Start a timer for the signed-in user."""
+    user = await require_web_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    form = await request.form()
+    try:
+        async with SASessionUOW() as uow:
+            tracker = TimeTrackerService(uow.session)
+            await tracker.start_timer(
+                user.id,
+                str(form.get("project") or ""),
+                str(form.get("task") or ""),
+                str(form.get("note") or ""),
+                parse_tags(form.get("tags")),
+            )
+            uow.mark_for_commit()
+    except TimeTrackerValidationError as exc:
+        return redirect_to_tracker(str(exc))
+    return redirect_to_tracker("Timer started.")
+
+
+@router.post("/time-tracker/timer/stop", response_model=None)
+async def stop_timer(request: Request) -> RedirectResponse:
+    """Stop the signed-in user's active timer."""
+    user = await require_web_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    try:
+        async with SASessionUOW() as uow:
+            await TimeTrackerService(uow.session).stop_timer(user.id)
+            uow.mark_for_commit()
+    except TimeTrackerValidationError as exc:
+        return redirect_to_tracker(str(exc))
+    return redirect_to_tracker("Timer stopped and entry saved.")
+
+
+@router.post("/time-tracker/entries", response_model=None)
+async def create_time_entry(request: Request) -> RedirectResponse:
+    """Create a completed manually entered work session."""
+    user = await require_web_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    form = await request.form()
+    try:
+        started_at = parse_datetime(form.get("started_at"), "Start time")
+        ended_at = parse_datetime(form.get("ended_at"), "End time")
+        assert started_at is not None
+        assert ended_at is not None
+        async with SASessionUOW() as uow:
+            tracker = TimeTrackerService(uow.session)
+            await tracker.create_entry(
+                user.id,
+                str(form.get("project") or ""),
+                str(form.get("task") or ""),
+                str(form.get("note") or ""),
+                started_at,
+                ended_at,
+                parse_tags(form.get("tags")),
+            )
+            uow.mark_for_commit()
+    except TimeTrackerValidationError as exc:
+        return redirect_to_tracker(str(exc))
+    return redirect_to_tracker("Time entry created.")
+
+
+@router.post("/time-tracker/entries/{entry_id}", response_model=None)
+async def update_time_entry(entry_id: int, request: Request) -> RedirectResponse:
+    """Update a time entry if it belongs to the signed-in user."""
+    user = await require_web_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    form = await request.form()
+    try:
+        started_at = parse_datetime(form.get("started_at"), "Start time")
+        ended_at = parse_datetime(form.get("ended_at"), "End time", required=False)
+        assert started_at is not None
+        async with SASessionUOW() as uow:
+            tracker = TimeTrackerService(uow.session)
+            entry = await tracker.entries.get_for_user(entry_id, user.id)
+            if entry is None:
+                return redirect_to_tracker("Time entry not found.")
+            await tracker.update_entry(
+                entry,
+                str(form.get("project") or ""),
+                str(form.get("task") or ""),
+                str(form.get("note") or ""),
+                started_at,
+                ended_at,
+                parse_tags(form.get("tags")),
+            )
+            uow.mark_for_commit()
+    except TimeTrackerValidationError as exc:
+        return redirect_to_tracker(str(exc))
+    return redirect_to_tracker("Time entry updated.")
+
+
+@router.post("/time-tracker/entries/{entry_id}/delete", response_model=None)
+async def delete_time_entry(entry_id: int, request: Request) -> RedirectResponse:
+    """Delete a time entry if it belongs to the signed-in user."""
+    user = await require_web_user(request)
+    if isinstance(user, RedirectResponse):
+        return user
+    async with SASessionUOW() as uow:
+        entries = TimeEntryRepository(uow.session)
+        entry = await entries.get_for_user(entry_id, user.id)
+        if entry is None:
+            return redirect_to_tracker("Time entry not found.")
+        await entries.delete(entry)
+        uow.mark_for_commit()
+    return redirect_to_tracker("Time entry deleted.")

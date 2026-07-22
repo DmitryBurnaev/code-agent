@@ -2,15 +2,134 @@
 {% from "snippets/icons.html" import icon_clock %}
 
 {% block content %}
-<section class="page-heading">
-    <p class="eyebrow">Work sessions</p>
-    <h1>Time Tracker</h1>
-    <p>Track focused engineering work when timers and session history are connected.</p>
+<section class="page-heading tracker-heading">
+    <div>
+        <p class="eyebrow">Work sessions</p>
+        <h1>Time Tracker</h1>
+        <p>Keep project work visible, from a running timer to a complete calendar of sessions.</p>
+    </div>
+    {% if active_entry %}
+    <form method="post" action="/time-tracker/timer/stop">
+        <button class="danger-button" type="submit">Stop timer</button>
+    </form>
+    {% endif %}
 </section>
 
-<section class="empty-state">
-    <span class="card-icon purple large">{{ icon_clock("icon") }}</span>
-    <h2>No active timer</h2>
-    <p>Timer controls and saved work sessions will appear here in a future increment.</p>
+{% if message %}
+<p class="tracker-message" role="status">{{ message }}</p>
+{% endif %}
+
+<section class="tracker-grid">
+    <article class="tracker-card active-timer-card">
+        <div class="timer-label"><span class="card-icon purple">{{ icon_clock("icon") }}</span><span>Active timer</span></div>
+        {% if active_entry %}
+        <strong class="timer-value" data-timer-start="{{ active_entry.started_at.isoformat() }}">00:00:00</strong>
+        <p>{{ active_entry.project }} · {{ active_entry.task }}</p>
+        {% else %}
+        <strong class="timer-value">No timer running</strong>
+        <p>Start one below when you begin focused work.</p>
+        {% endif %}
+    </article>
+
+    <article class="tracker-card">
+        <h2>Start a timer</h2>
+        <form class="tracker-form" method="post" action="/time-tracker/timer/start">
+            <label>Project<input name="project" required list="projects" placeholder="code-agent"></label>
+            <label>Task<input name="task" required list="tasks" placeholder="Issue #36"></label>
+            <label>Note<textarea name="note" rows="2" placeholder="What are you working on?"></textarea></label>
+            <label>Tags<input name="tags" list="tags" placeholder="feature, planning"></label>
+            <button class="primary-button" type="submit" {% if active_entry %}disabled{% endif %}>Start timer</button>
+        </form>
+    </article>
+
+    <article class="tracker-card reusable-card">
+        <h2>Reuse a previous entry</h2>
+        <p>Use a past project, task, note, and tags as a starting point for your next session.</p>
+        <select id="reuse-entry" aria-label="Previous time entry">
+            <option value="">Choose an entry</option>
+            {% for entry in recent_entries %}
+            <option value="{{ entry.id }}" data-project="{{ entry.project }}" data-task="{{ entry.task }}" data-note="{{ entry.note or '' }}" data-tags="{{ entry.tags|map(attribute='name')|join(', ') }}">
+                {{ entry.project }} · {{ entry.task }} — {{ entry.started_at.strftime('%d %b %H:%M') }}
+            </option>
+            {% endfor %}
+        </select>
+        {% if not recent_entries %}<p class="subtle">Your completed entries will be available here.</p>{% endif %}
+    </article>
 </section>
+
+<datalist id="projects">{% for project in project_names %}<option value="{{ project }}">{% endfor %}</datalist>
+<datalist id="tasks">{% for task in task_names %}<option value="{{ task }}">{% endfor %}</datalist>
+<datalist id="tags">{% for entry in recent_entries %}{% for tag in entry.tags %}<option value="{{ tag.name }}">{% endfor %}{% endfor %}</datalist>
+
+<section class="calendar-section" aria-label="Work session calendar">
+    <div class="calendar-toolbar">
+        <div class="calendar-actions">
+            <a href="/time-tracker?view={{ calendar_view }}&date={{ previous_date }}" class="secondary-button">Previous</a>
+            <a href="/time-tracker?view={{ calendar_view }}&date={{ next_date }}" class="secondary-button">Next</a>
+            <a href="/time-tracker?view={{ calendar_view }}" class="secondary-button">Today</a>
+        </div>
+        <button id="open-entry-dialog" class="secondary-button" type="button">Add entry</button>
+        <div class="calendar-actions">
+            <a href="/time-tracker?view=day&date={{ calendar_date }}" class="secondary-button {% if calendar_view == 'day' %}is-selected{% endif %}">Day</a>
+            <a href="/time-tracker?view=week&date={{ calendar_date }}" class="secondary-button {% if calendar_view == 'week' %}is-selected{% endif %}">Week</a>
+        </div>
+    </div>
+    <div id="time-calendar" data-date="{{ calendar_date }}" data-view="{{ calendar_view }}" data-events='{{ calendar_events|tojson }}'></div>
+</section>
+
+<section class="entry-section">
+    <article class="tracker-card entries-card">
+        <h2>Entries in this view</h2>
+        {% if entries %}
+        <div class="entry-list">
+            {% for entry in entries %}
+            <details class="entry-item" data-entry-id="{{ entry.id }}">
+                <summary>
+                    <span><strong>{{ entry.project }} · {{ entry.task }}</strong><small>{{ entry.started_at.strftime('%a, %d %b %H:%M') }}{% if entry.ended_at %} – {{ entry.ended_at.strftime('%H:%M') }}{% else %} · Running{% endif %}</small></span>
+                    <span class="tag-list">{% for tag in entry.tags %}<em>{{ tag.name }}</em>{% endfor %}</span>
+                </summary>
+                <form class="tracker-form two-columns" method="post" action="/time-tracker/entries/{{ entry.id }}">
+                    <label>Project<input name="project" required value="{{ entry.project }}" list="projects" autocomplete="off"></label>
+                    <label>Task<input name="task" required value="{{ entry.task }}" list="tasks" autocomplete="off"></label>
+                    <label>Start time<input name="started_at" type="datetime-local" required value="{{ entry.started_at.strftime('%Y-%m-%dT%H:%M') }}"></label>
+                    <label>End time<input name="ended_at" type="datetime-local" {% if not entry.is_running %}required{% endif %} value="{% if entry.ended_at %}{{ entry.ended_at.strftime('%Y-%m-%dT%H:%M') }}{% endif %}"></label>
+                    <label class="full-width">Note<textarea name="note" rows="2">{{ entry.note or '' }}</textarea></label>
+                    <label class="full-width">Tags<input name="tags" value="{{ entry.tags|map(attribute='name')|join(', ') }}" list="tags"></label>
+                    <button class="primary-button" type="submit">Save changes</button>
+                </form>
+                <form method="post" action="/time-tracker/entries/{{ entry.id }}/delete">
+                    <button class="text-button" type="submit">Delete entry</button>
+                </form>
+            </details>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="subtle">No entries in this calendar view yet.</p>
+        {% endif %}
+    </article>
+</section>
+
+<dialog id="entry-dialog" class="entry-dialog" aria-labelledby="entry-dialog-title">
+    <form class="tracker-form two-columns" method="post" action="/time-tracker/entries">
+        <div class="dialog-heading full-width">
+            <div>
+                <p class="eyebrow">Work session</p>
+                <h2 id="entry-dialog-title">Add time entry</h2>
+            </div>
+            <button id="close-entry-dialog" class="icon-button" type="button" aria-label="Close time entry form">×</button>
+        </div>
+        <label>Project<input name="project" required list="projects" autocomplete="off"></label>
+        <label>Task<input name="task" required list="tasks" autocomplete="off"></label>
+        <label>Start time<input name="started_at" type="datetime-local" required></label>
+        <label>End time<input name="ended_at" type="datetime-local" required></label>
+        <label class="full-width">Note<textarea name="note" rows="2"></textarea></label>
+        <label class="full-width">Tags<input name="tags" list="tags" placeholder="feature, planning" autocomplete="off"></label>
+        <button class="primary-button" type="submit">Save entry</button>
+    </form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.20/index.global.min.js"></script>
 {% endblock %}

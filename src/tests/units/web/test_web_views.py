@@ -86,6 +86,35 @@ def test_login_renders_dashboard_and_time_tracker_for_active_user(
 ) -> None:
     monkeypatch.setattr(views, "authenticate_web_user", AsyncMock(return_value=active_user))
     monkeypatch.setattr(views, "get_current_web_user", AsyncMock(return_value=active_user))
+    monkeypatch.setattr(
+        views,
+        "dashboard_time_summary",
+        AsyncMock(
+            return_value=views.DashboardTimeSummary(
+                week_started=views.date(2026, 7, 20),
+                total_seconds=0,
+                session_count=0,
+                active_entry=None,
+                active_seconds=0,
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        views,
+        "time_tracker_context",
+        AsyncMock(
+            return_value={
+                "calendar_events": [],
+                "entries": [],
+                "active_entry": None,
+                "recent_entries": [],
+                "calendar_date": "2026-07-22",
+                "calendar_view": "week",
+                "previous_date": "2026-07-15",
+                "next_date": "2026-07-29",
+            }
+        ),
+    )
 
     login_response = web_client.post(
         "/login",
@@ -106,12 +135,14 @@ def test_login_renders_dashboard_and_time_tracker_for_active_user(
     assert "web_user_id" not in login_response.text
     assert "Dashboard" in dashboard_response.text
     assert "No work data yet" in dashboard_response.text
+    assert "Tracked this week" in dashboard_response.text
+    assert "Not running" in dashboard_response.text
     assert "Version" in dashboard_response.text
     assert test_app.settings.app_version in dashboard_response.text
     assert "agent" in dashboard_response.text
     assert "nav-link is-active" in dashboard_response.text
     assert "Time Tracker" in time_tracker_response.text
-    assert "No active timer" in time_tracker_response.text
+    assert "No timer running" in time_tracker_response.text
 
 
 def test_logout_clears_web_session(

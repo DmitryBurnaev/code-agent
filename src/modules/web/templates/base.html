@@ -76,7 +76,8 @@
             </main>
         </div>
     </div>
-    <script src="/static/js/web-ui.js" defer></script>
+    <script src="/static/js/web-ui.js?v={{ app_version }}" defer></script>
+    {% block scripts %}{% endblock %}
     {% endblock %}
 </body>
 </html>

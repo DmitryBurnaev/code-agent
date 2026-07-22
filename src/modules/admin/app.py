@@ -18,6 +18,9 @@ from src.modules.admin.views import (
     UserAdminView,
     VendorAdminView,
     AIModelsAdminView,
+    ClientAdminView,
+    ProjectAdminView,
+    TogglImportAdminView,
     TokenAdminView,
 )
 from src.db import session as db_session
@@ -33,6 +36,9 @@ ADMIN_VIEWS: tuple[type[BaseView], ...] = (
     VendorAdminView,
     AIModelsAdminView,
     TokenAdminView,
+    ClientAdminView,
+    ProjectAdminView,
+    TogglImportAdminView,
 )
 
 logger = logging.getLogger(__name__)
