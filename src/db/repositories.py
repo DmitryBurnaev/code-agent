@@ -316,6 +316,7 @@ class TimeEntryRepository(BaseRepository[TimeEntry]):
         """List a user's entries that overlap a requested time period."""
         statement = (
             select(TimeEntry)
+            .options(selectinload(TimeEntry.tags))
             .where(
                 TimeEntry.user_id == user_id,
                 TimeEntry.started_at < ends_before,

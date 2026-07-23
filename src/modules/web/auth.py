@@ -12,7 +12,6 @@ SESSION_USER_ID = "web_user_id"
 async def get_current_web_user(request: Request) -> User | None:
     """Return the active user stored in the browser session, if any."""
     user_id = request.session.get(SESSION_USER_ID)
-    print(request.session)
     if type(user_id) is not int:
         return None
 
