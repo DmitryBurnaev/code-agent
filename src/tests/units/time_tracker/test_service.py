@@ -7,7 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.db.models import Project, TimeEntry
 from src.db.repositories import ProjectRepository, TimeEntryRepository
 from src.modules.time_tracker.service import TimeTrackerService, TimeTrackerValidationError
-from src.modules.web.views import CalendarPeriod, calendar_period, parse_datetime, parse_tags
+from src.modules.web.views import (
+    CalendarPeriod,
+    calendar_period,
+    entry_event,
+    parse_datetime,
+    parse_tags,
+)
 
 
 def test_manual_entry_rejects_an_invalid_time_range() -> None:
@@ -70,8 +76,8 @@ def test_tracker_form_helpers_parse_calendar_and_tag_input(mock_request: MagicMo
 
     assert period == CalendarPeriod(
         selected_date=datetime(2026, 7, 22).date(),
-        starts_at=datetime(2026, 7, 22),
-        ends_before=datetime(2026, 7, 23),
+        starts_at=datetime(2026, 7, 21, 21),
+        ends_before=datetime(2026, 7, 22, 21),
         view="day",
     )
     assert parse_datetime("2026-07-22T10:15", "Start time") == datetime(2026, 7, 22, 10, 15)
@@ -81,3 +87,44 @@ def test_tracker_form_helpers_parse_calendar_and_tag_input(mock_request: MagicMo
 def test_tracker_form_helpers_reject_an_invalid_datetime() -> None:
     with pytest.raises(TimeTrackerValidationError, match="valid date"):
         parse_datetime("not-a-date", "Start time")
+
+
+def test_entry_event_includes_fields_needed_by_the_calendar_edit_dialog() -> None:
+    entry = TimeEntry(
+        id=9,
+        user_id=1,
+        project="code-agent",
+        task="Issue #36",
+        note="Calendar polish",
+        started_at=datetime(2026, 7, 22, 10, 0),
+        ended_at=datetime(2026, 7, 22, 10, 5),
+    )
+
+    event = entry_event(entry)
+
+    assert event["extendedProps"] == {
+        "project": "code-agent",
+        "task": "Issue #36",
+        "note": "Calendar polish",
+        "tags": [],
+        "is_running": False,
+    }
+    assert event["start"] == "2026-07-22T10:00:00+00:00"
+    assert event["end"] == "2026-07-22T10:05:00+00:00"
+
+
+def test_running_entry_event_extends_to_the_current_time() -> None:
+    entry = TimeEntry(
+        id=10,
+        user_id=1,
+        project="code-agent",
+        task="Issue #36",
+        started_at=datetime(2026, 7, 22, 10, 0),
+    )
+    now = datetime(2026, 7, 22, 11, 30)
+
+    with patch("src.modules.web.views.utcnow", return_value=now):
+        event = entry_event(entry)
+
+    assert event["end"] == "2026-07-22T11:30:00+00:00"
+    assert event["extendedProps"]["is_running"] is True

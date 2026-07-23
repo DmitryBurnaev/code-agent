@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru-RU">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Code Agent — {{ title }}</title>
-    <link rel="stylesheet" href="/static/css/code-agent.css">
+    <link rel="stylesheet" href="/static/css/code-agent.css?v={{ static_assets_version }}">
 </head>
 {% from "snippets/icons.html" import icon_dashboard, icon_clock, icon_code, icon_menu, icon_close, icon_chevron_down, icon_logout %}
 <body>
@@ -76,7 +76,7 @@
             </main>
         </div>
     </div>
-    <script src="/static/js/web-ui.js?v={{ app_version }}" defer></script>
+    <script src="/static/js/web-ui.js?v={{ static_assets_version }}" defer></script>
     {% block scripts %}{% endblock %}
     {% endblock %}
 </body>

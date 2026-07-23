@@ -1,6 +1,6 @@
 """HTML views for the browser-facing Code Agent application."""
 
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, NamedTuple
 from urllib.parse import urlencode
 
@@ -25,6 +25,8 @@ from src.utils import utcnow
 
 router = APIRouter(include_in_schema=False)
 templates = Jinja2Templates(directory=APP_DIR / "modules" / "web" / "templates")
+MOSCOW_TIME_ZONE = timezone(timedelta(hours=3))
+STATIC_ASSETS_DIR = APP_DIR / "static"
 
 
 class NavigationItem(NamedTuple):
@@ -70,6 +72,12 @@ def get_app_version(request: Request) -> str:
     return get_app_settings().app_version
 
 
+def static_assets_version() -> str:
+    """Return a cache-busting version that changes with the web assets."""
+    assets = (STATIC_ASSETS_DIR / "css" / "code-agent.css", STATIC_ASSETS_DIR / "js" / "web-ui.js")
+    return str(max(asset.stat().st_mtime_ns for asset in assets))
+
+
 def render_template(
     request: Request,
     template_name: str,
@@ -90,6 +98,7 @@ def render_template(
             "current_user": current_user,
             "navigation": NAVIGATION,
             "app_version": get_app_version(request),
+            "static_assets_version": static_assets_version(),
         }
         | (context or {}),
         status_code=status_code,
@@ -109,16 +118,25 @@ def calendar_period(request: Request) -> CalendarPeriod:
     try:
         selected_date = date.fromisoformat(request.query_params.get("date", ""))
     except ValueError:
-        selected_date = date.today()
+        selected_date = datetime.now(MOSCOW_TIME_ZONE).date()
 
     view = request.query_params.get("view", "week")
     if view == "day":
-        starts_at = datetime.combine(selected_date, time.min)
+        starts_at = _moscow_midnight_in_utc(selected_date)
         return CalendarPeriod(selected_date, starts_at, starts_at + timedelta(days=1), view)
 
     week_start = selected_date - timedelta(days=selected_date.weekday())
-    starts_at = datetime.combine(week_start, time.min)
+    starts_at = _moscow_midnight_in_utc(week_start)
     return CalendarPeriod(selected_date, starts_at, starts_at + timedelta(days=7), "week")
+
+
+def _moscow_midnight_in_utc(value: date) -> datetime:
+    """Convert a Moscow calendar day boundary to the naive UTC storage convention."""
+    return (
+        datetime.combine(value, time.min, tzinfo=MOSCOW_TIME_ZONE)
+        .astimezone(timezone.utc)
+        .replace(tzinfo=None)
+    )
 
 
 def redirect_to_tracker(message: str | None = None) -> RedirectResponse:
@@ -150,14 +168,17 @@ def entry_event(entry: TimeEntry) -> dict[str, Any]:
     return {
         "id": entry.id,
         "title": f"{entry.project} · {entry.task}",
-        "start": entry.started_at.isoformat(),
-        "end": entry.ended_at.isoformat() if entry.ended_at else None,
+        "start": entry.started_at.replace(tzinfo=timezone.utc).isoformat(),
+        "end": (entry.ended_at or utcnow()).replace(tzinfo=timezone.utc).isoformat(),
         "classNames": (
             ["calendar-event", "calendar-event-running"] if entry.is_running else ["calendar-event"]
         ),
         "extendedProps": {
+            "project": entry.project,
+            "task": entry.task,
             "note": entry.note or "",
             "tags": [tag.name for tag in entry.tags],
+            "is_running": entry.is_running,
         },
     }
 
@@ -205,18 +226,42 @@ async def dashboard_time_summary(user_id: int) -> DashboardTimeSummary:
 
 async def time_tracker_context(user_id: int, period: CalendarPeriod) -> dict[str, Any]:
     """Load only the signed-in user's tracker data for the requested calendar range."""
+    now = utcnow()
+    today_starts_at = datetime.combine(now.date(), time.min)
+    tomorrow_starts_at = today_starts_at + timedelta(days=1)
     async with SASessionUOW() as uow:
         entries = TimeEntryRepository(uow.session)
-        period_entries = await entries.list_for_user(user_id, period.starts_at, period.ends_before)
+        period_entries = await entries.list_overlapping_for_user(
+            user_id, period.starts_at, period.ends_before
+        )
         active_entry = await entries.active_for_user(user_id)
+        today_entries = await entries.list_overlapping_for_user(
+            user_id, today_starts_at, tomorrow_starts_at
+        )
         recent_entries = await entries.recent_for_user(user_id)
         project_names = await ProjectRepository(uow.session).list_names()
         task_names = await entries.task_names_for_user(user_id)
+
+    today_total_seconds = sum(
+        max(
+            int(
+                (
+                    min(entry.ended_at or now, tomorrow_starts_at)
+                    - max(entry.started_at, today_starts_at)
+                ).total_seconds()
+            ),
+            0,
+        )
+        for entry in today_entries
+    )
 
     return {
         "calendar_events": [entry_event(entry) for entry in period_entries],
         "entries": period_entries,
         "active_entry": active_entry,
+        "today_total_seconds": today_total_seconds,
+        "today_total_duration": format_duration(today_total_seconds),
+        "tracker_rendered_at": now.replace(tzinfo=timezone.utc).isoformat(),
         "recent_entries": recent_entries,
         "project_names": project_names,
         "task_names": task_names,
