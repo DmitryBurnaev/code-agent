@@ -85,21 +85,26 @@
         const field = entryForm?.querySelector(`[name='${name}']`);
         if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) field.value = value || "";
     };
-    const openEntryForm = (start, end) => {
+    const openEntryForm = (start) => {
         if (!(entryDialog instanceof HTMLDialogElement)) return;
         if (entryForm instanceof HTMLFormElement) entryForm.action = "/time-tracker/entries";
         if (entryDialogTitle) entryDialogTitle.textContent = "Add time entry";
         const submitButton = entryForm?.querySelector("button[type='submit']");
-        if (submitButton) submitButton.textContent = "Save entry";
+        if (submitButton) submitButton.textContent = "Create entry";
         if (deleteEntryForm instanceof HTMLFormElement) deleteEntryForm.hidden = true;
         setEntryField("project", "");
         setEntryField("task", "");
         setEntryField("note", "");
         setEntryField("tags", "");
-        setEntryField("started_at", start instanceof Date ? formatCalendarDateTimeLocal(start) : "");
-        setEntryField("ended_at", end instanceof Date ? formatCalendarDateTimeLocal(end) : "");
+        setEntryField(
+            "started_at",
+            start instanceof Date
+                ? formatCalendarDateTimeLocal(start)
+                : formatMoscowCalendarDate(new Date()).slice(0, 16)
+        );
+        setEntryField("ended_at", "");
         const endInput = entryForm?.querySelector("[name='ended_at']");
-        if (endInput instanceof HTMLInputElement) endInput.required = true;
+        if (endInput instanceof HTMLInputElement) endInput.required = false;
         entryDialog.showModal();
     };
     const openEditEntryForm = (event) => {
@@ -171,9 +176,10 @@
                     openEditEntryForm(info.event);
                 },
                 select: (info) => {
-                    openEntryForm(info.start, info.end);
+                    openEntryForm(info.start);
                     calendar.unselect();
                 },
+                dateClick: (info) => openEntryForm(info.date),
             });
             calendar.render();
             const runningEvents = calendar.getEvents().filter((event) =>

@@ -36,6 +36,28 @@ async def test_start_timer_rejects_a_second_active_timer() -> None:
             await TimeTrackerService(session).start_timer(1, "code-agent", "Issue #36", None, [])
 
 
+async def test_start_timer_uses_the_calendar_time_when_provided() -> None:
+    session = AsyncMock(spec=AsyncSession)
+    project = Project(id=7, name="code-agent")
+    started_at = datetime(2026, 7, 22, 9, 30)
+
+    with (
+        patch.object(TimeEntryRepository, "active_for_user", AsyncMock(return_value=None)),
+        patch.object(ProjectRepository, "get_by_name", AsyncMock(return_value=project)),
+    ):
+        entry = await TimeTrackerService(session).start_timer(
+            1,
+            "code-agent",
+            "Issue #36",
+            None,
+            [],
+            started_at=started_at,
+        )
+
+    assert entry.started_at == started_at
+    assert entry.ended_at is None
+
+
 async def test_create_entry_requires_a_project_configured_in_administration() -> None:
     session = AsyncMock(spec=AsyncSession)
     with patch.object(ProjectRepository, "get_by_name", AsyncMock(return_value=None)):
