@@ -23,7 +23,14 @@ class TimeTrackerService:
         self.projects = ProjectRepository(session)
 
     async def start_timer(
-        self, user_id: int, project: str, task: str, note: str | None, tag_names: list[str]
+        self,
+        user_id: int,
+        project: str,
+        task: str,
+        note: str | None,
+        tag_names: list[str],
+        *,
+        started_at: datetime | None = None,
     ) -> TimeEntry:
         """Start a timer unless the user already has an active one."""
         if await self.entries.active_for_user(user_id) is not None:
@@ -36,7 +43,7 @@ class TimeTrackerService:
             project=configured_project.name,
             task=self._required_text(task, "Task"),
             note=self._optional_text(note),
-            started_at=utcnow().replace(microsecond=0),
+            started_at=(started_at or utcnow()).replace(microsecond=0),
         )
         entry.tags = await self._resolve_tags(tag_names)
         self.session.add(entry)

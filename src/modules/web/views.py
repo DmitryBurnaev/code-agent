@@ -400,31 +400,40 @@ async def stop_timer(request: Request) -> RedirectResponse:
 
 @router.post("/time-tracker/entries", response_model=None)
 async def create_time_entry(request: Request) -> RedirectResponse:
-    """Create a completed manually entered work session."""
+    """Create a completed entry or start a timer from the selected calendar time."""
     user = await require_web_user(request)
     if isinstance(user, RedirectResponse):
         return user
     form = await request.form()
     try:
         started_at = parse_datetime(form.get("started_at"), "Start time")
-        ended_at = parse_datetime(form.get("ended_at"), "End time")
+        ended_at = parse_datetime(form.get("ended_at"), "End time", required=False)
         assert started_at is not None
-        assert ended_at is not None
         async with SASessionUOW() as uow:
             tracker = TimeTrackerService(uow.session)
-            await tracker.create_entry(
-                user.id,
-                str(form.get("project") or ""),
-                str(form.get("task") or ""),
-                str(form.get("note") or ""),
-                started_at,
-                ended_at,
-                parse_tags(form.get("tags")),
-            )
+            if ended_at is None:
+                await tracker.start_timer(
+                    user.id,
+                    str(form.get("project") or ""),
+                    str(form.get("task") or ""),
+                    str(form.get("note") or ""),
+                    parse_tags(form.get("tags")),
+                    started_at=started_at,
+                )
+            else:
+                await tracker.create_entry(
+                    user.id,
+                    str(form.get("project") or ""),
+                    str(form.get("task") or ""),
+                    str(form.get("note") or ""),
+                    started_at,
+                    ended_at,
+                    parse_tags(form.get("tags")),
+                )
             uow.mark_for_commit()
     except TimeTrackerValidationError as exc:
         return redirect_to_tracker(str(exc))
-    return redirect_to_tracker("Time entry created.")
+    return redirect_to_tracker("Timer started." if ended_at is None else "Time entry created.")
 
 
 @router.post("/time-tracker/entries/{entry_id}", response_model=None)
