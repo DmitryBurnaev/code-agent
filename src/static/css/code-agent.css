@@ -87,6 +87,7 @@ button { cursor: pointer; }
 .timer-value { display: block; margin: 1.25rem 0 .5rem; color: #fff; font-size: 1.75rem; letter-spacing: .03em; }
 .tracker-form { display: grid; gap: .75rem; }
 .tracker-form label { display: grid; min-width: 0; gap: .35rem; color: #cbd5e1; font-size: .8rem; font-weight: 600; }
+.time-input-hint { color: #94a3b8; font-size: .7rem; font-weight: 500; }
 .tracker-form input, .tracker-form textarea, .reusable-card select { width: 100%; min-width: 0; border: 1px solid #475569; border-radius: .5rem; background: #0f172a; padding: .6rem .7rem; color: #f8fafc; outline: none; }
 .tracker-form textarea { resize: vertical; }
 .tracker-form input:focus, .tracker-form textarea:focus, .reusable-card select:focus { border-color: #8b5cf6; box-shadow: 0 0 0 2px rgba(139, 92, 246, .25); }
