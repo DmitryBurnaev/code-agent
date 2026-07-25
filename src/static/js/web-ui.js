@@ -76,6 +76,26 @@
         const part = (number) => String(number).padStart(2, "0");
         return `${date.getUTCFullYear()}-${part(date.getUTCMonth() + 1)}-${part(date.getUTCDate())}T${part(date.getUTCHours())}:${part(date.getUTCMinutes())}`;
     };
+    const formatMoscowInput = (value) => {
+        const [date, time] = value.split("T");
+        const [year, month, day] = date.split("-");
+        return `${day}.${month}.${year} ${time}`;
+    };
+    const parseMoscowInput = (value) => {
+        const match = /^(\d{2})\.(\d{2})\.(\d{4})\s(\d{2}):(\d{2})$/.exec(value.trim());
+        if (!match) return null;
+        const [, day, month, year, hours, minutes] = match;
+        const date = new Date(`${year}-${month}-${day}T${hours}:${minutes}:00Z`);
+        if (
+            Number.isNaN(date.getTime())
+            || date.getUTCDate() !== Number(day)
+            || date.getUTCMonth() + 1 !== Number(month)
+            || date.getUTCFullYear() !== Number(year)
+            || date.getUTCHours() !== Number(hours)
+            || date.getUTCMinutes() !== Number(minutes)
+        ) return null;
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
     const formatUtcDateTimeLocal = (value) => {
         const date = new Date(`${value}:00+03:00`);
         const part = (number) => String(number).padStart(2, "0");
@@ -99,8 +119,8 @@
         setEntryField(
             "started_at",
             start instanceof Date
-                ? formatCalendarDateTimeLocal(start)
-                : formatMoscowCalendarDate(new Date()).slice(0, 16)
+                ? formatMoscowInput(formatCalendarDateTimeLocal(start))
+                : formatMoscowInput(formatMoscowCalendarDate(new Date()).slice(0, 16))
         );
         setEntryField("ended_at", "");
         const endInput = entryForm?.querySelector("[name='ended_at']");
@@ -118,8 +138,11 @@
         setEntryField("task", props.task);
         setEntryField("note", props.note);
         setEntryField("tags", Array.isArray(props.tags) ? props.tags.join(", ") : "");
-        setEntryField("started_at", formatCalendarDateTimeLocal(event.start));
-        setEntryField("ended_at", event.end instanceof Date ? formatCalendarDateTimeLocal(event.end) : "");
+        setEntryField("started_at", formatMoscowInput(formatCalendarDateTimeLocal(event.start)));
+        setEntryField(
+            "ended_at",
+            event.end instanceof Date ? formatMoscowInput(formatCalendarDateTimeLocal(event.end)) : ""
+        );
         const endInput = entryForm.querySelector("[name='ended_at']");
         if (endInput instanceof HTMLInputElement) endInput.required = event.end instanceof Date;
         if (deleteEntryForm instanceof HTMLFormElement) {
@@ -137,7 +160,10 @@
     entryForm?.addEventListener("submit", () => {
         ["started_at", "ended_at"].forEach((name) => {
             const input = entryForm.querySelector(`[name='${name}']`);
-            if (input instanceof HTMLInputElement && input.value) input.value = formatUtcDateTimeLocal(input.value);
+            if (input instanceof HTMLInputElement && input.value) {
+                const localValue = parseMoscowInput(input.value);
+                if (localValue) input.value = formatUtcDateTimeLocal(localValue);
+            }
         });
     });
 
