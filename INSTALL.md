@@ -7,6 +7,32 @@
 - **RAM**: 512 MB minimum
 - **CPU**: 1 CPU core minimum
 
+### ARM64 and Multi-Platform Images
+
+Released images support both `linux/amd64` and `linux/arm64`. Docker selects the
+matching image automatically when pulling a release from GHCR, so deployment on
+an ARM64 server uses the same `DOCKER_IMAGE` value as an AMD64 server.
+
+To build ARM64 images locally, use `make build-arm64`. It uses Buildx with
+`--load` and creates local, single-platform `code-agent:arm64` and
+`code-agent:test-arm64` images. Cross-building or running ARM64 images on an
+AMD64 host requires QEMU/binfmt support; Docker Desktop includes it by default.
+
+To publish a multi-platform service image to a registry, use `--push` instead
+of `--load`:
+
+```shell
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  --target service \
+  --tag registry.example.com/code-agent:VERSION \
+  --push \
+  .
+```
+
+`--load` can import a single-platform image into the local Docker store, while
+a multi-platform manifest must be pushed to a registry.
+
 ## Service Installation
 
 ### Prepare service

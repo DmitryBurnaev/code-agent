@@ -37,6 +37,43 @@ For detailed server installation instructions, see [INSTALL.md](INSTALL.md).
    make test
    ```
 
+### ARM64 Docker images
+
+The Dockerfile supports `linux/amd64` and `linux/arm64`. Build local ARM64
+images with Docker Buildx:
+
+```shell
+make build-arm64
+```
+
+This command loads single-platform images into the local Docker image store as
+`code-agent:arm64` and `code-agent:test-arm64`. It requires Docker Buildx. On
+an x86_64 host, ARM64 execution also requires QEMU/binfmt support; Docker
+Desktop provides it by default, while Linux hosts need it configured before the
+build.
+
+After the build, use the loaded images without rebuilding them:
+
+```shell
+# Start the application
+DOCKER_DEFAULT_PLATFORM=linux/arm64 \
+DOCKER_IMAGE=code-agent:arm64 \
+docker compose up --no-build app
+
+# Run tests
+DOCKER_DEFAULT_PLATFORM=linux/arm64 \
+TEST_DOCKER_IMAGE=code-agent:test-arm64 \
+docker compose up --no-build --exit-code-from test test
+
+# Run linters
+DOCKER_DEFAULT_PLATFORM=linux/arm64 \
+TEST_DOCKER_IMAGE=code-agent:test-arm64 \
+docker compose up --no-build --exit-code-from lint lint
+```
+
+`--load` is intended for one local platform. To publish a multi-platform image,
+use Buildx with `--push`; see [INSTALL.md](INSTALL.md#arm64-and-multi-platform-images).
+
 ### CLI usages
 
 1. Generate Secrets
