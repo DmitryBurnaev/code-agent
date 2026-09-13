@@ -5,7 +5,7 @@ TEST_PYTHON_FILES := $(shell find src/tests -type f -name '*.py')
 
 .PHONY: help
 help: ## This help
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*? / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*? / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 .PHONY: lint
 lint: ## Linting project
@@ -58,6 +58,12 @@ test-in-docker: .env  ## Run tests inside docker container
 lint-in-docker: .env  ## Run linting inside docker container
 	@echo Run project in container...
 	docker compose up lint --build
+
+.PHONY: build-arm64
+build-arm64: ## Build service and test images for linux/arm64
+	@echo Building ARM64 images...
+	docker buildx build --platform linux/arm64 --target service --tag code-agent:arm64 --load .
+	docker buildx build --platform linux/arm64 --target tests --build-arg DEV_DEPS=true --tag code-agent:test-arm64 --load .
 
 .PHONY: migration
 migration: .env ## Make DB migrations
