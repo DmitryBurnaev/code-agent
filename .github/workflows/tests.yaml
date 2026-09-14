@@ -6,7 +6,6 @@ on:
   push:
     branches:
       - "main"
-      - "feature/38-build-arm64-image"
 
 jobs:
   test:
