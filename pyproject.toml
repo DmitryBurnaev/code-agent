@@ -4,19 +4,19 @@ version = "0.1.0"
 description = "Code Agent (some helper system)"
 requires-python = ">=3.13,<3.14"
 dependencies = [
-    "fastapi==0.141.1",
+    "fastapi==0.142.1",
     "itsdangerous==2.2.0",         # required by session engine
     "jinja2==3.1.6",
     "python-multipart==0.0.32",
-    "uvicorn==0.52.0",
-    "pydantic==2.13.4",
-    "pydantic-settings==2.14.2",
+    "uvicorn==0.54.0",
+    "pydantic==2.13.5",
+    "pydantic-settings==2.15.0",
     "httpx[socks]==0.28.1",
-    "sqlalchemy[asyncio]==2.0.51",
-    "sqladmin==0.30.0",
-    "alembic==1.18.5",
+    "sqlalchemy[asyncio]==2.1.1",
+    "sqladmin==0.32.0",
+    "alembic==1.20.0",
     "asyncpg==0.31.0",
-    "pyjwt==2.13.0",
+    "pyjwt==2.15.1",
     "pycryptodomex==3.23.0",       # for API key encryptions
     "uvloop==0.22.1",
 ]
@@ -26,13 +26,13 @@ dev = [
     "types-wtforms==3.2.1.20260518",
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0", # were >=0.26.0,<0.27"
-    "coverage==7.15.2",
+    "coverage==7.16.2",
     "black==26.5.1",
-    "ruff==0.16.1",
-    "mypy==2.3.0",
+    "ruff==0.16.9",
+    "mypy==2.3.1",
     # pycharm requires:
-    "setuptools==83.0.0",
-    "pip==26.2",
+    "setuptools==84.0.0",
+    "pip==26.2.1",
 ]
 
 # === Ruff settings ===
