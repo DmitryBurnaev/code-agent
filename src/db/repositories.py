@@ -10,6 +10,8 @@ from typing import (
     Sequence,
     ParamSpec,
     cast,
+    Tuple,
+    Unpack,
 )
 
 from sqlalchemy import select, BinaryExpression, delete, Select, func, or_, update, CursorResult
@@ -35,6 +37,7 @@ logger = logging.getLogger(__name__)
 P = ParamSpec("P")
 RT = TypeVar("RT")
 type FilterT = int | str | list[int] | None
+type TupleAny = Tuple[Any, ...]
 
 
 class VendorsFilter(TypedDict):
@@ -126,13 +129,28 @@ class BaseRepository(Generic[ModelT]):
     def _prepare_statement(
         self,
         filters: dict[str, FilterT],
-        entities: list[ColumnsClauseRole | SQLCoreOperations[Any]] | None = None,
-    ) -> Select[tuple[ModelT]]:
+    ) -> Select[ModelT]:
         filters_stmts: list[BinaryExpression[bool]] = []
         if (ids := filters.pop("ids", None)) and isinstance(ids, list):
             filters_stmts.append(self.model.id.in_(ids))
 
-        statement = select(*entities) if entities is not None else select(self.model)
+        statement = select(self.model)
+        statement = statement.filter_by(**filters)
+        if filters_stmts:
+            statement = statement.filter(*filters_stmts)
+
+        return statement
+
+    def _prepare_statement_with_entities(
+        self,
+        filters: dict[str, FilterT],
+        entities: list[ColumnsClauseRole | SQLCoreOperations[Any]],
+    ) -> Select[Unpack[TupleAny]]:
+        filters_stmts: list[BinaryExpression[bool]] = []
+        if (ids := filters.pop("ids", None)) and isinstance(ids, list):
+            filters_stmts.append(self.model.id.in_(ids))
+
+        statement = select(*entities)
         statement = statement.filter_by(**filters)
         if filters_stmts:
             statement = statement.filter(*filters_stmts)
@@ -180,7 +198,7 @@ class VendorRepository(BaseRepository[Vendor]):
 
     async def group_by_active(self, **filters: FilterT) -> ActiveVendorsStat:
         """Selects instances from DB"""
-        statement = self._prepare_statement(
+        statement = self._prepare_statement_with_entities(
             filters=filters,
             entities=[
                 self.model.is_active,

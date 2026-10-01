@@ -184,7 +184,7 @@ class TestBaseRepository:
         filters: dict[str, FilterT] = {"username": "testuser"}
         entities = [User.id, User.username]
 
-        statement = base_repo._prepare_statement(filters, entities)
+        statement = base_repo._prepare_statement_with_entities(filters, entities)
 
         # Should not raise any exceptions
         assert statement is not None
@@ -324,7 +324,7 @@ class TestVendorRepository:
         vendor_repo.session.execute = AsyncMock(return_value=mock_result)
 
         # Mock _prepare_statement to avoid complex SQLAlchemy logic
-        vendor_repo._prepare_statement = MagicMock(return_value=MagicMock())
+        vendor_repo._prepare_statement_with_entities = MagicMock(return_value=MagicMock())
 
         result = await vendor_repo.group_by_active()
 
@@ -339,7 +339,7 @@ class TestVendorRepository:
         vendor_repo.session.execute = AsyncMock(return_value=mock_result)
 
         # Mock _prepare_statement to avoid complex SQLAlchemy logic
-        vendor_repo._prepare_statement = MagicMock(return_value=MagicMock())
+        vendor_repo._prepare_statement_with_entities = MagicMock(return_value=MagicMock())
 
         result = await vendor_repo.group_by_active()
 
