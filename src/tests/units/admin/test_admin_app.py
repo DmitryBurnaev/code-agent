@@ -139,6 +139,7 @@ class TestAdminAppInitialization:
     def test_admin_app_views_initialization(self, admin_app: AdminApp) -> None:
         assert isinstance(admin_app._views, list)
         assert len(admin_app._views) == len(ADMIN_VIEWS)
+        assert admin_app.templates.env.globals["app_version"] == admin_app.app.settings.app_version
 
 
 @pytest.mark.asyncio

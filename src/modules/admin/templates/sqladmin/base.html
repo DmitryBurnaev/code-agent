@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
     <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/tabler.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/tabler-icons.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/fontawesome.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/fontawesome-all.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/select2.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/flatpickr.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/main.css') }}">
@@ -16,12 +16,14 @@
     {% block head %}
     {% endblock %}
     <style>
-        .navbar a.btn.btn-secondary{
-            display: block;
-            position: absolute;
-            bottom: 10px;
-            width: 90%;
-            left: 8%;
+        .admin-sidebar-footer {
+            margin: auto 0 0;
+            padding: 1rem;
+            color: var(--tblr-secondary-color);
+            font-size: .875rem;
+        }
+        .admin-logout {
+            align-self: flex-start;
         }
     </style>
     <title>{{ admin.title }}</title>

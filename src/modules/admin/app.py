@@ -125,6 +125,7 @@ class AdminApp(Admin):
         templates_dir = APP_DIR / self.custom_templates_dir
         self.templates.env.loader.loaders.insert(0, FileSystemLoader(templates_dir))  # type: ignore
         self.templates.env.globals["error_alert"] = get_current_error_alert
+        self.templates.env.globals["app_version"] = self.app.settings.app_version
 
     def _register_views(self) -> None:
         for view in ADMIN_VIEWS:
