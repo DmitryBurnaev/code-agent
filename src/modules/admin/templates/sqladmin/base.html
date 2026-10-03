@@ -16,21 +16,31 @@
     {% block head %}
     {% endblock %}
     <style>
-        .admin-sidebar-footer {
-            margin: auto 0 0;
-            padding: 1rem;
-            color: var(--tblr-secondary-color);
-            font-size: .875rem;
+        .navbar a.btn.btn-secondary{
+            display: block;
+            position: absolute;
+            bottom: 10px;
+            width: 90%;
+            left: 5%;
         }
-        .admin-logout {
-            align-self: flex-start;
+        .page-header{
+            min-height: 0.10em;
+        }
+        .page-body{
+            margin-top: 0;
+        }
+        .page-body .container-fluid{
+            margin-top: 8px;
+        }
+        .page-wrapper .container-fluid{
+            margin-top: 8px;
         }
     </style>
     <title>{{ admin.title }}</title>
 </head>
 
 <body>
-{% with alert = error_alert() %}
+{% with alert = error_alert(request) %}
     {% if alert %}
         {% include 'error_alert.html' %}
     {% endif %}
