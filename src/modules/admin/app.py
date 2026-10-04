@@ -53,7 +53,7 @@ class AdminApp(Admin):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._init_jinja_templates()
-        self._views: list[BaseModelView | BaseAPPView] = []  # type: ignore
+        self._views: list[BaseModelView | BaseAPPView] = []
         self._register_views()
 
     @login_required
@@ -140,7 +140,7 @@ def make_admin(app: "CodeAgentAPP") -> Admin:
     return AdminApp(
         app,
         base_url=app.settings.admin.base_url,
-        title=app.settings.admin.title,
+        title=f"{app.settings.admin.title} ({app.settings.app_version})",
         session_maker=db_session.get_session_factory(),
         authentication_backend=AdminAuth(
             secret_key=app.settings.app_secret_key.get_secret_value(),

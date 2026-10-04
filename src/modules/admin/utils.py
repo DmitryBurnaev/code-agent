@@ -2,6 +2,8 @@ import logging
 import contextvars
 from typing import TypedDict, Optional
 
+from starlette.requests import Request
+
 logger = logging.getLogger(__name__)
 alert_context_var: contextvars.ContextVar[Optional["ErrorInContext"]] = contextvars.ContextVar(
     "alert_context", default=None
@@ -21,7 +23,7 @@ def register_error_alert(title: str, details: str) -> None:
     alert_context_var.set(ErrorInContext(title=title, details=details))
 
 
-def get_current_error_alert(*_) -> dict[str, str] | None:
+def get_current_error_alert(*_: Request) -> dict[str, str] | None:
     """
     Get the current error alert from the context (used for global context in jinja templates)
     """
