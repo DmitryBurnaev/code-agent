@@ -13,6 +13,7 @@
           {% endif %}
         </a>
       </h1>
+      <div class="admin-sidebar-footer">Version {{ app_version }}</div>
       <nav class="navbar navbar-expand-sm shadow-none" id="navbar-menu" data-sqladmin-menu="{{ admin.base_url }}">
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
           aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -23,7 +24,6 @@
         </div>
       </nav>
       {% if admin.authentication_backend %}
-      <div class="admin-sidebar-footer">Version {{ app_version }}</div>
       <a href="{{ request.url_for('admin:logout') }}" class="admin-logout btn btn-secondary btn-icon m-2 px-2">
         <span class="me-2">{{ _("Logout") }}</span>
         <i class="fa fa-sign-out"></i>
@@ -85,4 +85,10 @@
     </div>
   </div>
 </div>
+<style>
+  .admin-sidebar-footer{
+    margin-left: 17px;
+
+  }
+</style>
 {% endblock %}

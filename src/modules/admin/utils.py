@@ -21,7 +21,7 @@ def register_error_alert(title: str, details: str) -> None:
     alert_context_var.set(ErrorInContext(title=title, details=details))
 
 
-def get_current_error_alert() -> dict[str, str] | None:
+def get_current_error_alert(*_) -> dict[str, str] | None:
     """
     Get the current error alert from the context (used for global context in jinja templates)
     """
