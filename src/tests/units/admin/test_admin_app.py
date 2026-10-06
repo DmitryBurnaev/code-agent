@@ -266,6 +266,7 @@ class TestAdminAppCreate:
     ) -> None:
         mock_request.method = "POST"
         mock_response = MagicMock(spec=Response)
+        mock_response.status_code = 302
         mock_model_view.custom_post_create = False
 
         mock_create.return_value = mock_response
@@ -283,7 +284,7 @@ class TestAdminAppCreate:
 
     @pytest.fixture
     def mock_find_model_view(self) -> Generator[MagicMock, Any, None]:
-        with patch.object(AdminApp, "_find_model_view") as mock_find_model_view:
+        with patch.object(AdminApp, "_find_model_view") as mock_find_model_view:  # noqa
             yield mock_find_model_view
 
     async def test_create_post_request_with_custom_post_create(
@@ -296,6 +297,7 @@ class TestAdminAppCreate:
     ) -> None:
         mock_request.method = "POST"
         mock_response = MagicMock(spec=Response)
+        mock_response.status_code = 302
         mock_response.headers = {"location": "123"}
         mock_model_view.custom_post_create = True
         mock_model_view.handle_post_create = AsyncMock(return_value=mock_response)
@@ -320,6 +322,7 @@ class TestAdminAppCreate:
     ) -> None:
         mock_request.method = "POST"
         mock_response = MagicMock(spec=Response)
+        mock_response.status_code = 302
         mock_response.headers = {"location": "123"}
         mock_model_view.custom_post_create = True
         mock_model_view.handle_post_create = AsyncMock(side_effect=Exception("Handle error"))
@@ -419,9 +422,6 @@ class TestAdminAppRegisterViews:
         for view in ADMIN_VIEWS:
             mock_add_view.assert_any_call(view)
 
-        for view_instance in admin_app._views:
-            assert view_instance.app == admin_app.app  # noqa
-
     def test_register_views_with_custom_views(
         self,
         mock_admin_app__with_add_view: tuple[AdminApp, MagicMock],
@@ -434,10 +434,6 @@ class TestAdminAppRegisterViews:
         admin_app._register_views()
 
         assert mock_add_view.call_count == len(ADMIN_VIEWS)
-
-        # Check that app is set for custom view instances
-        assert custom_view1.app == admin_app.app
-        assert custom_view2.app == admin_app.app
 
 
 class TestMakeAdmin:

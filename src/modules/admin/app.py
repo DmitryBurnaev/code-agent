@@ -90,7 +90,6 @@ class AdminApp(Admin):
         identity = request.path_params["identity"]
         model_view: "BaseModelView" = cast("BaseModelView", self._find_model_view(identity))
         if model_view.custom_post_create:
-            print(response.headers)
             object_id = int(response.headers["location"])
             response = await model_view.handle_post_create(request, object_id)
         # ====
