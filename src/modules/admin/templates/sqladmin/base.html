@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
     <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/tabler.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/tabler-icons.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/fontawesome.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/fontawesome-all.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/select2.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/flatpickr.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/main.css') }}">
@@ -20,15 +20,27 @@
             display: block;
             position: absolute;
             bottom: 10px;
-            width: 85%;
-            left: 8%;
+            width: 90%;
+            left: 5%;
+        }
+        .page-header{
+            min-height: 0.10em;
+        }
+        .page-body{
+            margin-top: 0;
+        }
+        .page-body .container-fluid{
+            margin-top: 8px;
+        }
+        .page-wrapper .container-fluid{
+            margin-top: 8px;
         }
     </style>
     <title>{{ admin.title }}</title>
 </head>
 
 <body>
-{% with alert = error_alert() %}
+{% with alert = error_alert(request) %}
     {% if alert %}
         {% include 'error_alert.html' %}
     {% endif %}

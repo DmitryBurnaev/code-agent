@@ -1,5 +1,6 @@
 """Session authentication helpers for browser-facing pages."""
 
+import logging
 from fastapi import Request
 
 from src.db.models import User
@@ -7,18 +8,22 @@ from src.db.repositories import UserRepository
 from src.db.services import SASessionUOW
 
 SESSION_USER_ID = "web_user_id"
+logger = logging.getLogger(__name__)
 
 
 async def get_current_web_user(request: Request) -> User | None:
     """Return the active user stored in the browser session, if any."""
     user_id = request.session.get(SESSION_USER_ID)
     if type(user_id) is not int:
+        print(request.session)
+        logger.warning("Invalid user id %s", user_id)
         return None
 
     async with SASessionUOW() as uow:
         user = await UserRepository(session=uow.session).first(instance_id=user_id)
 
     if user is None or not user.is_active:
+        logger.warning("User not found or not active: #%s", user_id)
         logout_web_user(request)
         return None
 
@@ -38,6 +43,7 @@ async def authenticate_web_user(username: str, password: str) -> User | None:
 
 def login_web_user(request: Request, user: User) -> None:
     """Persist the authenticated user's id in the signed browser session."""
+    logger.info(f"Logging user {user.username} to browser-facing session")
     request.session.clear()
     request.session[SESSION_USER_ID] = user.id
 

@@ -7,6 +7,7 @@ from starlette.datastructures import URL
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 
+from src.settings import get_app_settings, AppSettings
 from src.db.repositories import TokenRepository
 from src.db.services import SASessionUOW
 from src.db.models import BaseModel, Token
@@ -49,7 +50,8 @@ class TokenAdminView(BaseModelView, model=Token):
         if data.get("expires_at"):
             expires_at = cast(datetime.datetime, data["expires_at"])
 
-        token_info = make_api_token(expires_at=expires_at, settings=self.app.settings)
+        settings: AppSettings = get_app_settings()
+        token_info = make_api_token(expires_at=expires_at, settings=settings)
         data["token"] = token_info.hashed_value
         token: Token = await super().insert_model(request, data)
         cache = InMemoryCache()

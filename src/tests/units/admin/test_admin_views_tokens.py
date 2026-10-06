@@ -129,9 +129,9 @@ class TestTokenAdminViewInsertModel:
         )
 
         assert result == mock_token
-        mock_make_api_token.assert_called_once_with(
-            expires_at=None, settings=token_admin_view.app.settings
-        )
+        mock_make_api_token.assert_called_once()
+        calls = mock_make_api_token.call_args_list
+        assert calls[0].kwargs["expires_at"] is None
 
     @pytest.mark.asyncio
     async def test_insert_model_with_expiration(
@@ -152,9 +152,8 @@ class TestTokenAdminViewInsertModel:
         )
 
         assert result == mock_token
-        mock_make_api_token.assert_called_once_with(
-            expires_at=expires_at, settings=token_admin_view.app.settings
-        )
+        calls = mock_make_api_token.call_args_list
+        assert calls[0].kwargs["expires_at"] == expires_at
 
 
 class TestTokenAdminViewOperations:

@@ -13,7 +13,6 @@ from src.constants import APP_DIR
 from src.db.services import SASessionUOW
 from src.modules.admin.utils import get_current_error_alert
 from src.modules.admin.views import (
-    BaseAPPView,
     BaseModelView,
     UserAdminView,
     VendorAdminView,
@@ -53,7 +52,6 @@ class AdminApp(Admin):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._init_jinja_templates()
-        self._views: list[BaseModelView | BaseAPPView] = []  # type: ignore
         self._register_views()
 
     @login_required
@@ -83,6 +81,9 @@ class AdminApp(Admin):
     async def create(self, request: Request) -> Response:
         response: Response = await super().create(request)
         if request.method == "GET":
+            return response
+
+        if response.status_code != 302:
             return response
 
         # ==== prepare custom logic ====
@@ -125,13 +126,11 @@ class AdminApp(Admin):
         templates_dir = APP_DIR / self.custom_templates_dir
         self.templates.env.loader.loaders.insert(0, FileSystemLoader(templates_dir))  # type: ignore
         self.templates.env.globals["error_alert"] = get_current_error_alert
+        self.templates.env.globals["app_version"] = self.app.settings.app_version
 
     def _register_views(self) -> None:
         for view in ADMIN_VIEWS:
             self.add_view(view)
-
-        for view_instance in self._views:
-            view_instance.app = self.app
 
 
 def make_admin(app: "CodeAgentAPP") -> Admin:
@@ -139,7 +138,7 @@ def make_admin(app: "CodeAgentAPP") -> Admin:
     return AdminApp(
         app,
         base_url=app.settings.admin.base_url,
-        title=app.settings.admin.title,
+        title=f"{app.settings.admin.title} ({app.settings.app_version})",
         session_maker=db_session.get_session_factory(),
         authentication_backend=AdminAuth(
             secret_key=app.settings.app_secret_key.get_secret_value(),

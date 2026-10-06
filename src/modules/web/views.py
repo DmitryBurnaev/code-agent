@@ -312,7 +312,7 @@ async def login_submit(request: Request) -> RedirectResponse:
 
 @router.post("/logout", response_model=None)
 async def logout(request: Request) -> RedirectResponse:
-    """Clear the browser session and return to login."""
+    """Clear the browser session and return to login page."""
     logout_web_user(request)
     return RedirectResponse(url="/login", status_code=303)
 

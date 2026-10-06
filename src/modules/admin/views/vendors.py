@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from starlette.requests import Request
 from wtforms import Form, StringField, URLField, BooleanField
 
+from src.settings import AppSettings, get_app_settings
 from src.exceptions import VendorEncryptionError
 from src.modules.admin.views.base import FormDataType, BaseModelView
 from src.modules.encrypt.encryption import VendorKeyEncryption
@@ -74,8 +75,9 @@ class VendorAdminView(BaseModelView, model=Vendor):
         if not plaintext_key:
             raise ValueError("API key cannot be empty")
 
+        settings: AppSettings = get_app_settings()
         try:
-            encryption = VendorKeyEncryption(self.app.settings.vendor_encryption_key)
+            encryption = VendorKeyEncryption(settings.vendor_encryption_key)
             return encryption.encrypt(plaintext_key)
 
         except Exception as exc:
