@@ -13,7 +13,6 @@ from src.constants import APP_DIR
 from src.db.services import SASessionUOW
 from src.modules.admin.utils import get_current_error_alert
 from src.modules.admin.views import (
-    BaseAPPView,
     BaseModelView,
     UserAdminView,
     VendorAdminView,
@@ -53,7 +52,6 @@ class AdminApp(Admin):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._init_jinja_templates()
-        self._views: list[BaseModelView | BaseAPPView] = []
         self._register_views()
 
     @login_required
@@ -85,10 +83,14 @@ class AdminApp(Admin):
         if request.method == "GET":
             return response
 
+        if response.status_code != 302:
+            return response
+
         # ==== prepare custom logic ====
         identity = request.path_params["identity"]
         model_view: "BaseModelView" = cast("BaseModelView", self._find_model_view(identity))
         if model_view.custom_post_create:
+            print(response.headers)
             object_id = int(response.headers["location"])
             response = await model_view.handle_post_create(request, object_id)
         # ====
@@ -130,9 +132,6 @@ class AdminApp(Admin):
     def _register_views(self) -> None:
         for view in ADMIN_VIEWS:
             self.add_view(view)
-
-        for view_instance in self._views:
-            view_instance.app = self.app
 
 
 def make_admin(app: "CodeAgentAPP") -> Admin:
