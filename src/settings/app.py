@@ -57,7 +57,7 @@ class AdminSettings(BaseSettings):
 class WebSettings(BaseSettings):
     """Settings for the browser-facing Code Agent application."""
 
-    model_config = SettingsConfigDict(env_prefix="WEB_")
+    model_config = SettingsConfigDict(env_prefix="WEB_", env_file=".env", extra="ignore")
 
     session_cookie_name: str = "code_agent_web_session"
     session_expiration_time: int = 2 * 24 * 3600

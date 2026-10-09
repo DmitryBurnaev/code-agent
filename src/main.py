@@ -5,12 +5,12 @@ from typing import Any, Callable, AsyncGenerator
 
 import uvicorn
 from fastapi import FastAPI, Depends
-from starlette.middleware.sessions import SessionMiddleware
 from starlette.staticfiles import StaticFiles
 
 from src.modules.auth.dependencies import verify_api_token
 from src.modules.admin.app import make_admin
 from src.modules.web import web_router
+from src.modules.web.middleware import WebSessionMiddleware
 from src.constants import APP_DIR
 from src.exceptions import AppSettingsError, StartupError
 from src.settings import get_app_settings, AppSettings
@@ -83,8 +83,15 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPP:
         lifespan=lifespan,
     )
     app.set_settings(settings)
+    logger.info(
+        "[web-auth] Session configuration: cookie=%s https_only=%s max_age=%s",
+        settings.web.session_cookie_name,
+        settings.web.session_https_only,
+        settings.web.session_expiration_time,
+    )
     app.add_middleware(
-        SessionMiddleware,
+        WebSessionMiddleware,
+        admin_path=settings.admin.base_url,
         secret_key=settings.app_secret_key.get_secret_value(),
         session_cookie=settings.web.session_cookie_name,
         max_age=settings.web.session_expiration_time,
