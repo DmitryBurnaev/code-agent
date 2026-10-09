@@ -30,7 +30,7 @@ def test_app_registers_web_routes_static_files_and_isolated_session(
     middleware = next(
         middleware
         for middleware in test_app.user_middleware
-        if middleware.cls.__name__ == "SessionMiddleware"  # type: ignore
+        if middleware.cls.__name__ == "WebSessionMiddleware"  # type: ignore
     )
     assert middleware.kwargs["session_cookie"] == "code_agent_web_session"
     assert middleware.kwargs["max_age"] == 2 * 24 * 3600

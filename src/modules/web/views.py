@@ -1,6 +1,7 @@
 """HTML views for the browser-facing Code Agent application."""
 
 from datetime import date, datetime, time, timedelta, timezone
+import logging
 from typing import Any, NamedTuple
 from urllib.parse import urlencode
 
@@ -300,6 +301,7 @@ async def login_submit(request: Request) -> RedirectResponse:
     username = str(form.get("username") or "").strip()
     password = str(form.get("password") or "")
     if not username or not password:
+        logging.getLogger(__name__).warning("[web-auth] Login rejected: reason=missing_credentials")
         return RedirectResponse(url="/login?error=missing", status_code=303)
 
     user = await authenticate_web_user(username=username, password=password)

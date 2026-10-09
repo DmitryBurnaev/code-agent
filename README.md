@@ -74,6 +74,17 @@ docker compose up --no-build --exit-code-from lint lint
 `--load` is intended for one local platform. To publish a multi-platform image,
 use Buildx with `--push`; see [INSTALL.md](INSTALL.md#arm64-and-multi-platform-images).
 
+### Browser sessions
+
+Web login uses a signed, HttpOnly cookie with `SameSite=Lax`. By default,
+`WEB_SESSION_HTTPS_ONLY=true` restricts this cookie to HTTPS. When running locally
+over HTTP, set `WEB_SESSION_HTTPS_ONLY=false` in `.env` or the process environment
+and restart the application; otherwise the browser will return
+to the login page after signing in. Keep the default for HTTPS deployments.
+
+The admin application manages its own session. Visiting or logging out of the
+admin application preserves the web login, and web logout affects only the web session.
+
 ### CLI usages
 
 1. Generate Secrets
