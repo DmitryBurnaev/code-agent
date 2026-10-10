@@ -126,6 +126,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.docker-image-meta.outputs.tags }}
           labels: ${{ steps.docker-image-meta.outputs.labels }}
+          annotations: index:org.opencontainers.image.description=A configurable proxy application for routing and managing requests across multiple LLM vendors.
 
   verify:
     needs: [prepare, build]
