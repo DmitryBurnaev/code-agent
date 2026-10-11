@@ -11,10 +11,7 @@ button, input { font: inherit; }
 button { cursor: pointer; }
 
 .icon { width: 1.25rem; height: 1.25rem; flex: 0 0 auto; }
-.pattern-bg {
-    background-color: #0f172a;
-    background-image: repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255, 255, 255, .015) 8px, rgba(255, 255, 255, .015) 16px);
-}
+.pattern-bg { background: #0f172a; }
 .app-shell { display: flex; height: 100vh; overflow: hidden; }
 .sidebar {
     z-index: 40; display: flex; width: 16rem; flex: 0 0 16rem; flex-direction: column;
@@ -39,7 +36,7 @@ button { cursor: pointer; }
 .icon-button:hover { background: #334155; color: #fff; }
 .mobile-only { display: none; }
 .main-content { flex: 1; overflow-y: auto; }
-.page-container { width: min(100%, 70rem); margin: 0 auto; }
+.page-container { width: min(100%, 76rem); margin: 0 auto; padding: 2rem; }
 .page-heading { max-width: 42rem; }
 .eyebrow { margin: 0 0 .5rem; color: #a78bfa; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .page-heading h1 { margin: 0; color: #fff; font-size: clamp(1.75rem, 3vw, 2.25rem); letter-spacing: -.025em; }
@@ -58,8 +55,8 @@ button { cursor: pointer; }
 .empty-state { display: flex; max-width: 36rem; flex-direction: column; align-items: center; margin: 2rem auto 0; padding: 3rem 2rem; text-align: center; }
 .empty-state h2 { margin-top: 1.25rem; font-size: 1.125rem; }
 
-.time-summary-grid { display: grid; gap: 1rem; margin-top: 2rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.dashboard-metric-card { display: flex; min-width: 0; gap: 1rem; border: 1px solid #334155; border-radius: .75rem; background: #1e293b; padding: 1.25rem; box-shadow: 0 12px 28px rgba(2, 6, 23, .12); }
+.time-summary-grid { display: grid; gap: 1.25rem; margin-top: 2rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dashboard-metric-card { display: flex; min-width: 0; min-height: 8.75rem; gap: 1rem; border: 1px solid #3a4a61; border-radius: .875rem; background: #1e293b; padding: 1.5rem; box-shadow: 0 12px 28px rgba(2, 6, 23, .16); }
 .dashboard-metric-card p { margin: 0; color: #94a3b8; font-size: .8rem; line-height: 1.5; }
 .metric-label { color: #c4b5fd !important; font-size: .75rem !important; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .metric-value { display: block; margin: .35rem 0; color: #fff; font-size: 1.5rem; letter-spacing: -.025em; }
@@ -167,7 +164,7 @@ button { cursor: pointer; }
     .sidebar-overlay.is-open { display: block; position: fixed; z-index: 30; inset: 0; width: 100%; border: 0; background: rgba(2, 6, 23, .7); }
     .mobile-only { display: inline-flex; }
     .topbar { padding: .75rem 1rem; }
-    .page-container { padding: 1.1rem 1rem; }
+    .page-container { padding: 1.25rem 1rem; }
     .placeholder-grid { grid-template-columns: 1fr; }
     .time-summary-grid { grid-template-columns: 1fr; }
     .tracker-heading { align-items: flex-start; flex-direction: column; }

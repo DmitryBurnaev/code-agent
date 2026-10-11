@@ -14,7 +14,7 @@ from src.modules.web.middleware import WebSessionMiddleware
 from src.constants import APP_DIR
 from src.exceptions import AppSettingsError, StartupError
 from src.settings import get_app_settings, AppSettings
-from src.modules.api import system_router, proxy_router
+from src.modules.api import billing_router, system_router, proxy_router
 from src.db.session import initialize_database, close_database
 
 logger = logging.getLogger("src.main")
@@ -102,6 +102,7 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPP:
     logger.info("Setting up routes...")
     app.include_router(system_router, prefix="/api", dependencies=[Depends(verify_api_token)])
     app.include_router(proxy_router, prefix="/api", dependencies=[Depends(verify_api_token)])
+    app.include_router(billing_router, prefix="/api", dependencies=[Depends(verify_api_token)])
     app.include_router(web_router)
     app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 

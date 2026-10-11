@@ -61,3 +61,19 @@ class VendorEncryptionError(VendorError):
     log_level: int = logging.ERROR
     log_message: str = "Vendor encryption error"
     status_code: int = status.HTTP_503_SERVICE_UNAVAILABLE
+
+
+class BalanceProviderError(BaseApplicationError):
+    """A configured balance provider could not return a valid balance."""
+
+    log_level: int = logging.WARNING
+    log_message: str = "Balance provider error"
+    status_code: int = status.HTTP_502_BAD_GATEWAY
+
+
+class BalanceProviderNotConfiguredError(BaseApplicationError):
+    """The optional balance provider integration is not configured."""
+
+    log_level: int = logging.WARNING
+    log_message: str = "Balance provider is not configured"
+    status_code: int = status.HTTP_503_SERVICE_UNAVAILABLE

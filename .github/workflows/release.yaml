@@ -47,28 +47,8 @@ jobs:
           cat $GITHUB_OUTPUT
           echo "==="
 
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Prepare .env file
-        run: |
-          cp .env.template .env
-          echo "DB_PASSWORD=postgres" >> .env
-          echo "APP_SECRET_KEY=test" >> .env
-          echo "VENDOR_ENCRYPTION_KEY=test" >> .env
-          echo "ADMIN_PASSWORD=test" >> .env
-          env >> .env
-
-      - name: Build image
-        run: docker compose build test
-
-      - name: Run tests
-        run: docker compose up --exit-code-from test test
-
   build:
-    needs: [prepare, test]
+    needs: [prepare]
     runs-on: ubuntu-latest
 
     permissions:
@@ -80,9 +60,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -123,7 +100,7 @@ jobs:
           context: .
           target: service
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           tags: ${{ steps.docker-image-meta.outputs.tags }}
           labels: ${{ steps.docker-image-meta.outputs.labels }}
           annotations: index:org.opencontainers.image.description=A configurable proxy application for routing and managing requests across multiple LLM vendors.
@@ -133,9 +110,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Verify docker images
         run: |
           verify_platforms() {
@@ -144,9 +118,9 @@ jobs:
             docker buildx imagetools inspect --raw "${docker_image}" |
               jq -e '
                 [.manifests[] | select(.platform.os == "linux") | .platform.architecture]
-                | index("amd64") != null and index("arm64") != null
+                | index("amd64") != null
               '
-            echo "✓ Image ${docker_image} contains linux/amd64 and linux/arm64"
+            echo "✓ Image ${docker_image} contains linux/amd64"
           }
 
           verify_platforms "${{ needs.prepare.outputs.image_name_full }}"

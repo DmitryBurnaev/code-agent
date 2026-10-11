@@ -79,6 +79,8 @@ class AppSettings(BaseSettings):
     vendor_default_timeout: int = 30
     vendor_default_retries: int = 3
     vendor_encryption_key: SecretStr = Field(description="Secret key for vendor API key encryption")
+    selectel_balance_url: str | None = None
+    selectel_balance_token: SecretStr | None = None
     admin: AdminSettings = Field(default_factory=AdminSettings)
     web: WebSettings = Field(default_factory=WebSettings)
     flags: FlagsSettings = Field(default_factory=FlagsSettings)

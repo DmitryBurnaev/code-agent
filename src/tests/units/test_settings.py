@@ -36,6 +36,23 @@ class TestAppSettings:
         assert settings.web.session_https_only is True
         assert settings.flags.offline_mode is False
         assert settings.vendor_encryption_key.get_secret_value() == "test-encryption-key"
+        assert settings.selectel_balance_url is None
+        assert settings.selectel_balance_token is None
+
+    @patch.dict(
+        os.environ,
+        MINIMAL_ENV_VARS
+        | {
+            "SELECTEL_BALANCE_URL": "https://billing.example.test/v3/balances",
+            "SELECTEL_BALANCE_TOKEN": "selectel-token",
+        },
+    )
+    def test_selectel_balance_settings_from_env(self) -> None:
+        settings = AppSettings(_env_file=None)  # type: ignore
+
+        assert settings.selectel_balance_url == "https://billing.example.test/v3/balances"
+        assert settings.selectel_balance_token is not None
+        assert settings.selectel_balance_token.get_secret_value() == "selectel-token"
 
     @patch.dict(os.environ, MINIMAL_ENV_VARS, clear=True)
     def test_app_version_defaults_to_develop(self) -> None:
