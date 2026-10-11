@@ -8,14 +8,14 @@ from src.settings import AppSettings, get_app_settings
 from src.settings.log import JSON_LOG_FORMAT, LOG_LEVELS_PATTERN, LogSettings
 
 MINIMAL_ENV_VARS = {
-    "SECRET_KEY": "test-key",
+    "APP_SECRET_KEY": "test-key",
     "ADMIN_PASSWORD": "test-password",
     "VENDOR_ENCRYPTION_KEY": "test-encryption-key",
 }
 
 
 class TestAppSettings:
-    @patch.dict(os.environ, MINIMAL_ENV_VARS)
+    @patch.dict(os.environ, MINIMAL_ENV_VARS, clear=True)
     def test_default_settings(self) -> None:
         get_app_settings.cache_clear()
         settings = AppSettings(_env_file=None)  # type: ignore
