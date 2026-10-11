@@ -54,6 +54,23 @@ class TestAppSettings:
         assert settings.selectel_balance_token is not None
         assert settings.selectel_balance_token.get_secret_value() == "selectel-token"
 
+    @patch.dict(
+        os.environ,
+        MINIMAL_ENV_VARS
+        | {
+            "SELECTEL_BALANCE_USERNAME": "billing-service-user",
+            "SELECTEL_BALANCE_ACCOUNT_ID": "123456",
+            "SELECTEL_BALANCE_PASSWORD": "service-account-password",
+        },
+    )
+    def test_selectel_service_account_settings_from_env(self) -> None:
+        settings = AppSettings(_env_file=None)  # type: ignore
+
+        assert settings.selectel_balance_username == "billing-service-user"
+        assert settings.selectel_balance_account_id == "123456"
+        assert settings.selectel_balance_password is not None
+        assert settings.selectel_balance_password.get_secret_value() == "service-account-password"
+
     @patch.dict(os.environ, MINIMAL_ENV_VARS, clear=True)
     def test_app_version_defaults_to_develop(self) -> None:
         settings = AppSettings(

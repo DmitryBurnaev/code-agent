@@ -22,6 +22,7 @@ from src.modules.web.auth import (
 from src.settings import AppSettings, get_app_settings
 from src.modules.time_tracker import TimeTrackerService
 from src.modules.time_tracker.service import TimeTrackerValidationError
+from src.exceptions import BalanceProviderError, BalanceProviderNotConfiguredError
 from src.models import Balance
 from src.services.balances import SelectelBalanceProvider
 from src.utils import utcnow
@@ -199,8 +200,11 @@ async def dashboard_balance(settings: AppSettings) -> Balance | None:
     """Load the optional Selectel balance without breaking the Dashboard on failure."""
     try:
         return await SelectelBalanceProvider(settings).get_balance()
+    except (BalanceProviderError, BalanceProviderNotConfiguredError):
+        logging.getLogger(__name__).warning("Dashboard balance is unavailable")
+        return None
     except Exception:
-        logging.getLogger(__name__).warning("Dashboard balance is unavailable", exc_info=True)
+        logging.getLogger(__name__).exception("Dashboard balance is unavailable")
         return None
 
 

@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Any, Generator
 from unittest.mock import AsyncMock
 
@@ -168,14 +169,14 @@ def test_dashboard_renders_selectel_balance_and_unavailable_state(
             )
         ),
     )
-    balance = AsyncMock(return_value=Balance(balance="1000", currency="RUB"))
+    balance = AsyncMock(return_value=Balance(balance=Decimal("102.20"), currency="RUB"))
     monkeypatch.setattr(views, "dashboard_balance", balance)
 
     response = web_client.get("/")
 
     assert response.status_code == 200
     assert "Selectel balance" in response.text
-    assert "1000 RUB" in response.text
+    assert "102.20 RUB" in response.text
 
     balance.return_value = None
     response = web_client.get("/")

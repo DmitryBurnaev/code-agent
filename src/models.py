@@ -1,5 +1,6 @@
 from typing import Any, Optional, Literal, Self, TYPE_CHECKING
 from datetime import datetime
+from decimal import Decimal
 from pydantic import BaseModel, Field, SecretStr
 
 from src.constants import VENDOR_DEFAULT_TIMEOUT, VENDOR_URLS, VENDOR_ID_SEPARATOR
@@ -41,8 +42,15 @@ class HealthCheck(BaseModel):
 class Balance(BaseModel):
     """A normalized balance returned by an external billing provider."""
 
-    balance: str
-    currency: str
+    balance: Decimal = Field(
+        description="Balance in major currency units, with two fractional digits.",
+        examples=["102.12"],
+    )
+    currency: str | None = Field(
+        default=None,
+        description="ISO 4217 currency code, when supplied by the provider.",
+        examples=["RUB"],
+    )
 
 
 class Message(BaseModel):
