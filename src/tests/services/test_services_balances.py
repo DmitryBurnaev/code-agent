@@ -7,7 +7,12 @@ import pytest
 from pydantic import SecretStr
 
 from src.exceptions import BalanceProviderError, BalanceProviderNotConfiguredError
-from src.services.balances import SELECTEL_IDENTITY_URL, SelectelBalanceProvider
+from src.services.balances import (
+    SELECTEL_IDENTITY_URL,
+    SelectelBalanceProvider,
+    _balance_cache,
+    _iam_token_cache,
+)
 from src.settings import AppSettings
 
 
@@ -19,6 +24,13 @@ def selectel_settings() -> AppSettings:
         selectel_balance_url="https://billing.example.test/v3/balances",
         selectel_balance_token=SecretStr("selectel-token"),
     )
+
+
+@pytest.fixture(autouse=True)
+def clear_selectel_caches() -> None:
+    """Keep process-local provider caches isolated between tests."""
+    _balance_cache.clear()
+    _iam_token_cache.clear()
 
 
 @pytest.fixture
@@ -46,6 +58,43 @@ async def test_selectel_provider_fetches_and_normalizes_balance(
         "https://billing.example.test/v3/balances",
         headers={"X-Token": "selectel-token"},
     )
+
+
+async def test_selectel_provider_caches_balance_for_configured_ttl(
+    selectel_settings: AppSettings, selectel_payload: dict[str, object]
+) -> None:
+    http_client = AsyncMock(spec=httpx.AsyncClient)
+    http_client.get.return_value = httpx.Response(200, json=selectel_payload)
+    provider = SelectelBalanceProvider(selectel_settings, http_client)
+
+    first_balance = await provider.get_balance()
+    second_balance = await provider.get_balance()
+
+    assert first_balance == second_balance
+    http_client.get.assert_awaited_once_with(
+        "https://billing.example.test/v3/balances",
+        headers={"X-Token": "selectel-token"},
+    )
+
+
+async def test_selectel_provider_can_disable_balance_cache(
+    selectel_payload: dict[str, object],
+) -> None:
+    settings = AppSettings(
+        app_secret_key=SecretStr("test-key"),
+        vendor_encryption_key=SecretStr("test-encryption-key"),
+        selectel_balance_url="https://billing.example.test/v3/balances",
+        selectel_balance_token=SecretStr("selectel-token"),
+        selectel_balance_cache_ttl_seconds=0,
+    )
+    http_client = AsyncMock(spec=httpx.AsyncClient)
+    http_client.get.return_value = httpx.Response(200, json=selectel_payload)
+    provider = SelectelBalanceProvider(settings, http_client)
+
+    await provider.get_balance()
+    await provider.get_balance()
+
+    assert http_client.get.await_count == 2
 
 
 async def test_selectel_provider_accepts_empty_billings_as_zero_balance(
@@ -112,6 +161,7 @@ async def test_selectel_provider_uses_and_caches_service_account_iam_token(
         vendor_encryption_key=SecretStr("test-encryption-key"),
         selectel_balance_url="https://billing.example.test/v3/balances",
         selectel_balance_token=SecretStr(""),
+        selectel_balance_cache_ttl_seconds=0,
         selectel_balance_username="billing-service-user",
         selectel_balance_account_id="123456",
         selectel_balance_password=SecretStr("service-account-password"),

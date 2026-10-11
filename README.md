@@ -210,6 +210,7 @@ API keys will be automatically encrypted when:
 | VENDOR_ENCRYPTION_KEY         | string |           - |   yes    | Secret key for vendor API key encryption           |
 | SELECTEL_BALANCE_URL          | string |           - |          | Full Selectel Billing API balance endpoint URL     |
 | SELECTEL_BALANCE_TOKEN        | string |           - |          | Optional Selectel static token sent in `X-Token`   |
+| SELECTEL_BALANCE_CACHE_TTL_SECONDS | int |        3600 |          | Process-local balance cache lifetime in seconds    |
 | SELECTEL_BALANCE_USERNAME     | string |           - |          | Service account username for IAM authentication    |
 | SELECTEL_BALANCE_ACCOUNT_ID   | string |           - |          | Account ID used to scope the IAM token             |
 | SELECTEL_BALANCE_PASSWORD     | string |           - |          | Service account password for IAM authentication    |
@@ -217,6 +218,8 @@ API keys will be automatically encrypted when:
 Configure either `SELECTEL_BALANCE_TOKEN` or all three service-account variables.
 Service-account authentication obtains an account-scoped IAM token and sends it in
 `X-Auth-Token`; the application refreshes its cached token before its 24-hour Selectel expiry.
+The normalized balance is cached only in the application process for 3600 seconds by default;
+set `SELECTEL_BALANCE_CACHE_TTL_SECONDS=0` to disable it.
 
 ### Billing balance API
 
