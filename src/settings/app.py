@@ -81,6 +81,9 @@ class AppSettings(BaseSettings):
     vendor_encryption_key: SecretStr = Field(description="Secret key for vendor API key encryption")
     selectel_balance_url: str | None = None
     selectel_balance_token: SecretStr | None = None
+    selectel_balance_username: str | None = None
+    selectel_balance_account_id: str | None = None
+    selectel_balance_password: SecretStr | None = None
     admin: AdminSettings = Field(default_factory=AdminSettings)
     web: WebSettings = Field(default_factory=WebSettings)
     flags: FlagsSettings = Field(default_factory=FlagsSettings)

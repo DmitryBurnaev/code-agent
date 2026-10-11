@@ -1,6 +1,9 @@
 """Balance provider integrations."""
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 import logging
 from typing import Any
 
@@ -13,6 +16,21 @@ from src.services.http import VendorHTTPClient
 from src.settings import AppSettings
 
 logger = logging.getLogger(__name__)
+SELECTEL_IDENTITY_URL = "https://cloud.api.selcloud.ru/identity/v3/auth/tokens"
+IAM_TOKEN_CACHE_TTL = timedelta(hours=23)
+MONEY_QUANTUM = Decimal("0.01")
+MINOR_CURRENCY_UNIT = Decimal("100")
+
+
+@dataclass(frozen=True)
+class CachedIAMToken:
+    """An account-scoped Selectel IAM token with its local expiry time."""
+
+    value: str
+    expires_at: datetime
+
+
+_iam_token_cache: dict[tuple[str, str], CachedIAMToken] = {}
 
 
 class BalanceProvider(ABC):
@@ -27,9 +45,8 @@ class BalanceProvider(ABC):
     def url(self) -> str:
         """Return the configured upstream URL."""
 
-    @property
     @abstractmethod
-    def headers(self) -> dict[str, str]:
+    async def get_headers(self) -> dict[str, str]:
         """Return the provider-specific request headers."""
 
     async def get_balance(self) -> Balance:
@@ -57,11 +74,20 @@ class BalanceProvider(ABC):
             raise BalanceProviderError("Balance provider returned an invalid response") from exc
 
     async def _get_response(self) -> httpx.Response:
+        headers = await self.get_headers()
         if self._http_client is not None:
-            return await self._http_client.get(self.url, headers=self.headers)
+            return await self._http_client.get(self.url, headers=headers)
 
         async with VendorHTTPClient(self._settings) as http_client:
-            return await http_client.get(self.url, headers=self.headers)
+            return await http_client.get(self.url, headers=headers)
+
+    async def post_json(self, url: str, payload: dict[str, object]) -> httpx.Response:
+        """Post a JSON payload using the configured client or a short-lived client."""
+        if self._http_client is not None:
+            return await self._http_client.post(url, json=payload)
+
+        async with VendorHTTPClient(self._settings) as http_client:
+            return await http_client.post(url, json=payload)
 
     @abstractmethod
     def postprocess(self, payload: Any) -> Balance:
@@ -71,13 +97,13 @@ class BalanceProvider(ABC):
 class SelectelBalanceSettings(BaseModel):
     """Relevant Selectel billing settings from the upstream response."""
 
-    currency: str
+    currency: str | None = None
 
 
 class SelectelBilling(BaseModel):
     """A Selectel billing bucket contributing to the account balance."""
 
-    final_sum: int
+    final_sum: Decimal
 
 
 class SelectelBalanceData(BaseModel):
@@ -97,6 +123,13 @@ class SelectelBalancePayload(BaseModel):
 class SelectelBalanceProvider(BalanceProvider):
     """Fetches and normalizes balances from the Selectel Billing API."""
 
+    async def get_balance(self) -> Balance:
+        """Fetch the Selectel balance and record safe progress information."""
+        logger.debug("Selectel balance: requesting billing data")
+        balance = await super().get_balance()
+        logger.info("Selectel balance: billing data received")
+        return balance
+
     @property
     def url(self) -> str:
         url = self._settings.selectel_balance_url
@@ -106,18 +139,78 @@ class SelectelBalanceProvider(BalanceProvider):
             )
         return url
 
-    @property
-    def headers(self) -> dict[str, str]:
+    async def get_headers(self) -> dict[str, str]:
         token = self._settings.selectel_balance_token
-        if token is None:
+        if token is not None and (token_value := token.get_secret_value()):
+            logger.info("Selectel balance: using configured static-token authentication")
+            return {"X-Token": token_value}
+
+        return {"X-Auth-Token": await self._get_iam_token()}
+
+    async def _get_iam_token(self) -> str:
+        username = self._settings.selectel_balance_username
+        account_id = self._settings.selectel_balance_account_id
+        password = self._settings.selectel_balance_password
+        if not username or not account_id or password is None or not password.get_secret_value():
             raise BalanceProviderNotConfiguredError(
                 "Selectel balance integration is not configured"
             )
-        return {"X-Token": token.get_secret_value()}
+
+        cache_key = (username, account_id)
+        now = datetime.now(timezone.utc)
+        cached_token = _iam_token_cache.get(cache_key)
+        if cached_token is not None and cached_token.expires_at > now:
+            logger.debug("Selectel balance: using cached IAM token")
+            return cached_token.value
+
+        payload: dict[str, object] = {
+            "auth": {
+                "identity": {
+                    "methods": ["password"],
+                    "password": {
+                        "user": {
+                            "name": username,
+                            "domain": {"name": account_id},
+                            "password": password.get_secret_value(),
+                        }
+                    },
+                },
+                "scope": {"domain": {"name": account_id}},
+            }
+        }
+        try:
+            logger.info("Selectel balance: requesting IAM token for service account")
+            response = await self.post_json(SELECTEL_IDENTITY_URL, payload)
+        except httpx.HTTPError as exc:
+            logger.warning("Selectel IAM request failed: %s", exc.__class__.__name__)
+            raise BalanceProviderError("Selectel authentication is unavailable") from exc
+
+        if response.status_code != httpx.codes.CREATED:
+            logger.warning("Selectel IAM endpoint returned status %s", response.status_code)
+            raise BalanceProviderError("Selectel authentication failed")
+
+        iam_token = response.headers.get("X-Subject-Token")
+        if not isinstance(iam_token, str) or not iam_token:
+            logger.warning("Selectel IAM endpoint did not return a subject token")
+            raise BalanceProviderError("Selectel authentication returned an invalid response")
+
+        _iam_token_cache[cache_key] = CachedIAMToken(
+            value=iam_token,
+            expires_at=now + IAM_TOKEN_CACHE_TTL,
+        )
+        logger.debug("Selectel balance: IAM token received and cached")
+        return iam_token
 
     def postprocess(self, payload: Any) -> Balance:
         response = SelectelBalancePayload.model_validate(payload)
         return Balance(
-            balance=str(sum(billing.final_sum for billing in response.data.billings)),
-            currency=response.data.settings.currency,
+            balance=(
+                sum((billing.final_sum for billing in response.data.billings), Decimal())
+                / MINOR_CURRENCY_UNIT
+            ).quantize(MONEY_QUANTUM),
+            currency=(
+                response.data.settings.currency.upper()
+                if response.data.settings.currency is not None
+                else None
+            ),
         )

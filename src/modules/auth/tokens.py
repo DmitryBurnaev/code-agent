@@ -190,7 +190,7 @@ async def verify_api_token(
     if not auth_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    logger.info("[auth] Authentication: input auth token: '%s'", cut_string(auth_token, 15))
+    logger.debug("[auth] Authentication: input auth token: '%s'", cut_string(auth_token, 15))
 
     decoded_payload = decode_api_token(auth_token, settings=settings)
     raw_token_identity = decoded_payload.sub
@@ -202,7 +202,7 @@ async def verify_api_token(
     async with SASessionUOW() as uow:
         token = await TokenRepository(session=uow.session).get_by_token(hashed_token)
 
-    logger.info("[auth] Verification: token extracted '%s'", token)
+    logger.debug("[auth] Verification: token extracted '%s'", token)
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated: unknown token")
 
@@ -212,6 +212,6 @@ async def verify_api_token(
     if not token.user.is_active:
         raise HTTPException(status_code=401, detail="Not authenticated: user is not active")
 
-    logger.info("[auth] Verified token for %(user)s", {"user": token.user})
+    logger.debug("[auth] Verified token for %(user)s", {"user": token.user})
 
     return auth_token

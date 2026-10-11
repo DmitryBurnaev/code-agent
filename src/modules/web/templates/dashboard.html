@@ -47,7 +47,7 @@
         <div>
             <p class="metric-label">Selectel balance</p>
             {% if balance %}
-            <strong class="metric-value">{{ balance.balance }} {{ balance.currency }}</strong>
+            <strong class="metric-value">{{ balance.balance }}{% if balance.currency %} {{ balance.currency }}{% endif %}</strong>
             <p>Current account balance.</p>
             {% else %}
             <strong class="metric-value metric-value-muted">Unavailable</strong>
