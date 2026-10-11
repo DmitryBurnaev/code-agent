@@ -38,6 +38,7 @@ class TestAppSettings:
         assert settings.vendor_encryption_key.get_secret_value() == "test-encryption-key"
         assert settings.selectel_balance_url is None
         assert settings.selectel_balance_token is None
+        assert settings.selectel_balance_cache_ttl_seconds == 3600
 
     @patch.dict(
         os.environ,
@@ -45,6 +46,7 @@ class TestAppSettings:
         | {
             "SELECTEL_BALANCE_URL": "https://billing.example.test/v3/balances",
             "SELECTEL_BALANCE_TOKEN": "selectel-token",
+            "SELECTEL_BALANCE_CACHE_TTL_SECONDS": "120",
         },
     )
     def test_selectel_balance_settings_from_env(self) -> None:
@@ -53,6 +55,7 @@ class TestAppSettings:
         assert settings.selectel_balance_url == "https://billing.example.test/v3/balances"
         assert settings.selectel_balance_token is not None
         assert settings.selectel_balance_token.get_secret_value() == "selectel-token"
+        assert settings.selectel_balance_cache_ttl_seconds == 120
 
     @patch.dict(
         os.environ,

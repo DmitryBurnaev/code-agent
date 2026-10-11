@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from hashlib import sha256
 import logging
 from typing import Any
 
@@ -31,6 +32,17 @@ class CachedIAMToken:
 
 
 _iam_token_cache: dict[tuple[str, str], CachedIAMToken] = {}
+
+
+@dataclass(frozen=True)
+class CachedBalance:
+    """A normalized balance and its process-local expiry time."""
+
+    value: Balance
+    expires_at: datetime
+
+
+_balance_cache: dict[tuple[str, str], CachedBalance] = {}
 
 
 class BalanceProvider(ABC):
@@ -125,10 +137,40 @@ class SelectelBalanceProvider(BalanceProvider):
 
     async def get_balance(self) -> Balance:
         """Fetch the Selectel balance and record safe progress information."""
+        cache_key = self._balance_cache_key()
+        now = datetime.now(timezone.utc)
+        cached_balance = _balance_cache.get(cache_key)
+        if (
+            self._settings.selectel_balance_cache_ttl_seconds > 0
+            and cached_balance is not None
+            and cached_balance.expires_at > now
+        ):
+            logger.debug("Selectel balance: using cached billing data")
+            return cached_balance.value
+
         logger.debug("Selectel balance: requesting billing data")
         balance = await super().get_balance()
+        if self._settings.selectel_balance_cache_ttl_seconds > 0:
+            _balance_cache[cache_key] = CachedBalance(
+                value=balance,
+                expires_at=datetime.now(timezone.utc)
+                + timedelta(seconds=self._settings.selectel_balance_cache_ttl_seconds),
+            )
+            logger.debug("Selectel balance: billing data cached")
         logger.info("Selectel balance: billing data received")
         return balance
+
+    def _balance_cache_key(self) -> tuple[str, str]:
+        """Return a safe cache key for this configured Selectel account."""
+        token = self._settings.selectel_balance_token
+        if token is not None and (token_value := token.get_secret_value()):
+            auth_identity = sha256(token_value.encode()).hexdigest()
+        else:
+            auth_identity = (
+                f"{self._settings.selectel_balance_username}:"
+                f"{self._settings.selectel_balance_account_id}"
+            )
+        return self.url, auth_identity
 
     @property
     def url(self) -> str:

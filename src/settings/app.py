@@ -81,6 +81,7 @@ class AppSettings(BaseSettings):
     vendor_encryption_key: SecretStr = Field(description="Secret key for vendor API key encryption")
     selectel_balance_url: str | None = None
     selectel_balance_token: SecretStr | None = None
+    selectel_balance_cache_ttl_seconds: int = Field(default=3600, ge=0)
     selectel_balance_username: str | None = None
     selectel_balance_account_id: str | None = None
     selectel_balance_password: SecretStr | None = None
