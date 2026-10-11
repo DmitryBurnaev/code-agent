@@ -208,6 +208,8 @@ API keys will be automatically encrypted when:
 | VENDOR_DEFAULT_TIMEOUT        | int    |          30 |          | Default HTTP timeout for vendor requests (seconds) |
 | VENDOR_DEFAULT_RETRIES        | int    |           3 |          | Default HTTP retry attempts for vendor requests    |
 | VENDOR_ENCRYPTION_KEY         | string |           - |   yes    | Secret key for vendor API key encryption           |
+| SELECTEL_BALANCE_URL          | string |           - |          | Full Selectel Billing API balance endpoint URL     |
+| SELECTEL_BALANCE_TOKEN        | string |           - |          | Selectel static token sent in the `X-Token` header |
 
 ### Admin Settings (AdminSettings, env prefix `ADMIN_`)
 

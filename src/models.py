@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 __all__ = (
     "SystemInfo",
     "HealthCheck",
+    "Balance",
     "Message",
     "ChatRequest",
     "LLMVendor",
@@ -35,6 +36,13 @@ class HealthCheck(BaseModel):
 
     status: str
     timestamp: datetime
+
+
+class Balance(BaseModel):
+    """A normalized balance returned by an external billing provider."""
+
+    balance: str
+    currency: str
 
 
 class Message(BaseModel):

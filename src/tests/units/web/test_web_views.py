@@ -5,6 +5,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from src.main import CodeAgentAPP
+from src.models import Balance
 from src.modules.web import views
 from src.tests.mocks import MockUser
 
@@ -146,6 +147,41 @@ def test_login_renders_dashboard_and_time_tracker_for_active_user(
     assert "nav-link is-active" in dashboard_response.text
     assert "Time Tracker" in time_tracker_response.text
     assert "No timer running" in time_tracker_response.text
+
+
+def test_dashboard_renders_selectel_balance_and_unavailable_state(
+    web_client: TestClient,
+    active_user: MockUser,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(views, "get_current_web_user", AsyncMock(return_value=active_user))
+    monkeypatch.setattr(
+        views,
+        "dashboard_time_summary",
+        AsyncMock(
+            return_value=views.DashboardTimeSummary(
+                week_started=views.date(2026, 7, 20),
+                total_seconds=0,
+                session_count=0,
+                active_entry=None,
+                active_seconds=0,
+            )
+        ),
+    )
+    balance = AsyncMock(return_value=Balance(balance="1000", currency="RUB"))
+    monkeypatch.setattr(views, "dashboard_balance", balance)
+
+    response = web_client.get("/")
+
+    assert response.status_code == 200
+    assert "Selectel balance" in response.text
+    assert "1000 RUB" in response.text
+
+    balance.return_value = None
+    response = web_client.get("/")
+
+    assert response.status_code == 200
+    assert "Unavailable" in response.text
 
 
 def test_logout_clears_web_session(

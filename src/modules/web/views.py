@@ -22,6 +22,8 @@ from src.modules.web.auth import (
 from src.settings import AppSettings, get_app_settings
 from src.modules.time_tracker import TimeTrackerService
 from src.modules.time_tracker.service import TimeTrackerValidationError
+from src.models import Balance
+from src.services.balances import SelectelBalanceProvider
 from src.utils import utcnow
 
 router = APIRouter(include_in_schema=False)
@@ -193,6 +195,15 @@ def format_duration(total_seconds: int) -> str:
     return f"{minutes}m"
 
 
+async def dashboard_balance(settings: AppSettings) -> Balance | None:
+    """Load the optional Selectel balance without breaking the Dashboard on failure."""
+    try:
+        return await SelectelBalanceProvider(settings).get_balance()
+    except Exception:
+        logging.getLogger(__name__).warning("Dashboard balance is unavailable", exc_info=True)
+        return None
+
+
 async def dashboard_time_summary(user_id: int) -> DashboardTimeSummary:
     """Calculate current-week tracked time, including a running timer."""
     now = utcnow()
@@ -327,6 +338,10 @@ async def dashboard(request: Request) -> HTMLResponse | RedirectResponse:
         return user
 
     summary = await dashboard_time_summary(user.id)
+    app_settings = getattr(request.app, "settings", None)
+    balance = (
+        await dashboard_balance(app_settings) if isinstance(app_settings, AppSettings) else None
+    )
     return render_template(
         request,
         "dashboard.html",
@@ -338,6 +353,7 @@ async def dashboard(request: Request) -> HTMLResponse | RedirectResponse:
             "week_duration": format_duration(summary.total_seconds),
             "week_sessions": summary.session_count,
             "active_entry": summary.active_entry,
+            "balance": balance,
             "active_duration": format_duration(summary.active_seconds),
         },
     )

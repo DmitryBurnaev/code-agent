@@ -41,5 +41,19 @@
             <p>Project, task, pull request, and CI context will appear here when connected.</p>
         </div>
     </article>
+
+    <article class="dashboard-metric-card">
+        <span class="card-icon blue">{{ icon_dashboard("icon") }}</span>
+        <div>
+            <p class="metric-label">Selectel balance</p>
+            {% if balance %}
+            <strong class="metric-value">{{ balance.balance }} {{ balance.currency }}</strong>
+            <p>Current account balance.</p>
+            {% else %}
+            <strong class="metric-value metric-value-muted">Unavailable</strong>
+            <p>The Selectel balance could not be retrieved.</p>
+            {% endif %}
+        </div>
+    </article>
 </section>
 {% endblock %}
