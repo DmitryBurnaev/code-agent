@@ -1,0 +1,69 @@
+name: Deploy
+run-name: Deploy ${{ inputs.tag }}
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Published release tag (e.g. 1.2.3)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare image names
+        id: names
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          IMAGE_REPOSITORY: ${{ github.repository }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Expected a release tag in MAJOR.MINOR.PATCH format" >&2
+            exit 1
+          fi
+          echo "image_tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "image_name_full=ghcr.io/${IMAGE_REPOSITORY,,}:${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout release
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+
+      - name: Prepare SSH file
+        run: |
+          mkdir ~/.ssh
+          echo "${{ secrets.SSH_PKEY }}" > ~/.ssh/id_rsa
+          chmod 400 ~/.ssh/id_rsa
+
+      - name: Delivery Updates
+        run: |
+          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/docker-compose.yml
+          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/deploy ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/deploy
+          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/start ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/start
+          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/stop ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/stop
+          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/bin/service ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/bin/service
+          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./.env.template ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/.env.template
+          scp -o StrictHostKeyChecking=no -P ${{ secrets.SSH_PORT }} ./etc/nginx.conf ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.PROD_PROJECT_ROOT }}/nginx.conf
+
+      - name: Deploy
+        uses: appleboy/ssh-action@master
+        env:
+          DEPLOY_MODE: CI
+          CI_DOCKER_IMAGE_NAME: ${{ steps.names.outputs.image_name_full }}
+          CI_DOCKER_IMAGE_TAG: ${{ steps.names.outputs.image_tag }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PKEY }}
+          envs: DEPLOY_MODE,CI_DOCKER_IMAGE_NAME,CI_DOCKER_IMAGE_TAG
+          script: |
+            echo "Deploying ${CI_DOCKER_IMAGE_TAG} ('${CI_DOCKER_IMAGE_NAME}')..."
+            cd ${{ secrets.PROD_PROJECT_ROOT }}
+            echo "Providing current version to file '.version' ... "
+            echo "DOCKER_IMAGE=${CI_DOCKER_IMAGE_NAME}" > .version
+            sh bin/deploy
