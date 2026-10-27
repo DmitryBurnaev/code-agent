@@ -11,12 +11,14 @@ services:
       - .env
     environment:
       APP_SERVICE: app
-      DB_HOST: db
+      DB_HOST: ${DB_HOST:-db}
     depends_on:
       db:
-        condition: service_healthy        
+        condition: service_healthy
+        required: false
 
   db:
+    profiles: [local-storage, test]
     container_name: code-agent-db
     image: postgres:17-alpine
     env_file:
@@ -35,6 +37,7 @@ services:
       - ${PWD}/.data/postgres:/var/lib/postgresql/data/pgdata
 
   test:
+    profiles: [test]
     container_name: code-agent-test
     image: ${TEST_DOCKER_IMAGE:-code-agent:test}
     env_file:
@@ -52,6 +55,7 @@ services:
         condition: service_healthy
 
   lint:
+    profiles: [lint]
     container_name: code-agent-lint
     image: ${TEST_DOCKER_IMAGE:-code-agent:test}
     env_file:
