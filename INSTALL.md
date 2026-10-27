@@ -111,7 +111,11 @@ Note: we assume that deployment actions will be performed as the `deploy` SSH us
    ```
 4. Start a new login session after changing groups. Provide `SSH_HOST`, `SSH_PORT`,
    `SSH_USER`, `SSH_PKEY` and `PROD_PROJECT_ROOT=/opt/code-agent` to CI
-   (see `.github/workflows/release.yaml`).
+   (see `.github/workflows/deploy.yaml`).
+
+Release publication is automatic; deployment is manual. After the release is
+published, open **Actions → Deploy → Run workflow** and enter its tag (for example,
+`1.2.3`). The workflow deploys the image and configuration from that tag.
 
 These sudoers entries cover CI restart/status only. Run the full `bin/service`
 helper from an administrator account for start/stop, status and journal access.
