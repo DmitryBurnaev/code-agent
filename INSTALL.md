@@ -3,7 +3,7 @@
 ## Server Requirements
 
 - **OS**: Ubuntu/Debian
-- **Docker**: Docker and Docker Compose installed
+- **Docker**: Docker and Docker Compose 2.20.0+ installed
 - **RAM**: 512 MB minimum
 - **CPU**: 1 CPU core minimum
 
@@ -16,37 +16,54 @@ an ARM64 server uses the same `DOCKER_IMAGE` value as an AMD64 server.
 ## Service Installation
 
 ### Prepare service
+
+Before running the remote commands, create `/opt/code-agent/bin` on the server
+and manually copy these files from the chosen release checkout:
+
+| Repository file | Server path |
+| --- | --- |
+| `etc/docker-compose.yml` | `/opt/code-agent/docker-compose.yml` |
+| `etc/bin/*` | `/opt/code-agent/bin/` |
+| `etc/nginx.conf` | `/opt/code-agent/nginx.conf` |
+| `etc/code-agent.service` | `/opt/code-agent/code-agent.service` |
+| `.env.template` | `/opt/code-agent/.env.template` |
+
+The unit file must be copied during first installation; CI does not deliver it.
+In its `[Service]` section, add `WorkingDirectory=/opt/code-agent` so `bin/stop`
+can find the Compose file.
+
 ```shell
-ssh ${TARGET_SERVER}
+export TARGET_SERVER="remote-server-ip"
+ssh "${TARGET_SERVER}"
 
 # on the remote server
 sudo su
 
-export TARGET_SERVER="remote-server-ip"
 export TARGET_DIR="/opt/code-agent"
 
-# prepare user and group (NOTE: ID 1005 is imported ID for group)
+# prepare user and group (UID/GID 1007 match the container)
 groupadd --system code-agent-srv --gid 1007
 useradd --no-log-init --system --gid code-agent-srv --uid 1007 code-agent-srv
 
-mkdir -p $TARGET_DIR/bin
-chown code-agent-srv:code-agent-srv -R ${TARGET_DIR}
+mkdir -p "${TARGET_DIR}/bin"
+# replace RELEASE_TAG with the published image tag matching the copied files
+printf 'DOCKER_IMAGE=ghcr.io/dmitryburnaev/code-agent:RELEASE_TAG\n' > "${TARGET_DIR}/.version"
+chown -R code-agent-srv:code-agent-srv "${TARGET_DIR}"
 usermod -a -G docker code-agent-srv
-chown code-agent-srv:code-agent-srv -r ${TARGET_DIR} 
-chmod -R 660 ${TARGET_DIR} # all files can be rewritable by code-agent-srv group
-chmod -R ug+x ${TARGET_DIR}/bin # code-agent-srv group can execute bin files (for service running)
-chmod ug+x ${TARGET_DIR} # code-agent-srv group can execute bin files (for service running)
+find "${TARGET_DIR}" -type d -exec chmod 2770 {} +
+chmod 660 "${TARGET_DIR}/docker-compose.yml" "${TARGET_DIR}/nginx.conf" "${TARGET_DIR}/code-agent.service" "${TARGET_DIR}/.env.template" "${TARGET_DIR}/.version"
+chmod 770 "${TARGET_DIR}"/bin/*
 
 # make env-file
-cp ${TARGET_DIR}/.env.template ${TARGET_DIR}/.env
-chown code-agent-srv:root ${TARGET_DIR}/.env
-# change required params here:
-nano ${TARGET_DIR}/.env
-# only read access from service
-chmod 400 ${TARGET_DIR}/.env
+cp "${TARGET_DIR}/.env.template" "${TARGET_DIR}/.env"
+chown code-agent-srv:code-agent-srv "${TARGET_DIR}/.env"
+# set the secrets and storage mode described below before starting the service:
+nano "${TARGET_DIR}/.env"
+# only the service account can read/write secrets
+chmod 600 "${TARGET_DIR}/.env"
 
 # copy config to systemd
-ln -s ${TARGET_DIR}/code-agent.service /etc/systemd/system/code-agent.service
+ln -s "${TARGET_DIR}/code-agent.service" /etc/systemd/system/code-agent.service
 systemctl daemon-reload
 systemctl enable code-agent.service
 systemctl start code-agent.service
@@ -56,14 +73,34 @@ systemctl status code-agent.service
 journalctl -u code-agent
 ```
 
+Before starting the service, set `APP_SECRET_KEY`, `VENDOR_ENCRYPTION_KEY`,
+`DB_PASSWORD` and `ADMIN_PASSWORD` to secure values in `.env` (for example,
+generate each with `openssl rand -hex 32`). The entrypoint also requires
+`DB_USER` and `DB_NAME`.
+
+Choose the storage mode in `.env`:
+
+| Setting | Local storage | External storage |
+| --- | --- | --- |
+| `COMPOSE_PROFILES` | `local-storage` (template default) | empty (`COMPOSE_PROFILES=`) |
+| `DB_HOST` | `db` (Compose default) | reachable PostgreSQL hostname |
+| `DB_PORT` | `5432` | external server port |
+| `DB_USER`, `DB_NAME`, `DB_PASSWORD` | local database credentials | existing database credentials |
+
+The `local-storage` profile currently starts PostgreSQL and can include other
+storage services later. Without it, only the app starts. For an external DB,
+create the database first: the entrypoint runs migrations immediately. Existing
+installations using bundled PostgreSQL must add `COMPOSE_PROFILES=local-storage`
+before updating. Stop with the old profile before changing storage mode.
+
 ### Setup for deployment
 
 Note: we assume that deployment actions will be performed as the `deploy` SSH user
 
-1. Prepare "deploy" user
+1. Create the "deploy" user if absent (`adduser deploy`) and configure its CI SSH key.
 2. Allow access to service's group (to make changes in specific directories)
    ```shell
-   usermod -a -G code-agent-srv deploy
+   usermod -a -G code-agent-srv,docker deploy
    ```
 3. Allow "deploy" user manipulate with code-agent's service
    ```shell
@@ -72,7 +109,12 @@ Note: we assume that deployment actions will be performed as the `deploy` SSH us
    deploy ALL = NOPASSWD: /bin/systemctl restart code-agent.service
    deploy ALL = NOPASSWD: /bin/systemctl show -p ActiveState --value code-agent
    ```
-4. Provide required variables to your CI/CD system (see `.github/workflows/release` for details)
+4. Start a new login session after changing groups. Provide `SSH_HOST`, `SSH_PORT`,
+   `SSH_USER`, `SSH_PKEY` and `PROD_PROJECT_ROOT=/opt/code-agent` to CI
+   (see `.github/workflows/release.yaml`).
+
+These sudoers entries cover CI restart/status only. Run the full `bin/service`
+helper from an administrator account for start/stop, status and journal access.
 
 ## Service Management
 
@@ -124,7 +166,7 @@ To configure Nginx:
 
 1. Copy the configuration file from `etc/nginx.conf` to your Nginx configuration directory:
    ```bash
-   sudo cp nginx.conf /etc/nginx/sites-available/code-agent.conf
+   sudo cp "${TARGET_DIR}/nginx.conf" /etc/nginx/sites-available/code-agent.conf
    ```
 
 2. Create a symbolic link to enable the site:
@@ -136,8 +178,8 @@ To configure Nginx:
    ```bash
    sudo nano /etc/nginx/sites-available/code-agent.conf
    ```
-   - Replace `code-agent.example.com` with your domain
-   - Update the port in `proxy_pass` directive to match your application port
+   - Replace `code.example.com` with your domain
+   - Set the `backend_app` upstream to `127.0.0.1:8003` to match the default `APP_PORT=8003` (the example currently uses port `8000`)
    - Ensure the `Authorization` header is properly set in all API requests
 
 4. Test and reload Nginx:
