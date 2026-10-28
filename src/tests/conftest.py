@@ -115,7 +115,16 @@ def mock_db_vendors__active() -> Generator[list[MockVendor], Any, None]:
 @pytest.fixture
 def mock_db_api_token__active() -> Generator[MockAPIToken, Any, None]:
     with patch("src.db.repositories.TokenRepository.get_by_token") as mock_get_by_token:
-        mock_token = MockAPIToken(is_active=True, user=MockUser(id=1, is_active=True))
+        mock_token = MockAPIToken(
+            is_active=True,
+            user=MockUser(
+                id=1,
+                is_active=True,
+                can_access_system_api=True,
+                can_use_llm=True,
+                can_access_billing=True,
+            ),
+        )
         mock_get_by_token.return_value = mock_token
         yield mock_token
 

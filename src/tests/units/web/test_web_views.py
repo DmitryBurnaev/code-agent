@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 from typing import Any, Generator
 from unittest.mock import AsyncMock
@@ -19,7 +20,9 @@ def web_client(test_app: CodeAgentAPP) -> Generator[TestClient, Any, None]:
 
 @pytest.fixture
 def active_user() -> MockUser:
-    return MockUser(id=3, is_active=True, username="agent")
+    return MockUser(
+        id=3, is_active=True, username="agent", can_use_time_tracking=True, can_access_billing=True
+    )
 
 
 def test_app_registers_web_routes_static_files_and_isolated_session(
@@ -93,7 +96,7 @@ def test_login_renders_dashboard_and_time_tracker_for_active_user(
         "dashboard_time_summary",
         AsyncMock(
             return_value=views.DashboardTimeSummary(
-                week_started=views.date(2026, 7, 20),
+                week_started=date(2026, 7, 20),
                 total_seconds=0,
                 session_count=0,
                 active_entry=None,
@@ -161,7 +164,7 @@ def test_dashboard_renders_selectel_balance_and_unavailable_state(
         "dashboard_time_summary",
         AsyncMock(
             return_value=views.DashboardTimeSummary(
-                week_started=views.date(2026, 7, 20),
+                week_started=date(2026, 7, 20),
                 total_seconds=0,
                 session_count=0,
                 active_entry=None,

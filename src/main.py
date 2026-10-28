@@ -7,7 +7,8 @@ import uvicorn
 from fastapi import FastAPI, Depends
 from starlette.staticfiles import StaticFiles
 
-from src.modules.auth.dependencies import verify_api_token
+from src.modules.auth.dependencies import require_api_permission
+from src.modules.auth.permissions import Permission
 from src.modules.admin.app import make_admin
 from src.modules.web import web_router
 from src.modules.web.middleware import WebSessionMiddleware
@@ -100,9 +101,19 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPP:
     )
 
     logger.info("Setting up routes...")
-    app.include_router(system_router, prefix="/api", dependencies=[Depends(verify_api_token)])
-    app.include_router(proxy_router, prefix="/api", dependencies=[Depends(verify_api_token)])
-    app.include_router(billing_router, prefix="/api", dependencies=[Depends(verify_api_token)])
+    app.include_router(
+        system_router,
+        prefix="/api",
+        dependencies=[Depends(require_api_permission(Permission.SYSTEM_API))],
+    )
+    app.include_router(
+        proxy_router, prefix="/api", dependencies=[Depends(require_api_permission(Permission.LLM))]
+    )
+    app.include_router(
+        billing_router,
+        prefix="/api",
+        dependencies=[Depends(require_api_permission(Permission.BILLING))],
+    )
     app.include_router(web_router)
     app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 

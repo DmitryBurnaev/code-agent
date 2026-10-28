@@ -85,6 +85,31 @@ to the login page after signing in. Keep the default for HTTPS deployments.
 The admin application manages its own session. Visiting or logging out of the
 admin application preserves the web login, and web logout affects only the web session.
 
+### User feature permissions
+
+The admin user creation and editing forms provide five independent checkboxes:
+Admin Panel, System API, LLM, Time Tracking, and Billing. Admin Panel access permits
+user and permission management; it does not automatically enable the other features.
+Billing controls both the balance API and the Selectel balance widget. Time Tracking
+controls the tracker, entry/timer operations, and tracking widgets on the Dashboard.
+The basic Dashboard remains available to every active web user.
+
+`is_admin` is preserved as **Superuser (all permissions)**. An active superuser can
+access every feature regardless of the checkboxes. Clearing this flag makes the
+user's explicit permissions take effect. Inactive users and inactive API tokens
+remain blocked, including those belonging to superusers. Authorization changes
+apply on the next request through existing sessions and API tokens; login and token
+replacement are unnecessary. Authenticated API requests without permission return
+`403 Forbidden`; missing or invalid authentication continues to return `401`.
+
+**Upgrade notice:** migration `0006` adds all five permissions as disabled for
+existing users without changing `is_admin`, accounts, tokens, or application data.
+Existing superusers retain full access. Existing non-superusers lose feature access
+until an administrator explicitly grants the required permissions. New users have
+superuser access and all feature permissions disabled by default. Review user access
+after applying the migration. Rolling back `0006` removes the feature permissions
+and restores the previous access rules.
+
 ### CLI usages
 
 1. Generate Secrets

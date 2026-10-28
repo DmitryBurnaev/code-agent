@@ -29,6 +29,21 @@ class User(BaseModel):
     email: Mapped[str] = mapped_column(sa.String(128), nullable=True)
     is_admin: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
     is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
+    can_access_admin: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, default=False, server_default=sa.false()
+    )
+    can_access_system_api: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, default=False, server_default=sa.false()
+    )
+    can_use_llm: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, default=False, server_default=sa.false()
+    )
+    can_use_time_tracking: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, default=False, server_default=sa.false()
+    )
+    can_access_billing: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, default=False, server_default=sa.false()
+    )
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     @classmethod

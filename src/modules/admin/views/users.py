@@ -25,7 +25,20 @@ class UserAdminForm(Form):
         render_kw={"class": "form-control"},
         label="Repeat New Password",
     )
-    is_admin = BooleanField(render_kw={"class": "form-check-input"})
+    is_admin = BooleanField(
+        render_kw={"class": "form-check-input"},
+        label="Superuser (all permissions)",
+        description="Grants access to every feature, regardless of the checkboxes below.",
+    )
+    can_access_admin = BooleanField(render_kw={"class": "form-check-input"}, label="Admin Panel")
+    can_access_system_api = BooleanField(
+        render_kw={"class": "form-check-input"}, label="System API"
+    )
+    can_use_llm = BooleanField(render_kw={"class": "form-check-input"}, label="LLM")
+    can_use_time_tracking = BooleanField(
+        render_kw={"class": "form-check-input"}, label="Time Tracking"
+    )
+    can_access_billing = BooleanField(render_kw={"class": "form-check-input"}, label="Billing")
     is_active = BooleanField(render_kw={"class": "form-check-input"})
 
     def validate(self, extra_validators: Mapping[str, Sequence[Any]] | None = None) -> bool:
@@ -45,7 +58,25 @@ class UserAdminView(BaseModelView, model=User):
     form = UserAdminForm
     icon = "fa-solid fa-person-drowning"
     column_list = (User.id, User.username, User.is_active)
-    column_details_list = (User.id, User.username, User.email)
+    column_details_list = (
+        User.id,
+        User.username,
+        User.email,
+        User.is_admin,
+        User.can_access_admin,
+        User.can_access_system_api,
+        User.can_use_llm,
+        User.can_use_time_tracking,
+        User.can_access_billing,
+    )
+    column_labels = {
+        User.is_admin: "Superuser (all permissions)",
+        User.can_access_admin: "Admin Panel",
+        User.can_access_system_api: "System API",
+        User.can_use_llm: "LLM",
+        User.can_use_time_tracking: "Time Tracking",
+        User.can_access_billing: "Billing",
+    }
     column_formatters = {User.username: lambda model, a: admin_get_link(cast(BaseModel, model))}
 
     async def insert_model(self, request: Request, data: FormDataType) -> Any:

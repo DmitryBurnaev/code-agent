@@ -12,6 +12,7 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
 from src.settings import SettingsDep
+from src.db.models import User
 from src.db.repositories import TokenRepository
 from src.db.services import SASessionUOW, logger
 
@@ -29,6 +30,11 @@ type JWT_PAYLOAD_RAW_T = dict[str, str | int | datetime.datetime]
 class GeneratedToken(NamedTuple):
     value: str
     hashed_value: str
+
+
+class AuthenticatedAPIToken(NamedTuple):
+    value: str
+    user: User | None
 
 
 @dataclasses.dataclass
@@ -173,18 +179,18 @@ def hash_token(token: str) -> str:
     return hashlib.sha512(token.encode()).hexdigest()
 
 
-async def verify_api_token(
+async def authenticate_api_token(
     request: Request,
     settings: SettingsDep,
     auth_token: str | None = Security(APIKeyHeader(name="Authorization", auto_error=False)),
-) -> str:
+) -> AuthenticatedAPIToken:
     """
     Dependency for authentication by API token (placed in the header 'Authorization').
     Skip verification for OPTIONS methods.
     """
 
     if request.method == "OPTIONS":
-        return ""
+        return AuthenticatedAPIToken("", None)
 
     auth_token = (auth_token or "").replace("Bearer", "").strip()
     if not auth_token:
@@ -214,4 +220,14 @@ async def verify_api_token(
 
     logger.debug("[auth] Verified token for %(user)s", {"user": token.user})
 
-    return auth_token
+    return AuthenticatedAPIToken(auth_token, token.user)
+
+
+async def verify_api_token(
+    request: Request,
+    settings: SettingsDep,
+    auth_token: str | None = Security(APIKeyHeader(name="Authorization", auto_error=False)),
+) -> str:
+    """Keep the token verification interface for callers needing the token value."""
+    authentication = await authenticate_api_token(request, settings, auth_token)
+    return authentication.value

@@ -5,7 +5,7 @@ import logging
 from typing import Any, NamedTuple
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from starlette.responses import HTMLResponse, RedirectResponse
 from starlette.templating import Jinja2Templates
 
@@ -26,6 +26,7 @@ from src.exceptions import BalanceProviderError, BalanceProviderNotConfiguredErr
 from src.models import Balance
 from src.services.balances import SelectelBalanceProvider
 from src.utils import utcnow
+from src.modules.auth.permissions import Permission, has_permission
 
 router = APIRouter(include_in_schema=False)
 templates = Jinja2Templates(directory=APP_DIR / "modules" / "web" / "templates")
@@ -39,6 +40,7 @@ class NavigationItem(NamedTuple):
     title: str
     path: str
     slug: str
+    permission: Permission | None = None
 
 
 class CalendarPeriod(NamedTuple):
@@ -62,7 +64,12 @@ class DashboardTimeSummary(NamedTuple):
 
 NAVIGATION = (
     NavigationItem(title="Dashboard", path="/", slug="dashboard"),
-    NavigationItem(title="Time Tracker", path="/time-tracker", slug="time_tracker"),
+    NavigationItem(
+        title="Time Tracker",
+        path="/time-tracker",
+        slug="time_tracker",
+        permission=Permission.TIME_TRACKING,
+    ),
 )
 
 
@@ -100,7 +107,13 @@ def render_template(
             "title": title,
             "current": current,
             "current_user": current_user,
-            "navigation": NAVIGATION,
+            "navigation": tuple(
+                link
+                for link in NAVIGATION
+                if link.permission is None or has_permission(current_user, link.permission)
+            ),
+            "can_use_time_tracking": has_permission(current_user, Permission.TIME_TRACKING),
+            "can_access_billing": has_permission(current_user, Permission.BILLING),
             "app_version": get_app_version(request),
             "static_assets_version": static_assets_version(),
         }
@@ -109,11 +122,15 @@ def render_template(
     )
 
 
-async def require_web_user(request: Request) -> User | RedirectResponse:
+async def require_web_user(
+    request: Request, permission: Permission | None = None
+) -> User | RedirectResponse:
     """Return the signed-in user or redirect the browser to login."""
     user = await get_current_web_user(request)
     if user is None:
         return RedirectResponse(url="/login", status_code=303)
+    if permission is not None and not has_permission(user, permission):
+        raise HTTPException(status_code=403, detail="Permission denied")
     return user
 
 
@@ -341,10 +358,21 @@ async def dashboard(request: Request) -> HTMLResponse | RedirectResponse:
     if isinstance(user, RedirectResponse):
         return user
 
-    summary = await dashboard_time_summary(user.id)
+    context: dict[str, Any] = {}
+    if has_permission(user, Permission.TIME_TRACKING):
+        summary = await dashboard_time_summary(user.id)
+        context.update(
+            week_started=summary.week_started,
+            week_duration=format_duration(summary.total_seconds),
+            week_sessions=summary.session_count,
+            active_entry=summary.active_entry,
+            active_duration=format_duration(summary.active_seconds),
+        )
     app_settings = getattr(request.app, "settings", None)
     balance = (
-        await dashboard_balance(app_settings) if isinstance(app_settings, AppSettings) else None
+        await dashboard_balance(app_settings)
+        if has_permission(user, Permission.BILLING) and isinstance(app_settings, AppSettings)
+        else None
     )
     return render_template(
         request,
@@ -352,21 +380,14 @@ async def dashboard(request: Request) -> HTMLResponse | RedirectResponse:
         title="Dashboard",
         current="dashboard",
         current_user=user,
-        context={
-            "week_started": summary.week_started,
-            "week_duration": format_duration(summary.total_seconds),
-            "week_sessions": summary.session_count,
-            "active_entry": summary.active_entry,
-            "balance": balance,
-            "active_duration": format_duration(summary.active_seconds),
-        },
+        context=context | {"balance": balance},
     )
 
 
 @router.get("/time-tracker", response_class=HTMLResponse, response_model=None)
 async def time_tracker(request: Request) -> HTMLResponse | RedirectResponse:
     """Render the authenticated user's calendar and time tracker."""
-    user = await require_web_user(request)
+    user = await require_web_user(request, Permission.TIME_TRACKING)
     if isinstance(user, RedirectResponse):
         return user
 
@@ -385,7 +406,7 @@ async def time_tracker(request: Request) -> HTMLResponse | RedirectResponse:
 @router.post("/time-tracker/timer/start", response_model=None)
 async def start_timer(request: Request) -> RedirectResponse:
     """Start a timer for the signed-in user."""
-    user = await require_web_user(request)
+    user = await require_web_user(request, Permission.TIME_TRACKING)
     if isinstance(user, RedirectResponse):
         return user
     form = await request.form()
@@ -408,7 +429,7 @@ async def start_timer(request: Request) -> RedirectResponse:
 @router.post("/time-tracker/timer/stop", response_model=None)
 async def stop_timer(request: Request) -> RedirectResponse:
     """Stop the signed-in user's active timer."""
-    user = await require_web_user(request)
+    user = await require_web_user(request, Permission.TIME_TRACKING)
     if isinstance(user, RedirectResponse):
         return user
     try:
@@ -423,7 +444,7 @@ async def stop_timer(request: Request) -> RedirectResponse:
 @router.post("/time-tracker/entries", response_model=None)
 async def create_time_entry(request: Request) -> RedirectResponse:
     """Create a completed entry or start a timer from the selected calendar time."""
-    user = await require_web_user(request)
+    user = await require_web_user(request, Permission.TIME_TRACKING)
     if isinstance(user, RedirectResponse):
         return user
     form = await request.form()
@@ -461,7 +482,7 @@ async def create_time_entry(request: Request) -> RedirectResponse:
 @router.post("/time-tracker/entries/{entry_id}", response_model=None)
 async def update_time_entry(entry_id: int, request: Request) -> RedirectResponse:
     """Update a time entry if it belongs to the signed-in user."""
-    user = await require_web_user(request)
+    user = await require_web_user(request, Permission.TIME_TRACKING)
     if isinstance(user, RedirectResponse):
         return user
     form = await request.form()
@@ -492,7 +513,7 @@ async def update_time_entry(entry_id: int, request: Request) -> RedirectResponse
 @router.post("/time-tracker/entries/{entry_id}/delete", response_model=None)
 async def delete_time_entry(entry_id: int, request: Request) -> RedirectResponse:
     """Delete a time entry if it belongs to the signed-in user."""
-    user = await require_web_user(request)
+    user = await require_web_user(request, Permission.TIME_TRACKING)
     if isinstance(user, RedirectResponse):
         return user
     async with SASessionUOW() as uow:
