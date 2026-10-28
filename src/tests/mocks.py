@@ -11,6 +11,11 @@ class MockUser:
     is_active: bool = False
     username: str = "test-user"
     is_admin: bool = False
+    can_access_admin: bool = False
+    can_access_system_api: bool = False
+    can_use_llm: bool = False
+    can_use_time_tracking: bool = False
+    can_access_billing: bool = False
     email: str | None = None
     verify_password: MagicMock = field(default_factory=lambda: MagicMock(return_value=True))
 
