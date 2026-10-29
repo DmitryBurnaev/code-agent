@@ -5,6 +5,7 @@ from typing import cast
 from src.db.models import BaseModel, Client
 from src.modules.admin.views.base import BaseModelView
 from src.utils import admin_get_link
+from src.modules.auth.permissions import Permission
 
 __all__ = ("ClientAdminView",)
 
@@ -12,6 +13,7 @@ __all__ = ("ClientAdminView",)
 class ClientAdminView(BaseModelView, model=Client):
     """Create and maintain clients available to projects."""
 
+    required_permission = Permission.ADMIN_PANEL
     name = "Client"
     name_plural = "Clients"
     icon = "fa-solid fa-building"

@@ -1,3 +1,4 @@
+import os
 from typing import Generator, Any
 
 import pytest
@@ -167,7 +168,6 @@ def test_mocks_prevent_real_file_writing(
     original_content = test_env_file.read_text()
 
     # Temporarily change working directory to temp path
-    import os
 
     original_cwd = os.getcwd()
     os.chdir(tmp_path)

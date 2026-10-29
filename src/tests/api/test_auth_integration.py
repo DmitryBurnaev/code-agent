@@ -6,6 +6,7 @@ from starlette.exceptions import HTTPException
 
 from src.tests.mocks import MockAPIToken
 from src.utils import utcnow
+from src.settings.app import AdminSettings
 from src.settings import AppSettings
 from src.modules.auth.tokens import make_api_token, decode_api_token, hash_token, verify_api_token
 
@@ -123,8 +124,7 @@ class TestAuthIntegration:
         self, app_settings_test: AppSettings
     ) -> None:
         special_settings = AppSettings(
-            admin_username="test-username",
-            admin_password=SecretStr("test-password"),
+            admin=AdminSettings(username="test-username", password=SecretStr("test-password")),
             app_secret_key=SecretStr("test-secret-key-with-special-chars!@#$%^&*()"),
             vendor_encryption_key=SecretStr("test-vendor-encryption-key"),
             jwt_algorithm="HS256",
@@ -141,8 +141,7 @@ class TestAuthIntegration:
         self, app_settings_test: AppSettings, jwt_algorithm: str
     ) -> None:
         settings = AppSettings(
-            admin_username="test-username",
-            admin_password=SecretStr("test-password"),
+            admin=AdminSettings(username="test-username", password=SecretStr("test-password")),
             app_secret_key=SecretStr("test-secret-key"),
             vendor_encryption_key=SecretStr("test-vendor-encryption-key"),
             jwt_algorithm=jwt_algorithm,

@@ -49,30 +49,32 @@ class TestAsyncDBConnectors:
                         connectors = AsyncDBConnectors()
 
                         # Mock the _ping_connection method
-                        connectors._ping_connection = AsyncMock()
+                        with patch.object(
+                            connectors, "_ping_connection", new_callable=AsyncMock
+                        ) as mock__ping_connection:
 
-                        await connectors.init_connection()
+                            await connectors.init_connection()
 
-                        # Verify engine creation
-                        mock_create_engine.assert_called_once()
+                            # Verify engine creation
+                            mock_create_engine.assert_called_once()
 
-                        # Verify session factory creation
-                        mock_session_maker.assert_called_once()
+                            # Verify session factory creation
+                            mock_session_maker.assert_called_once()
 
-                        # Verify attributes are set
-                        assert connectors.engine == mock_engine
-                        assert connectors.session_factory == mock_session_factory
+                            # Verify attributes are set
+                            assert connectors.engine == mock_engine
+                            assert connectors.session_factory == mock_session_factory
 
-                        # Verify ping was called
-                        connectors._ping_connection.assert_awaited_once()
+                            # Verify ping was called
+                            mock__ping_connection.assert_awaited_once()
 
-                        # Verify logging
-                        mock_logger.info.assert_any_call(
-                            "[DB] Initializing database engine and session factory..."
-                        )
-                        mock_logger.info.assert_any_call(
-                            "[DB] Database engine and session factory initialized successfully"
-                        )
+                            # Verify logging
+                            mock_logger.info.assert_any_call(
+                                "[DB] Initializing database engine and session factory..."
+                            )
+                            mock_logger.info.assert_any_call(
+                                "[DB] Database engine and session factory initialized successfully"
+                            )
 
     @pytest.mark.asyncio
     async def test_init_connection_without_pool_settings(self) -> None:
@@ -93,12 +95,15 @@ class TestAsyncDBConnectors:
                 with patch("src.db.session.async_sessionmaker", return_value=mock_session_factory):
                     with patch("src.db.session.logger"):
                         connectors = AsyncDBConnectors()
-                        connectors._ping_connection = AsyncMock()
+                        with patch.object(
+                            connectors, "_ping_connection", new_callable=AsyncMock
+                        ) as mock__ping_connection:
 
-                        await connectors.init_connection()
+                            await connectors.init_connection()
 
-                        # Verify engine creation without pool settings
-                        mock_create_engine.assert_called_once()
+                            # Verify engine creation without pool settings
+                            mock_create_engine.assert_called_once()
+                            mock__ping_connection.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_init_connection_with_exception(self) -> None:
@@ -112,18 +117,20 @@ class TestAsyncDBConnectors:
             with patch("src.db.session.create_async_engine", side_effect=test_exception):
                 with patch("src.db.session.logger") as mock_logger:
                     connectors = AsyncDBConnectors()
-                    connectors.close_connection = AsyncMock()
+                    with patch.object(
+                        connectors, "close_connection", new_callable=AsyncMock
+                    ) as mock_close_connection:
 
-                    with pytest.raises(Exception, match="Connection failed"):
-                        await connectors.init_connection()
+                        with pytest.raises(Exception, match="Connection failed"):
+                            await connectors.init_connection()
 
-                    # Verify close_connection was called
-                    connectors.close_connection.assert_awaited_once()
+                        # Verify close_connection was called
+                        mock_close_connection.assert_awaited_once()
 
-                    # Verify error logging
-                    mock_logger.error.assert_called_with(
-                        "[DB] Failed to initialize database: %r", test_exception
-                    )
+                        # Verify error logging
+                        mock_logger.error.assert_called_with(
+                            "[DB] Failed to initialize database: %r", test_exception
+                        )
 
 
 class TestSessionFactory:

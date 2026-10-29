@@ -1,4 +1,5 @@
 import os
+from typing import Any, Callable, cast
 from unittest.mock import patch
 
 import pytest
@@ -14,11 +15,17 @@ MINIMAL_ENV_VARS = {
 }
 
 
+def settings_without_dotenv(**values: Any) -> AppSettings:
+    # Pydantic's generated initializer type omits BaseSettings' supported _env_file override.
+    constructor = cast(Callable[..., AppSettings], AppSettings)
+    return constructor(_env_file=None, **values)
+
+
 class TestAppSettings:
     @patch.dict(os.environ, MINIMAL_ENV_VARS, clear=True)
     def test_default_settings(self) -> None:
         get_app_settings.cache_clear()
-        settings = AppSettings(_env_file=None)  # type: ignore
+        settings = settings_without_dotenv()
         assert settings.api_docs_enabled is False
         assert settings.app_host == "localhost"
         assert settings.app_port == 8003
@@ -50,7 +57,7 @@ class TestAppSettings:
         },
     )
     def test_selectel_balance_settings_from_env(self) -> None:
-        settings = AppSettings(_env_file=None)  # type: ignore
+        settings = settings_without_dotenv()
 
         assert settings.selectel_balance_url == "https://billing.example.test/v3/balances"
         assert settings.selectel_balance_token is not None
@@ -67,7 +74,7 @@ class TestAppSettings:
         },
     )
     def test_selectel_service_account_settings_from_env(self) -> None:
-        settings = AppSettings(_env_file=None)  # type: ignore
+        settings = settings_without_dotenv()
 
         assert settings.selectel_balance_username == "billing-service-user"
         assert settings.selectel_balance_account_id == "123456"
@@ -76,8 +83,7 @@ class TestAppSettings:
 
     @patch.dict(os.environ, MINIMAL_ENV_VARS, clear=True)
     def test_app_version_defaults_to_develop(self) -> None:
-        settings = AppSettings(
-            _env_file=None,
+        settings = settings_without_dotenv(
             app_secret_key=SecretStr("test-key"),
             vendor_encryption_key=SecretStr("test-encryption-key"),
         )
@@ -90,8 +96,7 @@ class TestAppSettings:
         clear=True,
     )
     def test_app_version_uses_docker_image_tag(self) -> None:
-        settings = AppSettings(
-            _env_file=None,
+        settings = settings_without_dotenv(
             app_secret_key=SecretStr("test-key"),
             vendor_encryption_key=SecretStr("test-encryption-key"),
         )
@@ -100,8 +105,7 @@ class TestAppSettings:
 
     @patch.dict(os.environ, MINIMAL_ENV_VARS | {"DOCKER_IMAGE": "code-agent"}, clear=True)
     def test_app_version_uses_latest_for_untagged_image(self) -> None:
-        settings = AppSettings(
-            _env_file=None,
+        settings = settings_without_dotenv(
             app_secret_key=SecretStr("test-key"),
             vendor_encryption_key=SecretStr("test-encryption-key"),
         )
@@ -110,8 +114,7 @@ class TestAppSettings:
 
     @patch.dict(os.environ, MINIMAL_ENV_VARS | {"APP_VERSION": "v2.0.0"}, clear=True)
     def test_explicit_app_version_takes_precedence(self) -> None:
-        settings = AppSettings(
-            _env_file=None,
+        settings = settings_without_dotenv(
             app_secret_key=SecretStr("test-key"),
             vendor_encryption_key=SecretStr("test-encryption-key"),
         )

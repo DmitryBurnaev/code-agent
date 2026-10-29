@@ -4,9 +4,10 @@ from typing import Any, Generator
 from unittest.mock import AsyncMock
 
 import pytest
+from fastapi.routing import iter_route_contexts
 from starlette.testclient import TestClient
 
-from src.main import CodeAgentAPP
+from src.application import CodeAgentAPP
 from src.models import Balance
 from src.modules.web import views
 from src.tests.mocks import MockUser
@@ -28,7 +29,7 @@ def active_user() -> MockUser:
 def test_app_registers_web_routes_static_files_and_isolated_session(
     test_app: CodeAgentAPP,
 ) -> None:
-    web_route_paths = {getattr(route, "path") for route in views.router.routes}
+    web_route_paths = {route.path for route in iter_route_contexts(views.router.routes)}
     assert {"/", "/login", "/logout", "/time-tracker"} <= web_route_paths
     assert any(getattr(route, "path", None) == "/static" for route in test_app.routes)
 
@@ -90,7 +91,9 @@ def test_login_renders_dashboard_and_time_tracker_for_active_user(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(views, "authenticate_web_user", AsyncMock(return_value=active_user))
-    monkeypatch.setattr(views, "get_current_web_user", AsyncMock(return_value=active_user))
+    monkeypatch.setattr(
+        "src.modules.web.auth.get_current_web_user", AsyncMock(return_value=active_user)
+    )
     monkeypatch.setattr(
         views,
         "dashboard_time_summary",
@@ -158,7 +161,9 @@ def test_dashboard_renders_selectel_balance_and_unavailable_state(
     active_user: MockUser,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(views, "get_current_web_user", AsyncMock(return_value=active_user))
+    monkeypatch.setattr(
+        "src.modules.web.auth.get_current_web_user", AsyncMock(return_value=active_user)
+    )
     monkeypatch.setattr(
         views,
         "dashboard_time_summary",

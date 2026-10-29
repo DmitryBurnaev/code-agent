@@ -9,7 +9,7 @@
 </section>
 
 <section class="time-summary-grid" aria-label="Dashboard overview">
-    {% if can_use_time_tracking %}
+    {% if feature_access.can_use_time_tracking %}
     <article class="dashboard-metric-card">
         <span class="card-icon purple">{{ icon_clock("icon") }}</span>
         <div>
@@ -45,7 +45,7 @@
         </div>
     </article>
 
-    {% if can_access_billing %}
+    {% if feature_access.can_access_billing %}
     <article class="dashboard-metric-card">
         <span class="card-icon blue">{{ icon_dashboard("icon") }}</span>
         <div>

@@ -14,6 +14,7 @@ from src.db.models import BaseModel, Vendor
 from src.db.repositories import VendorRepository
 from src.db.services import SASessionUOW
 from src.utils import admin_get_link, simple_slugify
+from src.modules.auth.permissions import Permission
 
 __all__ = ("VendorAdminView",)
 logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ class VendorAdminForm(Form):
 
 
 class VendorAdminView(BaseModelView, model=Vendor):
+    required_permission = Permission.ADMIN_PANEL
     name = "AI Vendor"
     name_plural = "AI Vendors"
     icon = "fa-solid fa-box-archive"

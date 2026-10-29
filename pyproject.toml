@@ -54,7 +54,7 @@ indent-width = 4
 target-version = "py313"
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F"]
+select = ["E4", "E7", "E9", "F", "PLC0415"]
 ignore = []
 fixable = ["ALL"]
 unfixable = []
@@ -76,7 +76,7 @@ target-version = ["py313"]
 
 [tool.mypy]
 strict = true
-exclude = ["src/tests", "src/migrations", ".local", "test_*"]
+exclude = ["src/migrations", "\\.local/"]
 
 [[tool.mypy.overrides]]
 module = ["src.*"]
@@ -103,6 +103,7 @@ testpaths = ["src/tests"]
 python_files = ["test_*.py"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+markers = ["postgresql: requires TEST_POSTGRES_MIGRATIONS=1 and a PostgreSQL database"]
 
 [tool.coverage.report]
 exclude_also = [

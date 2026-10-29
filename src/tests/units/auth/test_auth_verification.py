@@ -16,8 +16,6 @@ from src.tests.mocks import MockAPIToken
 class TestVerifyAPIToken:
 
     async def test_verify_api_token_dependency_import(self) -> None:
-        from src.modules.auth.dependencies import verify_api_token
-
         assert callable(verify_api_token)
 
     async def test_verify_api_token_options_method(

@@ -10,6 +10,7 @@ from starlette.responses import Response
 from src.db.repositories import UserRepository
 from src.db.services import SASessionUOW
 from src.modules.admin.views.base import BaseAPPView
+from src.modules.auth.permissions import Permission
 from src.modules.time_tracker.toggl_import import (
     TogglImportService,
     TogglImportValidationError,
@@ -23,6 +24,7 @@ MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024
 class TogglImportAdminView(BaseAPPView):
     """Upload a Toggl CSV export for one local application user."""
 
+    required_permission = Permission.ADMIN_PANEL
     name = "Import Toggl CSV"
     icon = "fa-solid fa-file-import"
 

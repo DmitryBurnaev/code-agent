@@ -5,7 +5,7 @@ import pytest
 from fastapi import HTTPException
 
 from src.db.models import User
-from src.main import CodeAgentAPP
+from src.application import CodeAgentAPP
 from src.modules.admin.views.base import FormDataType
 from src.tests.mocks import MockUser
 from src.modules.admin.views.users import UserAdminView, UserAdminForm

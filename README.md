@@ -87,6 +87,9 @@ admin application preserves the web login, and web logout affects only the web s
 
 ### User feature permissions
 
+Developer rules and the feature-extension checklist are in
+[Feature access control](docs/access-control.md).
+
 The admin user creation and editing forms provide five independent checkboxes:
 Admin Panel, System API, LLM, Time Tracking, and Billing. Admin Panel access permits
 user and permission management; it does not automatically enable the other features.

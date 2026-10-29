@@ -6,7 +6,7 @@ from _pytest.monkeypatch import MonkeyPatch
 from starlette.datastructures import FormData, URL
 from starlette.responses import Response
 
-from src.main import CodeAgentAPP
+from src.application import CodeAgentAPP
 from src.modules.admin.app import AdminApp, ADMIN_VIEWS, make_admin
 from src.modules.admin.views import BaseAPPView, BaseModelView
 from src.services.counters import DashboardCounts

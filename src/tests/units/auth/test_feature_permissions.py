@@ -8,9 +8,10 @@ from unittest.mock import AsyncMock
 import pytest
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 from starlette.responses import JSONResponse, StreamingResponse
+from starlette.requests import Request
 from starlette.testclient import TestClient
 
 from src.db.models import BaseModel, Token, User, TimeEntry
@@ -20,10 +21,13 @@ from src.db.repositories import (
     VendorRepository,
     TimeEntryRepository,
 )
-from src.main import CodeAgentAPP, make_app
+from src.application import CodeAgentAPP
+from src.main import make_app
 from src.models import Balance
 from src.modules.admin.app import AdminApp, make_admin
 from src.modules.admin.auth import AdminAuth
+from src.modules.admin.views.base import BaseAPPView, BaseModelView
+from sqladmin import BaseView, action, expose
 from src.modules.auth.permissions import Permission, has_permission
 from src.modules.auth.tokens import GeneratedToken, make_api_token
 from src.modules.time_tracker.service import TimeTrackerService
@@ -123,7 +127,7 @@ def test_app(
     )
     app = make_app(app_settings_test)
     app.dependency_overrides[get_app_settings] = lambda: app_settings_test
-    make_admin(app)
+    app.state.test_admin = make_admin(app)
     return app
 
 
@@ -456,6 +460,117 @@ def test_inactive_user_loses_web_and_admin_sessions(
     user.is_active = False
     assert permission_client.get("/", follow_redirects=False).headers["location"] == "/login"
     assert permission_client.get(base + "/user/create", follow_redirects=False).status_code == 302
+
+
+class ExampleBillingView(BaseAPPView):
+    required_permission = Permission.BILLING
+    name = "Example Billing Feature"
+
+    @expose("/example-billing", methods=["GET", "POST"])
+    async def billing(self, request: Request) -> JSONResponse:
+        return JSONResponse({"ok": True})
+
+
+class AuthorizationTestBase(DeclarativeBase):
+    pass
+
+
+class AuthorizationProbe(AuthorizationTestBase):
+    __tablename__ = "authorization_probe"
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+
+class ExampleBillingModelView(BaseModelView, model=AuthorizationProbe):
+    required_permission = Permission.BILLING
+
+    @action("probe")
+    async def probe(self, request: Request) -> JSONResponse:
+        return JSONResponse({"ok": True})
+
+
+def test_sqladmin_enforces_feature_grants_for_crud_and_custom_actions(
+    permission_client: TestClient,
+    user: User,
+    test_app: CodeAgentAPP,
+) -> None:
+    admin: AdminApp = test_app.state.test_admin
+    admin.add_view(ExampleBillingModelView)
+    base = f"{test_app.settings.admin.base_url}/{ExampleBillingModelView.identity}"
+    user.can_access_admin = True
+    permission_client.post(
+        test_app.settings.admin.base_url + "/login",
+        data={"username": "agent", "password": "secret"},
+        follow_redirects=False,
+    )
+    for method, path in (
+        ("GET", "/list"),
+        ("GET", "/details/1"),
+        ("GET", "/create"),
+        ("POST", "/create"),
+        ("GET", "/edit/1"),
+        ("POST", "/edit/1"),
+        ("DELETE", "/delete?pks=1"),
+        ("GET", "/action/probe"),
+    ):
+        assert permission_client.request(method, base + path).status_code == 403
+    user.can_access_billing = True
+    assert permission_client.get(base + "/create").status_code == 200
+    assert permission_client.get(base + "/action/probe").status_code == 200
+    user.can_access_billing = False
+    assert permission_client.get(base + "/action/probe").status_code == 403
+    user.is_admin = True
+    assert permission_client.get(base + "/action/probe").status_code == 200
+
+
+def test_feature_admin_views_require_panel_and_feature_access(
+    permission_client: TestClient,
+    user: User,
+    test_app: CodeAgentAPP,
+) -> None:
+    admin: AdminApp = test_app.state.test_admin
+    admin.add_view(ExampleBillingView)
+    base = test_app.settings.admin.base_url
+    user.can_access_admin = True
+    permission_client.post(
+        base + "/login", data={"username": "agent", "password": "secret"}, follow_redirects=False
+    )
+    for method in ("GET", "POST"):
+        assert permission_client.request(method, base + "/example-billing").status_code == 403
+    assert ExampleBillingView.name not in permission_client.get(base + "/user/create").text
+    user.can_access_billing = True
+    assert permission_client.get(base + "/example-billing").status_code == 200
+    assert ExampleBillingView.name in permission_client.get(base + "/user/create").text
+    user.can_access_billing = False
+    assert permission_client.post(base + "/example-billing").status_code == 403
+    user.is_admin = True
+    assert permission_client.post(base + "/example-billing").status_code == 200
+    user.is_admin = False
+    user.can_access_admin = False
+    user.can_access_billing = True
+    assert (
+        permission_client.get(base + "/example-billing", follow_redirects=False).status_code == 302
+    )
+
+
+def test_admin_registration_rejects_views_without_explicit_shared_policy(
+    test_app: CodeAgentAPP,
+) -> None:
+    admin: AdminApp = test_app.state.test_admin
+
+    class MissingPermission(BaseAPPView):
+        pass
+
+    class UncheckedView(BaseView):
+        pass
+
+    with pytest.raises(ValueError, match="required_permission"):
+        admin.add_view(MissingPermission)
+    with pytest.raises(ValueError, match="required_permission"):
+        admin.add_base_view(MissingPermission)
+    with pytest.raises(ValueError, match="shared access-controlled base"):
+        admin.add_view(UncheckedView)
+    with pytest.raises(ValueError, match="shared access-controlled base"):
+        admin.add_base_view(UncheckedView)
 
 
 @pytest.mark.parametrize("permission", list(Permission))

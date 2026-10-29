@@ -5,8 +5,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from jwt import PyJWTError
 from fastapi import Request
+from pydantic import SecretStr
 
 from src.settings import AppSettings
+from src.settings.app import AdminSettings
 from src.tests.mocks import MockUser
 from src.modules.admin.auth import AdminAuth, UserPayload
 
@@ -18,8 +20,9 @@ class TestAdminAuth:
     def app_settings(self) -> AppSettings:
         """Create test app settings."""
         return AppSettings(
-            app_secret_key="test-secret-key",
-            admin_session_expiration_time=3600,
+            app_secret_key=SecretStr("test-secret-key"),
+            vendor_encryption_key=SecretStr("test-encryption-key"),
+            admin=AdminSettings(session_expiration_time=3600),
             jwt_algorithm="HS256",
         )
 
