@@ -2,10 +2,10 @@
 
 from datetime import date, datetime, time, timedelta, timezone
 import logging
-from typing import Any, NamedTuple
+from typing import Annotated, Any, NamedTuple
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from starlette.responses import HTMLResponse, RedirectResponse
 from starlette.templating import Jinja2Templates
 
@@ -15,7 +15,6 @@ from src.db.repositories import ProjectRepository, TimeEntryRepository
 from src.db.services import SASessionUOW
 from src.modules.web.auth import (
     authenticate_web_user,
-    get_current_web_user,
     login_web_user,
     logout_web_user,
 )
@@ -27,8 +26,17 @@ from src.models import Balance
 from src.services.balances import SelectelBalanceProvider
 from src.utils import utcnow
 from src.modules.auth.permissions import Permission, has_permission
+from src.modules.auth.dependencies import WebAccess
+from src.modules.web import auth as web_auth
 
 router = APIRouter(include_in_schema=False)
+public_router = APIRouter(include_in_schema=False)
+dashboard_access = WebAccess()
+dashboard_router = APIRouter(dependencies=[Depends(dashboard_access)], include_in_schema=False)
+tracker_access = WebAccess(Permission.TIME_TRACKING)
+tracker_router = APIRouter(dependencies=[Depends(tracker_access)], include_in_schema=False)
+type DashboardUser = Annotated[User, Depends(dashboard_access)]
+type TrackerUser = Annotated[User, Depends(tracker_access)]
 templates = Jinja2Templates(directory=APP_DIR / "modules" / "web" / "templates")
 MOSCOW_TIME_ZONE = timezone(timedelta(hours=3))
 STATIC_ASSETS_DIR = APP_DIR / "static"
@@ -112,26 +120,16 @@ def render_template(
                 for link in NAVIGATION
                 if link.permission is None or has_permission(current_user, link.permission)
             ),
-            "can_use_time_tracking": has_permission(current_user, Permission.TIME_TRACKING),
-            "can_access_billing": has_permission(current_user, Permission.BILLING),
+            "feature_access": {
+                permission.value: has_permission(current_user, permission)
+                for permission in Permission
+            },
             "app_version": get_app_version(request),
             "static_assets_version": static_assets_version(),
         }
         | (context or {}),
         status_code=status_code,
     )
-
-
-async def require_web_user(
-    request: Request, permission: Permission | None = None
-) -> User | RedirectResponse:
-    """Return the signed-in user or redirect the browser to login."""
-    user = await get_current_web_user(request)
-    if user is None:
-        return RedirectResponse(url="/login", status_code=303)
-    if permission is not None and not has_permission(user, permission):
-        raise HTTPException(status_code=403, detail="Permission denied")
-    return user
 
 
 def calendar_period(request: Request) -> CalendarPeriod:
@@ -309,10 +307,10 @@ async def time_tracker_context(user_id: int, period: CalendarPeriod) -> dict[str
     }
 
 
-@router.get("/login", response_class=HTMLResponse, response_model=None)
+@public_router.get("/login", response_class=HTMLResponse, response_model=None)
 async def login_page(request: Request) -> HTMLResponse | RedirectResponse:
     """Render the login form for anonymous users."""
-    user = await get_current_web_user(request)
+    user = await web_auth.get_current_web_user(request)
     if user is not None:
         return RedirectResponse(url="/", status_code=303)
 
@@ -326,7 +324,7 @@ async def login_page(request: Request) -> HTMLResponse | RedirectResponse:
     )
 
 
-@router.post("/login", response_model=None)
+@public_router.post("/login", response_model=None)
 async def login_submit(request: Request) -> RedirectResponse:
     """Authenticate username and password submitted by the login form."""
     form = await request.form()
@@ -344,20 +342,16 @@ async def login_submit(request: Request) -> RedirectResponse:
     return RedirectResponse(url="/", status_code=303)
 
 
-@router.post("/logout", response_model=None)
+@public_router.post("/logout", response_model=None)
 async def logout(request: Request) -> RedirectResponse:
     """Clear the browser session and return to login page."""
     logout_web_user(request)
     return RedirectResponse(url="/login", status_code=303)
 
 
-@router.get("/", response_class=HTMLResponse, response_model=None)
-async def dashboard(request: Request) -> HTMLResponse | RedirectResponse:
+@dashboard_router.get("/", response_class=HTMLResponse, response_model=None)
+async def dashboard(request: Request, user: DashboardUser) -> HTMLResponse:
     """Render the Dashboard with current-week time-tracking status."""
-    user = await require_web_user(request)
-    if isinstance(user, RedirectResponse):
-        return user
-
     context: dict[str, Any] = {}
     if has_permission(user, Permission.TIME_TRACKING):
         summary = await dashboard_time_summary(user.id)
@@ -384,13 +378,9 @@ async def dashboard(request: Request) -> HTMLResponse | RedirectResponse:
     )
 
 
-@router.get("/time-tracker", response_class=HTMLResponse, response_model=None)
-async def time_tracker(request: Request) -> HTMLResponse | RedirectResponse:
+@tracker_router.get("/time-tracker", response_class=HTMLResponse, response_model=None)
+async def time_tracker(request: Request, user: TrackerUser) -> HTMLResponse:
     """Render the authenticated user's calendar and time tracker."""
-    user = await require_web_user(request, Permission.TIME_TRACKING)
-    if isinstance(user, RedirectResponse):
-        return user
-
     time_tracker_context_value = await time_tracker_context(user.id, calendar_period(request))
 
     return render_template(
@@ -403,12 +393,9 @@ async def time_tracker(request: Request) -> HTMLResponse | RedirectResponse:
     )
 
 
-@router.post("/time-tracker/timer/start", response_model=None)
-async def start_timer(request: Request) -> RedirectResponse:
+@tracker_router.post("/time-tracker/timer/start", response_model=None)
+async def start_timer(request: Request, user: TrackerUser) -> RedirectResponse:
     """Start a timer for the signed-in user."""
-    user = await require_web_user(request, Permission.TIME_TRACKING)
-    if isinstance(user, RedirectResponse):
-        return user
     form = await request.form()
     try:
         async with SASessionUOW() as uow:
@@ -426,12 +413,9 @@ async def start_timer(request: Request) -> RedirectResponse:
     return redirect_to_tracker("Timer started.")
 
 
-@router.post("/time-tracker/timer/stop", response_model=None)
-async def stop_timer(request: Request) -> RedirectResponse:
+@tracker_router.post("/time-tracker/timer/stop", response_model=None)
+async def stop_timer(request: Request, user: TrackerUser) -> RedirectResponse:
     """Stop the signed-in user's active timer."""
-    user = await require_web_user(request, Permission.TIME_TRACKING)
-    if isinstance(user, RedirectResponse):
-        return user
     try:
         async with SASessionUOW() as uow:
             await TimeTrackerService(uow.session).stop_timer(user.id)
@@ -441,12 +425,9 @@ async def stop_timer(request: Request) -> RedirectResponse:
     return redirect_to_tracker("Timer stopped and entry saved.")
 
 
-@router.post("/time-tracker/entries", response_model=None)
-async def create_time_entry(request: Request) -> RedirectResponse:
+@tracker_router.post("/time-tracker/entries", response_model=None)
+async def create_time_entry(request: Request, user: TrackerUser) -> RedirectResponse:
     """Create a completed entry or start a timer from the selected calendar time."""
-    user = await require_web_user(request, Permission.TIME_TRACKING)
-    if isinstance(user, RedirectResponse):
-        return user
     form = await request.form()
     try:
         started_at = parse_datetime(form.get("started_at"), "Start time")
@@ -479,12 +460,9 @@ async def create_time_entry(request: Request) -> RedirectResponse:
     return redirect_to_tracker("Timer started." if ended_at is None else "Time entry created.")
 
 
-@router.post("/time-tracker/entries/{entry_id}", response_model=None)
-async def update_time_entry(entry_id: int, request: Request) -> RedirectResponse:
+@tracker_router.post("/time-tracker/entries/{entry_id}", response_model=None)
+async def update_time_entry(entry_id: int, request: Request, user: TrackerUser) -> RedirectResponse:
     """Update a time entry if it belongs to the signed-in user."""
-    user = await require_web_user(request, Permission.TIME_TRACKING)
-    if isinstance(user, RedirectResponse):
-        return user
     form = await request.form()
     try:
         started_at = parse_datetime(form.get("started_at"), "Start time")
@@ -510,12 +488,9 @@ async def update_time_entry(entry_id: int, request: Request) -> RedirectResponse
     return redirect_to_tracker("Time entry updated.")
 
 
-@router.post("/time-tracker/entries/{entry_id}/delete", response_model=None)
-async def delete_time_entry(entry_id: int, request: Request) -> RedirectResponse:
+@tracker_router.post("/time-tracker/entries/{entry_id}/delete", response_model=None)
+async def delete_time_entry(entry_id: int, request: Request, user: TrackerUser) -> RedirectResponse:
     """Delete a time entry if it belongs to the signed-in user."""
-    user = await require_web_user(request, Permission.TIME_TRACKING)
-    if isinstance(user, RedirectResponse):
-        return user
     async with SASessionUOW() as uow:
         entries = TimeEntryRepository(uow.session)
         entry = await entries.get_for_user(entry_id, user.id)
@@ -524,3 +499,8 @@ async def delete_time_entry(entry_id: int, request: Request) -> RedirectResponse
         await entries.delete(entry)
         uow.mark_for_commit()
     return redirect_to_tracker("Time entry deleted.")
+
+
+router.include_router(public_router)
+router.include_router(dashboard_router)
+router.include_router(tracker_router)

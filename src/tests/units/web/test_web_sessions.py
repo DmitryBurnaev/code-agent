@@ -13,7 +13,8 @@ from starlette.testclient import TestClient
 
 from src.db.models import User
 from src.db.services import SASessionUOW
-from src.main import CodeAgentAPP, make_app
+from src.application import CodeAgentAPP
+from src.main import make_app
 from src.modules.admin.auth import AdminAuth
 from src.modules.web import views
 from src.modules.web.auth import SESSION_USER_ID

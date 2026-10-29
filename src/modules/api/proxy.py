@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 
 from src.settings import SettingsDep
 from src.models import (
@@ -13,9 +13,16 @@ from src.models import (
 from src.modules.api.base import CORSBaseRoute
 from src.services.vendors import VendorService
 from src.services.proxy import ProxyRequestData, ProxyService, ProxyEndpoint
+from src.modules.auth.dependencies import APIAccess
+from src.modules.auth.permissions import Permission
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/ai-proxy", tags=["ai-proxy"], route_class=CORSBaseRoute)
+router = APIRouter(
+    dependencies=[Depends(APIAccess(Permission.LLM))],
+    prefix="/ai-proxy",
+    tags=["ai-proxy"],
+    route_class=CORSBaseRoute,
+)
 
 
 @router.options(

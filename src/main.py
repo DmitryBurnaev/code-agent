@@ -1,16 +1,15 @@
 import sys
 import logging.config
 from contextlib import asynccontextmanager
-from typing import Any, Callable, AsyncGenerator
+from typing import AsyncGenerator
 
 import uvicorn
-from fastapi import FastAPI, Depends
 from starlette.staticfiles import StaticFiles
 
-from src.modules.auth.dependencies import require_api_permission
-from src.modules.auth.permissions import Permission
+from src.application import CodeAgentAPP
+from src.modules.auth.routing import validate_access_policies
 from src.modules.admin.app import make_admin
-from src.modules.web import web_router
+from src.modules.web.views import router as web_router
 from src.modules.web.middleware import WebSessionMiddleware
 from src.constants import APP_DIR
 from src.exceptions import AppSettingsError, StartupError
@@ -19,20 +18,6 @@ from src.modules.api import billing_router, system_router, proxy_router
 from src.db.session import initialize_database, close_database
 
 logger = logging.getLogger("src.main")
-
-
-class CodeAgentAPP(FastAPI):
-    """Some extra fields above FastAPI Application"""
-
-    _settings: AppSettings
-    dependency_overrides: dict[Any, Callable[[], Any]]
-
-    def set_settings(self, settings: AppSettings) -> None:
-        self._settings = settings
-
-    @property
-    def settings(self) -> AppSettings:
-        return self._settings
 
 
 @asynccontextmanager
@@ -47,6 +32,7 @@ async def lifespan(app: CodeAgentAPP) -> AsyncGenerator[None, None]:
 
     logger.info("Setting up admin application...")
     make_admin(app)
+    validate_access_policies(app)
 
     yield
 
@@ -101,21 +87,12 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPP:
     )
 
     logger.info("Setting up routes...")
-    app.include_router(
-        system_router,
-        prefix="/api",
-        dependencies=[Depends(require_api_permission(Permission.SYSTEM_API))],
-    )
-    app.include_router(
-        proxy_router, prefix="/api", dependencies=[Depends(require_api_permission(Permission.LLM))]
-    )
-    app.include_router(
-        billing_router,
-        prefix="/api",
-        dependencies=[Depends(require_api_permission(Permission.BILLING))],
-    )
+    app.include_router(system_router, prefix="/api")
+    app.include_router(proxy_router, prefix="/api")
+    app.include_router(billing_router, prefix="/api")
     app.include_router(web_router)
     app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
+    validate_access_policies(app)
 
     logger.info("Application configured!")
     return app

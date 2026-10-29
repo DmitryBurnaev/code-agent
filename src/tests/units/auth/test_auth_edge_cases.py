@@ -18,6 +18,7 @@ from src.modules.auth.hashers import (
     get_random_hash,
 )
 from src.utils import utcnow
+from src.settings.app import AdminSettings
 from src.settings import AppSettings
 from src.tests.mocks import MockAPIToken
 
@@ -33,8 +34,7 @@ class TestTokenEdgeCases:
     )
     def test_token_with_various_secret_key(self, secret_key: str) -> None:
         app_settings = AppSettings(
-            admin_username="test-username",
-            admin_password=SecretStr("test-password"),
+            admin=AdminSettings(username="test-username", password=SecretStr("test-password")),
             app_secret_key=SecretStr(secret_key),
             vendor_encryption_key=SecretStr(""),
             jwt_algorithm="HS256",
@@ -49,8 +49,7 @@ class TestTokenEdgeCases:
 
     def test_token_with_empty_secret_key(self) -> None:
         app_settings = AppSettings(
-            admin_username="test-username",
-            admin_password=SecretStr("test-password"),
+            admin=AdminSettings(username="test-username", password=SecretStr("test-password")),
             app_secret_key=SecretStr(""),
             vendor_encryption_key=SecretStr(""),
             jwt_algorithm="HS256",

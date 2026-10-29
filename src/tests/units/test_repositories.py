@@ -1,5 +1,7 @@
 """Comprehensive tests for src/db/repositories.py module."""
 
+from typing import Any
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy.exc import NoResultFound
@@ -15,6 +17,14 @@ from src.db.repositories import (
     FilterT,
 )
 from src.db.models import User, Vendor, Token
+from sqlalchemy.sql.roles import ColumnsClauseRole
+from sqlalchemy.sql.elements import SQLCoreOperations
+
+
+def session_mock(repository: BaseRepository) -> AsyncMock:
+    """Narrow the spec-based session double without treating real methods as mocks."""
+    assert isinstance(repository.session, AsyncMock)
+    return repository.session
 
 
 class TestBaseRepository:
@@ -46,39 +56,39 @@ class TestBaseRepository:
     @pytest.mark.asyncio
     async def test_get_success(self, base_repo: BaseRepository, mock_user: MagicMock) -> None:
         """Test successful get operation."""
-        base_repo.first = AsyncMock(return_value=mock_user)
+        with patch.object(base_repo, "first", AsyncMock(return_value=mock_user)) as mock_first:
 
-        result = await base_repo.get(1)
+            result = await base_repo.get(1)
 
-        assert result == mock_user
-        base_repo.first.assert_awaited_once_with(1)
+            assert result == mock_user
+            mock_first.assert_awaited_once_with(1)
 
     @pytest.mark.asyncio
     async def test_get_not_found(self, base_repo: BaseRepository) -> None:
         """Test get operation when instance not found."""
-        base_repo.first = AsyncMock(return_value=None)
-
-        with pytest.raises(NoResultFound):
-            await base_repo.get(1)
+        with patch.object(base_repo, "first", AsyncMock(return_value=None)) as mock_first:
+            with pytest.raises(NoResultFound):
+                await base_repo.get(1)
+            mock_first.assert_awaited_once_with(1)
 
     @pytest.mark.asyncio
     async def test_first_found(self, base_repo: BaseRepository, mock_user: MagicMock) -> None:
         """Test first operation when instance found."""
         mock_result = MagicMock()
         mock_result.fetchone.return_value = (mock_user,)
-        base_repo.session.execute = AsyncMock(return_value=mock_result)
+        session_mock(base_repo).execute = AsyncMock(return_value=mock_result)
 
         result = await base_repo.first(1)
 
         assert result == mock_user
-        base_repo.session.execute.assert_awaited_once()
+        session_mock(base_repo).execute.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_first_not_found(self, base_repo: BaseRepository) -> None:
         """Test first operation when instance not found."""
         mock_result = MagicMock()
         mock_result.fetchone.return_value = None
-        base_repo.session.execute = AsyncMock(return_value=mock_result)
+        session_mock(base_repo).execute = AsyncMock(return_value=mock_result)
 
         result = await base_repo.first(1)
 
@@ -89,15 +99,14 @@ class TestBaseRepository:
         """Test all operation with filters."""
         mock_result = MagicMock()
         mock_result.fetchall.return_value = [(mock_user,)]
-        base_repo.session.execute = AsyncMock(return_value=mock_result)
+        session_mock(base_repo).execute = AsyncMock(return_value=mock_result)
 
         # Mock _prepare_statement to avoid complex SQLAlchemy logic
-        base_repo._prepare_statement = MagicMock(return_value=MagicMock())
+        with (patch.object(base_repo, "_prepare_statement", MagicMock(return_value=MagicMock())),):
+            result = await base_repo.all(username="testuser")
 
-        result = await base_repo.all(username="testuser")
-
-        assert result == [mock_user]
-        base_repo.session.execute.assert_awaited_once()
+            assert result == [mock_user]
+            session_mock(base_repo).execute.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_create(self, base_repo: BaseRepository) -> None:
@@ -108,7 +117,7 @@ class TestBaseRepository:
             result = await base_repo.create(user_data)
 
             assert isinstance(result, User)
-            base_repo.session.add.assert_called_once_with(result)
+            session_mock(base_repo).add.assert_called_once_with(result)
             mock_logger.debug.assert_called_once()
 
     @pytest.mark.asyncio
@@ -116,43 +125,45 @@ class TestBaseRepository:
         self, base_repo: BaseRepository, mock_user: MagicMock
     ) -> None:
         """Test get_or_create when instance exists."""
-        base_repo.first = AsyncMock(return_value=mock_user)
+        with patch.object(base_repo, "first", AsyncMock(return_value=mock_user)) as mock_first:
 
-        result = await base_repo.get_or_create(1, {"username": "testuser"})
+            result = await base_repo.get_or_create(1, {"username": "testuser"})
 
-        assert result == mock_user
-        base_repo.first.assert_awaited_once_with(1)
+            assert result == mock_user
+            mock_first.assert_awaited_once_with(1)
 
     @pytest.mark.asyncio
     async def test_get_or_create_new(self, base_repo: BaseRepository, mock_user: MagicMock) -> None:
         """Test get_or_create when instance doesn't exist."""
-        base_repo.first = AsyncMock(return_value=None)
-        base_repo.create = AsyncMock(return_value=mock_user)
-        base_repo.get = AsyncMock(return_value=mock_user)
+        with (
+            patch.object(base_repo, "first", AsyncMock(return_value=None)) as mock_first,
+            patch.object(base_repo, "create", AsyncMock(return_value=mock_user)) as mock_create,
+            patch.object(base_repo, "get", AsyncMock(return_value=mock_user)) as mock_get,
+        ):
+            result = await base_repo.get_or_create(1, {"username": "testuser"})
 
-        result = await base_repo.get_or_create(1, {"username": "testuser"})
-
-        assert result == mock_user
-        base_repo.create.assert_awaited_once_with({"username": "testuser", "id": 1})
-        base_repo.get.assert_awaited_once_with(1)
+            assert result == mock_user
+            mock_first.assert_awaited_once_with(1)
+            mock_create.assert_awaited_once_with({"username": "testuser", "id": 1})
+            mock_get.assert_awaited_once_with(1)
 
     @pytest.mark.asyncio
     async def test_update(self, base_repo: BaseRepository, mock_user: MagicMock) -> None:
         """Test update operation."""
-        update_data = {"username": "newuser", "email": "new@example.com"}
+        update_data: dict[str, Any] = {"username": "newuser", "email": "new@example.com"}
 
         await base_repo.update(mock_user, **update_data)
 
         assert mock_user.username == "newuser"
         assert mock_user.email == "new@example.com"
-        base_repo.session.add.assert_called_once_with(mock_user)
+        session_mock(base_repo).add.assert_called_once_with(mock_user)
 
     @pytest.mark.asyncio
     async def test_delete(self, base_repo: BaseRepository, mock_user: MagicMock) -> None:
         """Test delete operation."""
         await base_repo.delete(mock_user)
 
-        base_repo.session.delete.assert_awaited_once_with(mock_user)
+        session_mock(base_repo).delete.assert_awaited_once_with(mock_user)
 
     @pytest.mark.asyncio
     async def test_delete_by_ids(self, base_repo: BaseRepository) -> None:
@@ -161,7 +172,7 @@ class TestBaseRepository:
 
         await base_repo.delete_by_ids(ids)
 
-        base_repo.session.execute.assert_awaited_once()
+        session_mock(base_repo).execute.assert_awaited_once()
 
     def test_prepare_statement_with_ids_filter(self, base_repo: BaseRepository) -> None:
         """Test _prepare_statement with ids filter."""
@@ -182,7 +193,7 @@ class TestBaseRepository:
     def test_prepare_statement_with_entities(self, base_repo: BaseRepository) -> None:
         """Test _prepare_statement with custom entities."""
         filters: dict[str, FilterT] = {"username": "testuser"}
-        entities = [User.id, User.username]
+        entities: list[ColumnsClauseRole | SQLCoreOperations[Any]] = [User.id, User.username]
 
         statement = base_repo._prepare_statement_with_entities(filters, entities)
 
@@ -217,26 +228,26 @@ class TestUserRepository:
         self, user_repo: UserRepository, mock_user: MagicMock
     ) -> None:
         """Test get_by_username when user found."""
-        user_repo.all = AsyncMock(return_value=[mock_user])
+        with patch.object(user_repo, "all", AsyncMock(return_value=[mock_user])) as mock_all:
 
-        with patch("src.db.repositories.logger") as mock_logger:
-            result = await user_repo.get_by_username("testuser")
+            with patch("src.db.repositories.logger") as mock_logger:
+                result = await user_repo.get_by_username("testuser")
 
-            assert result == mock_user
-            user_repo.all.assert_awaited_once_with(username="testuser")
-            mock_logger.debug.assert_called_once()
+                assert result == mock_user
+                mock_all.assert_awaited_once_with(username="testuser")
+                mock_logger.debug.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_by_username_not_found(self, user_repo: UserRepository) -> None:
         """Test get_by_username when user not found."""
-        user_repo.all = AsyncMock(return_value=[])
+        with patch.object(user_repo, "all", AsyncMock(return_value=[])) as mock_all:
 
-        with patch("src.db.repositories.logger") as mock_logger:
-            result = await user_repo.get_by_username("nonexistent")
+            with patch("src.db.repositories.logger") as mock_logger:
+                result = await user_repo.get_by_username("nonexistent")
 
-            assert result is None
-            user_repo.all.assert_awaited_once_with(username="nonexistent")
-            mock_logger.debug.assert_called_once()
+                assert result is None
+                mock_all.assert_awaited_once_with(username="nonexistent")
+                mock_logger.debug.assert_called_once()
 
 
 class TestVendorRepository:
@@ -266,48 +277,48 @@ class TestVendorRepository:
         self, vendor_repo: VendorRepository, mock_vendor: MagicMock
     ) -> None:
         """Test filter by slug."""
-        vendor_repo.all = AsyncMock(return_value=[mock_vendor])
+        with patch.object(vendor_repo, "all", AsyncMock(return_value=[mock_vendor])) as mock_all:
 
-        result = await vendor_repo.filter(slug="test-vendor")
+            result = await vendor_repo.filter(slug="test-vendor")
 
-        assert result == [mock_vendor]
-        vendor_repo.all.assert_awaited_once_with(slug="test-vendor")
+            assert result == [mock_vendor]
+            mock_all.assert_awaited_once_with(slug="test-vendor")
 
     @pytest.mark.asyncio
     async def test_filter_by_ids(
         self, vendor_repo: VendorRepository, mock_vendor: MagicMock
     ) -> None:
         """Test filter by ids."""
-        vendor_repo.all = AsyncMock(return_value=[mock_vendor])
+        with patch.object(vendor_repo, "all", AsyncMock(return_value=[mock_vendor])) as mock_all:
 
-        result = await vendor_repo.filter(ids=[1, 2, 3])
+            result = await vendor_repo.filter(ids=[1, 2, 3])
 
-        assert result == [mock_vendor]
-        vendor_repo.all.assert_awaited_once_with(ids=[1, 2, 3])
+            assert result == [mock_vendor]
+            mock_all.assert_awaited_once_with(ids=[1, 2, 3])
 
     @pytest.mark.asyncio
     async def test_filter_by_is_active(
         self, vendor_repo: VendorRepository, mock_vendor: MagicMock
     ) -> None:
         """Test filter by is_active."""
-        vendor_repo.all = AsyncMock(return_value=[mock_vendor])
+        with patch.object(vendor_repo, "all", AsyncMock(return_value=[mock_vendor])) as mock_all:
 
-        result = await vendor_repo.filter(is_active=True)
+            result = await vendor_repo.filter(is_active=True)
 
-        assert result == [mock_vendor]
-        vendor_repo.all.assert_awaited_once_with(is_active=True)
+            assert result == [mock_vendor]
+            mock_all.assert_awaited_once_with(is_active=True)
 
     @pytest.mark.asyncio
     async def test_filter_multiple_params(
         self, vendor_repo: VendorRepository, mock_vendor: MagicMock
     ) -> None:
         """Test filter with multiple parameters."""
-        vendor_repo.all = AsyncMock(return_value=[mock_vendor])
+        with patch.object(vendor_repo, "all", AsyncMock(return_value=[mock_vendor])) as mock_all:
 
-        result = await vendor_repo.filter(slug="test-vendor", is_active=True, ids=[1])
+            result = await vendor_repo.filter(slug="test-vendor", is_active=True, ids=[1])
 
-        assert result == [mock_vendor]
-        vendor_repo.all.assert_awaited_once_with(slug="test-vendor", is_active=True, ids=[1])
+            assert result == [mock_vendor]
+            mock_all.assert_awaited_once_with(slug="test-vendor", is_active=True, ids=[1])
 
     @pytest.mark.asyncio
     async def test_group_by_active_with_results(self, vendor_repo: VendorRepository) -> None:
@@ -321,56 +332,65 @@ class TestVendorRepository:
                 ]
             )
         )
-        vendor_repo.session.execute = AsyncMock(return_value=mock_result)
+        session_mock(vendor_repo).execute = AsyncMock(return_value=mock_result)
 
         # Mock _prepare_statement to avoid complex SQLAlchemy logic
-        vendor_repo._prepare_statement_with_entities = MagicMock(return_value=MagicMock())
+        with (
+            patch.object(
+                vendor_repo, "_prepare_statement_with_entities", MagicMock(return_value=MagicMock())
+            ),
+        ):
+            result = await vendor_repo.group_by_active()
 
-        result = await vendor_repo.group_by_active()
-
-        expected: ActiveVendorsStat = {"active": 5, "inactive": 3}
-        assert result == expected
+            expected: ActiveVendorsStat = {"active": 5, "inactive": 3}
+            assert result == expected
 
     @pytest.mark.asyncio
     async def test_group_by_active_no_results(self, vendor_repo: VendorRepository) -> None:
         """Test group_by_active with no results."""
         mock_result = MagicMock()
         mock_result.__iter__ = MagicMock(return_value=iter([]))
-        vendor_repo.session.execute = AsyncMock(return_value=mock_result)
+        session_mock(vendor_repo).execute = AsyncMock(return_value=mock_result)
 
         # Mock _prepare_statement to avoid complex SQLAlchemy logic
-        vendor_repo._prepare_statement_with_entities = MagicMock(return_value=MagicMock())
+        with (
+            patch.object(
+                vendor_repo, "_prepare_statement_with_entities", MagicMock(return_value=MagicMock())
+            ),
+        ):
+            result = await vendor_repo.group_by_active()
 
-        result = await vendor_repo.group_by_active()
-
-        expected: ActiveVendorsStat = {"active": 0, "inactive": 0}
-        assert result == expected
+            expected: ActiveVendorsStat = {"active": 0, "inactive": 0}
+            assert result == expected
 
     @pytest.mark.asyncio
     async def test_get_by_slug_found(
         self, vendor_repo: VendorRepository, mock_vendor: MagicMock
     ) -> None:
         """Test get_by_slug when vendor found."""
-        vendor_repo.filter = AsyncMock(return_value=[mock_vendor])
+        with (
+            patch.object(
+                vendor_repo, "filter", AsyncMock(return_value=[mock_vendor])
+            ) as mock_filter,
+        ):
+            with patch("src.db.repositories.logger") as mock_logger:
+                result = await vendor_repo.get_by_slug("test-vendor")
 
-        with patch("src.db.repositories.logger") as mock_logger:
-            result = await vendor_repo.get_by_slug("test-vendor")
-
-            assert result == mock_vendor
-            vendor_repo.filter.assert_awaited_once_with(slug="test-vendor")
-            mock_logger.debug.assert_called_once()
+                assert result == mock_vendor
+                mock_filter.assert_awaited_once_with(slug="test-vendor")
+                mock_logger.debug.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_by_slug_not_found(self, vendor_repo: VendorRepository) -> None:
         """Test get_by_slug when vendor not found."""
-        vendor_repo.filter = AsyncMock(return_value=[])
+        with patch.object(vendor_repo, "filter", AsyncMock(return_value=[])) as mock_filter:
 
-        with patch("src.db.repositories.logger") as mock_logger:
-            result = await vendor_repo.get_by_slug("nonexistent")
+            with patch("src.db.repositories.logger") as mock_logger:
+                result = await vendor_repo.get_by_slug("nonexistent")
 
-            assert result is None
-            vendor_repo.filter.assert_awaited_once_with(slug="nonexistent")
-            mock_logger.debug.assert_called_once()
+                assert result is None
+                mock_filter.assert_awaited_once_with(slug="nonexistent")
+                mock_logger.debug.assert_called_once()
 
 
 class TestTokenRepository:
@@ -400,26 +420,26 @@ class TestTokenRepository:
         self, token_repo: TokenRepository, mock_token: MagicMock
     ) -> None:
         """Test get_by_token when token found."""
-        token_repo.all = AsyncMock(return_value=[mock_token])
+        with patch.object(token_repo, "all", AsyncMock(return_value=[mock_token])) as mock_all:
 
-        with patch("src.db.repositories.logger") as mock_logger:
-            result = await token_repo.get_by_token("hashed_token_value")
+            with patch("src.db.repositories.logger") as mock_logger:
+                result = await token_repo.get_by_token("hashed_token_value")
 
-            assert result == mock_token
-            token_repo.all.assert_awaited_once_with(token="hashed_token_value")
-            mock_logger.debug.assert_called_once()
+                assert result == mock_token
+                mock_all.assert_awaited_once_with(token="hashed_token_value")
+                mock_logger.debug.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_by_token_not_found(self, token_repo: TokenRepository) -> None:
         """Test get_by_token when token not found."""
-        token_repo.all = AsyncMock(return_value=[])
+        with patch.object(token_repo, "all", AsyncMock(return_value=[])) as mock_all:
 
-        with patch("src.db.repositories.logger") as mock_logger:
-            result = await token_repo.get_by_token("nonexistent")
+            with patch("src.db.repositories.logger") as mock_logger:
+                result = await token_repo.get_by_token("nonexistent")
 
-            assert result is None
-            token_repo.all.assert_awaited_once_with(token="nonexistent")
-            mock_logger.debug.assert_called_once()
+                assert result is None
+                mock_all.assert_awaited_once_with(token="nonexistent")
+                mock_logger.debug.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_set_active_true(self, token_repo: TokenRepository) -> None:
@@ -427,14 +447,14 @@ class TestTokenRepository:
         token_ids = [1, 2, 3]
         mock_result = MagicMock()
         mock_result.rowcount = 3
-        token_repo.session.execute = AsyncMock(return_value=mock_result)
-        token_repo.session.flush = AsyncMock()
+        session_mock(token_repo).execute = AsyncMock(return_value=mock_result)
+        session_mock(token_repo).flush = AsyncMock()
 
         with patch("src.db.repositories.logger") as mock_logger:
             await token_repo.set_active(token_ids, True)
 
-            token_repo.session.execute.assert_awaited_once()
-            token_repo.session.flush.assert_awaited_once()
+            session_mock(token_repo).execute.assert_awaited_once()
+            session_mock(token_repo).flush.assert_awaited_once()
 
             mock_logger.info.assert_any_call("[DB] %s %i tokens: %r", "Activating", 3, [1, 2, 3])
             mock_logger.info.assert_any_call("[DB] Updating %i instances: %r", 3, [1, 2, 3])
@@ -446,14 +466,14 @@ class TestTokenRepository:
         token_ids = [1, 2, 3]
         mock_result = MagicMock()
         mock_result.rowcount = 2
-        token_repo.session.execute = AsyncMock(return_value=mock_result)
-        token_repo.session.flush = AsyncMock()
+        session_mock(token_repo).execute = AsyncMock(return_value=mock_result)
+        session_mock(token_repo).flush = AsyncMock()
 
         with patch("src.db.repositories.logger") as mock_logger:
             await token_repo.set_active(token_ids, False)
 
-            token_repo.session.execute.assert_awaited_once()
-            token_repo.session.flush.assert_awaited_once()
+            session_mock(token_repo).execute.assert_awaited_once()
+            session_mock(token_repo).flush.assert_awaited_once()
 
             # Check log calls
             mock_logger.info.assert_any_call("[DB] %s %i tokens: %r", "Deactivating", 3, [1, 2, 3])
@@ -461,19 +481,19 @@ class TestTokenRepository:
             mock_logger.info.assert_any_call("[DB] Updated %i instances", 2)
 
     @pytest.mark.asyncio
-    async def test_set_active_with_string_ids(self, token_repo: TokenRepository) -> None:
-        """Test set_active with string IDs."""
-        token_ids = ["1", "2", "3"]
+    async def test_set_active_with_parsed_string_ids(self, token_repo: TokenRepository) -> None:
+        """Parse admin-style string IDs before calling the typed repository."""
+        token_ids = [int(value) for value in ("1", "2", "3")]
         mock_result = MagicMock()
         mock_result.rowcount = 3
-        token_repo.session.execute = AsyncMock(return_value=mock_result)
-        token_repo.session.flush = AsyncMock()
+        session_mock(token_repo).execute = AsyncMock(return_value=mock_result)
+        session_mock(token_repo).flush = AsyncMock()
 
         with patch("src.db.repositories.logger"):
             await token_repo.set_active(token_ids, True)
 
-            token_repo.session.execute.assert_awaited_once()
-            token_repo.session.flush.assert_awaited_once()
+            session_mock(token_repo).execute.assert_awaited_once()
+            session_mock(token_repo).flush.assert_awaited_once()
 
 
 class TestVendorsFilter:

@@ -10,6 +10,7 @@ from src.modules.admin.views.base import BaseModelView, FormDataType
 from src.constants import RENDER_KW_REQ
 from src.db.models import BaseModel, User
 from src.utils import admin_get_link
+from src.modules.auth.permissions import Permission, PERMISSION_DEFINITIONS
 
 __all__ = ("UserAdminView",)
 logger = logging.getLogger(__name__)
@@ -30,15 +31,6 @@ class UserAdminForm(Form):
         label="Superuser (all permissions)",
         description="Grants access to every feature, regardless of the checkboxes below.",
     )
-    can_access_admin = BooleanField(render_kw={"class": "form-check-input"}, label="Admin Panel")
-    can_access_system_api = BooleanField(
-        render_kw={"class": "form-check-input"}, label="System API"
-    )
-    can_use_llm = BooleanField(render_kw={"class": "form-check-input"}, label="LLM")
-    can_use_time_tracking = BooleanField(
-        render_kw={"class": "form-check-input"}, label="Time Tracking"
-    )
-    can_access_billing = BooleanField(render_kw={"class": "form-check-input"}, label="Billing")
     is_active = BooleanField(render_kw={"class": "form-check-input"})
 
     def validate(self, extra_validators: Mapping[str, Sequence[Any]] | None = None) -> bool:
@@ -52,10 +44,25 @@ class UserAdminForm(Form):
         return True
 
 
+for permission in Permission:
+    definition = PERMISSION_DEFINITIONS[permission]
+    setattr(
+        UserAdminForm,
+        permission.value,
+        BooleanField(
+            render_kw={"class": "form-check-input"},
+            label=definition.label,
+            description=definition.description,
+            default=False,
+        ),
+    )
+
+
 class UserAdminView(BaseModelView, model=User):
     """Provides logic for users' creation/updating"""
 
     form = UserAdminForm
+    required_permission = Permission.ADMIN_PANEL
     icon = "fa-solid fa-person-drowning"
     column_list = (User.id, User.username, User.is_active)
     column_details_list = (
@@ -63,19 +70,14 @@ class UserAdminView(BaseModelView, model=User):
         User.username,
         User.email,
         User.is_admin,
-        User.can_access_admin,
-        User.can_access_system_api,
-        User.can_use_llm,
-        User.can_use_time_tracking,
-        User.can_access_billing,
+        *(getattr(User, permission.value) for permission in Permission),
     )
     column_labels = {
         User.is_admin: "Superuser (all permissions)",
-        User.can_access_admin: "Admin Panel",
-        User.can_access_system_api: "System API",
-        User.can_use_llm: "LLM",
-        User.can_use_time_tracking: "Time Tracking",
-        User.can_access_billing: "Billing",
+        **{
+            getattr(User, permission.value): definition.label
+            for permission, definition in PERMISSION_DEFINITIONS.items()
+        },
     }
     column_formatters = {User.username: lambda model, a: admin_get_link(cast(BaseModel, model))}
 

@@ -7,7 +7,8 @@ from starlette.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.db import initialize_database
-from src.main import make_app, CodeAgentAPP
+from src.application import CodeAgentAPP
+from src.main import make_app
 from src.modules.auth.tokens import make_api_token
 from src.settings import AppSettings, get_app_settings
 from src.constants import VendorSlug

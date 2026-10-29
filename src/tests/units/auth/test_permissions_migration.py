@@ -1,17 +1,24 @@
 """Execute the permission migration and verify stored data and defaults."""
 
 from importlib import import_module
+from datetime import datetime
 
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 import pytest
 import sqlalchemy as sa
-from sqlalchemy.orm import Session
-
-from src.db.models import User
-from src.main import CodeAgentAPP, make_app
-from src.modules.auth.permissions import Permission, has_permission
+from src.application import CodeAgentAPP
+from src.main import make_app
 from src.settings import AppSettings
+
+# Historical expectations must not grow with the live Permission enum or User model.
+PERMISSIONS_0006 = (
+    "can_access_admin",
+    "can_access_system_api",
+    "can_use_llm",
+    "can_use_time_tracking",
+    "can_access_billing",
+)
 
 
 @pytest.fixture
@@ -54,22 +61,26 @@ def test_upgrade_defaults_preserves_data_and_supports_downgrade(
 
         migration.upgrade()
 
-        with Session(connection) as session:
-            users: list[User] = list(session.scalars(sa.select(User).order_by(User.id)))
-            assert [user.is_admin for user in users] == [True, False]
-            assert all(
-                getattr(user, permission.value) is False
-                for user in users
-                for permission in Permission
+        users_table = sa.Table("users", sa.MetaData(), autoload_with=connection)
+        users = (
+            connection.execute(sa.select(users_table).order_by(users_table.c.id)).mappings().all()
+        )
+        assert [user["is_admin"] for user in users] == [True, False]
+        assert all(user[name] is False for user in users for name in PERMISSIONS_0006)
+        connection.execute(
+            users_table.insert().values(
+                username="new-user",
+                password="new-hash",
+                created_at=datetime(2026, 10, 28),
             )
-            assert all(has_permission(users[0], permission) for permission in Permission)
-            assert not any(has_permission(users[1], permission) for permission in Permission)
-            new_user = User(username="new-user", password="new-hash")
-            session.add(new_user)
-            session.flush()
-            session.refresh(new_user)
-            assert new_user.is_admin is False
-            assert all(getattr(new_user, permission.value) is False for permission in Permission)
+        )
+        new_user = (
+            connection.execute(sa.select(users_table).where(users_table.c.username == "new-user"))
+            .mappings()
+            .one()
+        )
+        assert new_user["is_admin"] is False
+        assert all(new_user[name] is False for name in PERMISSIONS_0006)
 
         # A non-ORM insert must also receive disabled permissions from server defaults.
         connection.exec_driver_sql(
@@ -77,7 +88,9 @@ def test_upgrade_defaults_preserves_data_and_supports_downgrade(
         )
         assert not any(
             connection.execute(
-                sa.select(*(User.__table__.c[p.value] for p in Permission)).where(User.id == 4)
+                sa.select(*(users_table.c[name] for name in PERMISSIONS_0006)).where(
+                    users_table.c.id == 4
+                )
             ).one()
         )
 
@@ -89,7 +102,7 @@ def test_upgrade_defaults_preserves_data_and_supports_downgrade(
         )
         assert connection.exec_driver_sql("SELECT * FROM tokens").all() == tokens_before
         assert connection.exec_driver_sql("SELECT * FROM time_entries").all() == entries_before
-        assert not {p.value for p in Permission} & {
+        assert not set(PERMISSIONS_0006) & {
             c["name"] for c in sa.inspect(connection).get_columns("users")
         }
     engine.dispose()

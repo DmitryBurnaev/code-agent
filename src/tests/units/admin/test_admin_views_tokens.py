@@ -8,7 +8,7 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
 from src.modules.admin.views.tokens import TokenAdminView
-from src.db.models import Token
+from src.db.models import Token, User
 from src.tests.mocks import MockUser
 
 
@@ -22,6 +22,7 @@ def token_admin_view(test_app: MagicMock) -> TokenAdminView:
 @pytest.fixture
 def mock_request() -> MagicMock:
     request = MagicMock(spec=Request)
+    request.state.admin_user = User(id=1, username="admin", is_active=True, is_admin=True)
     request.query_params = {"pks": "1,2,3"}
     request.url_for = MagicMock()
     request.url_for.return_value = "/admin/tokens/list"

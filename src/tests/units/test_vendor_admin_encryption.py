@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 
 from src.exceptions import VendorEncryptionError
-from src.main import CodeAgentAPP
+from src.application import CodeAgentAPP
 from src.modules.admin.views.base import FormDataType
 from src.modules.admin.views.vendors import VendorAdminView
 from src.modules.encrypt.encryption import VendorKeyEncryption

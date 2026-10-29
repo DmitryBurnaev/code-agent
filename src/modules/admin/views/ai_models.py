@@ -5,11 +5,13 @@ from starlette.responses import Response
 from src.modules.admin.views.base import BaseAPPView
 from src.services.vendors import VendorService
 from src.settings import get_app_settings
+from src.modules.auth.permissions import Permission
 
 __all__ = ("AIModelsAdminView",)
 
 
 class AIModelsAdminView(BaseAPPView):
+    required_permission = Permission.ADMIN_PANEL
     name = "AI Models"
     icon = "fa-solid fa-chart-line"
 

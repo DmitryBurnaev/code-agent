@@ -1,6 +1,6 @@
 import datetime
 import logging
-from typing import cast, TypedDict
+from typing import cast, TypedDict, Protocol
 
 import jwt
 from fastapi import Request
@@ -11,7 +11,7 @@ from src.db.services import SASessionUOW
 from src.db.models import User
 from src.modules.admin.utils import register_error_alert
 from src.modules.auth.tokens import jwt_encode, JWTPayload, jwt_decode
-from src.modules.auth.permissions import Permission, has_permission
+from src.modules.auth.permissions import Permission, PermissionUser, has_permission
 from src.settings import AppSettings
 from src.utils import utcnow
 
@@ -23,6 +23,10 @@ class UserPayload(TypedDict):
     id: int
     username: str
     email: str
+
+
+class AdminUser(PermissionUser, Protocol):
+    def verify_password(self, raw_password: str) -> bool: ...
 
 
 class AdminAuth(AuthenticationBackend):
@@ -77,6 +81,7 @@ class AdminAuth(AuthenticationBackend):
                 register_error_alert(title="Authentication failed", details=message)
                 return False
 
+        request.state.admin_user = user
         return True
 
     def _encode_token(self, user_payload: UserPayload) -> str:
@@ -98,7 +103,7 @@ class AdminAuth(AuthenticationBackend):
 
     @staticmethod
     def _check_user(
-        user: User | None, identety: str | int, password: str | None = None
+        user: AdminUser | None, identety: str | int, password: str | None = None
     ) -> tuple[bool, str]:
         if not user:
             logger.error("[admin-auth] User '%s' not found", identety)

@@ -1,5 +1,5 @@
 import logging
-from typing import Any, TYPE_CHECKING, cast
+from typing import Any, cast
 
 from jinja2 import FileSystemLoader
 from sqladmin import Admin, BaseView, ModelView
@@ -9,10 +9,13 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from src.modules.admin.auth import AdminAuth
+from src.modules.admin.authorization import FeatureAuthorization
+from src.application import CodeAgentAPP
 from src.constants import APP_DIR
 from src.db.services import SASessionUOW
 from src.modules.admin.utils import get_current_error_alert
 from src.modules.admin.views import (
+    BaseAPPView,
     BaseModelView,
     UserAdminView,
     VendorAdminView,
@@ -26,9 +29,7 @@ from src.db import session as db_session
 from src.services.counters import AdminCounter
 from src.services.vendors import VendorService
 from src.settings import get_app_settings
-
-if TYPE_CHECKING:
-    from src.main import CodeAgentAPP
+from src.modules.auth.permissions import Permission
 
 ADMIN_VIEWS: tuple[type[BaseView], ...] = (
     UserAdminView,
@@ -50,7 +51,9 @@ class AdminApp(Admin):
     app: "CodeAgentAPP"
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        kwargs["authorization_backend"] = FeatureAuthorization()
         super().__init__(*args, **kwargs)
+        self.admin.state.access_controller = self
         self._init_jinja_templates()
         self._register_views()
 
@@ -127,6 +130,23 @@ class AdminApp(Admin):
         self.templates.env.loader.loaders.insert(0, FileSystemLoader(templates_dir))  # type: ignore
         self.templates.env.globals["error_alert"] = get_current_error_alert
         self.templates.env.globals["app_version"] = self.app.settings.app_version
+
+    @staticmethod
+    def _validate_view(view: type[ModelView] | type[BaseView]) -> None:
+        if not issubclass(view, (BaseAPPView, BaseModelView)):
+            raise ValueError(
+                f"Admin view must use a shared access-controlled base: {view.__name__}"
+            )
+        if not isinstance(view.__dict__.get("required_permission"), Permission):
+            raise ValueError(f"Admin view must declare required_permission: {view.__name__}")
+
+    def add_model_view(self, view: type[ModelView]) -> None:
+        self._validate_view(view)
+        super().add_model_view(view)
+
+    def add_base_view(self, view: type[BaseView]) -> None:
+        self._validate_view(view)
+        super().add_base_view(view)
 
     def _register_views(self) -> None:
         for view in ADMIN_VIEWS:

@@ -15,12 +15,14 @@ from src.services.cache import InMemoryCache
 from src.utils import admin_get_link
 from src.modules.auth.tokens import make_api_token
 from src.modules.admin.views.base import BaseModelView, FormDataType
+from src.modules.auth.permissions import Permission
 
 __all__ = ("TokenAdminView",)
 logger = logging.getLogger(__name__)
 
 
 class TokenAdminView(BaseModelView, model=Token):
+    required_permission = Permission.ADMIN_PANEL
     name = "API Token"
     name_plural = "API Tokens"
     icon = "fa-solid fa-key"

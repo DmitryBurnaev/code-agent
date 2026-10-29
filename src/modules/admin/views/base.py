@@ -1,14 +1,13 @@
 import logging
 import datetime
-from typing import ClassVar, TYPE_CHECKING
+from typing import ClassVar
 
 from sqladmin import ModelView, BaseView
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
-
-if TYPE_CHECKING:
-    from src.main import CodeAgentAPP
+from src.application import CodeAgentAPP
+from src.modules.auth.permissions import Permission
 
 logger = logging.getLogger(__name__)
 type FormDataType = dict[str, str | int | datetime.datetime | None]
@@ -19,12 +18,14 @@ class BaseAPPView(BaseView):
     """Same as BaseView but annotated with app instance (will be passed while views registering)"""
 
     app: "CodeAgentAPP"
+    required_permission: ClassVar[Permission]
 
 
 class BaseModelView(ModelView):
     """Extended version of ModelView with extra settings and logic across all our views"""
 
     app: "CodeAgentAPP"
+    required_permission: ClassVar[Permission]
     can_export = False
     is_async = True
     custom_post_create: ClassVar[bool] = False
