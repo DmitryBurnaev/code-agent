@@ -8,6 +8,8 @@ from src.modules.auth.permissions import Permission, has_permission
 
 
 class FeatureAuthorization(GrantsAuthorizationBackend):
+    admin: BaseAdmin
+
     def setup(self, admin: BaseAdmin) -> None:
         self.admin = admin
 

@@ -23,11 +23,9 @@ class PermissionDefinition:
 
 PERMISSION_DEFINITIONS: Mapping[Permission, PermissionDefinition] = MappingProxyType(
     {
-        Permission.ADMIN_PANEL: PermissionDefinition(
-            "Admin Panel", "Access administration and manage users and their permissions."
-        ),
+        Permission.ADMIN_PANEL: PermissionDefinition("Admin", "Access admin and manage users."),
         Permission.SYSTEM_API: PermissionDefinition(
-            "System API", "Access system health and information."
+            "System", "Access system health and information."
         ),
         Permission.LLM: PermissionDefinition(
             "LLM", "Use model listing, chat completions and cancellation."

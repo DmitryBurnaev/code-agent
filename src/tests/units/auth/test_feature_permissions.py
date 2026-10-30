@@ -438,7 +438,7 @@ def test_admin_login_and_session_recheck_permissions(
     )
     response = permission_client.get(base + "/user/create")
     assert response.status_code == 200
-    assert "Superuser (all permissions)" in response.text
+    assert "Is Admin (all rights)" in response.text
     for permission in Permission:
         assert f'name="{permission.value}"' in response.text
     assert permission_client.get("/api/system/health/").status_code == (200 if superuser else 403)
