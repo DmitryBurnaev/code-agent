@@ -28,7 +28,7 @@ class UserAdminForm(Form):
     )
     is_admin = BooleanField(
         render_kw={"class": "form-check-input"},
-        label="Superuser (all permissions)",
+        label="Is Admin (all rights)",
         description="Grants access to every feature, regardless of the checkboxes below.",
     )
     is_active = BooleanField(render_kw={"class": "form-check-input"})

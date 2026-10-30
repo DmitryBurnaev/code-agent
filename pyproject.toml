@@ -79,10 +79,6 @@ strict = true
 exclude = ["src/migrations", "\\.local/"]
 
 [[tool.mypy.overrides]]
-module = ["src.*"]
-follow_imports = "skip"
-
-[[tool.mypy.overrides]]
 module = ["src.tests", "src.tests.*"]
 follow_imports = "skip"
 disallow_any_generics = false
