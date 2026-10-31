@@ -107,3 +107,22 @@ the current model/catalog. Never execute that test against application tables.
 Production storage is PostgreSQL. SQLite-based HTTP and historical migration tests
 are useful local checks, but do not replace the PostgreSQL chain test. Report any
 environment-related verification limits explicitly.
+
+## HTTP end-to-end verification
+
+`src/tests/e2e` runs the real application in a separate Uvicorn process against a
+disposable PostgreSQL database. It provisions users and tokens through actual HTTP
+handlers and checks both successful and denied API calls. Only external billing
+and LLM providers are replaced with local HTTP servers.
+
+Run `make test-e2e` locally using `DB_PASSWORD` from the environment or `.env`
+(`E2E_POSTGRES_PASSWORD` overrides it), or
+`make test-e2e-in-docker` with the Compose test environment. Both commands isolate
+the suite from parent test fixtures using `--confcutdir`; do not remove that option.
+`make test-full` runs the regular suite with coverage, then API e2e, stopping if
+either stage fails.
+The default pytest selection excludes the `e2e` marker. CI runs the e2e target as
+a separate required step for PRs, main on AMD64/ARM64, and release tags.
+
+Extend the independent role/operation matrix when adding an API feature. See
+[the e2e guide](../src/tests/e2e/README.md) for setup and artifact locations.

@@ -1,6 +1,8 @@
 .DEFAULT_GOAL := help
 
 MAKEFILE_TARGET := $(filter-out ai-client --help Makefile,$(MAKECMDGOALS))
+UV ?= $(if $(wildcard /opt/homebrew/bin/uv),/opt/homebrew/bin/uv,uv)
+E2E_ARTIFACT_DIR ?= $(CURDIR)/.local/test-results/api-e2e
 
 .PHONY: help
 help: ## This help
@@ -9,14 +11,14 @@ help: ## This help
 .PHONY: lint
 lint: ## Linting project
 	@echo Linting...
-	uv run ruff check
-	uv run mypy .
+	$(UV) run ruff check
+	$(UV) run mypy .
 
 .PHONY: format
 format: ## Apply formatting using black
 	@echo Formatting...
-	uv run black .
-	uv run ruff check --fix
+	$(UV) run black src
+	$(UV) run ruff check --fix
 
 .PHONY: install
 install: ## Install dependencies
@@ -43,9 +45,22 @@ run-in-docker: .env ## Run app
 .PHONY: test
 test: .env ## Run tests with coverage report
 	@echo Test project with coverage...
-	uv run coverage run -m pytest -v
-	uv run coverage report
+	$(UV) run coverage run -m pytest -v
+	$(UV) run coverage report
 	rm .coverage
+
+.PHONY: test-full
+test-full: ## Run regular tests with coverage, then API e2e tests
+	$(MAKE) test
+	$(MAKE) test-e2e
+
+.PHONY: test-e2e
+test-e2e: ## Run API e2e against PostgreSQL (uses DB_PASSWORD; optional E2E_POSTGRES_PASSWORD override)
+	RUN_API_E2E=1 E2E_ARTIFACT_DIR="$(E2E_ARTIFACT_DIR)" $(UV) run pytest src/tests/e2e --confcutdir=src/tests/e2e -m e2e -q --junitxml="$(E2E_ARTIFACT_DIR)/junit.xml"
+
+.PHONY: test-e2e-in-docker
+test-e2e-in-docker: ## Run API e2e using the Compose test image and PostgreSQL
+	docker compose run --rm -T --entrypoint pytest -e RUN_API_E2E=1 -e E2E_ARTIFACT_DIR=/tmp/api-e2e test src/tests/e2e --confcutdir=src/tests/e2e -m e2e -q --junitxml=/tmp/api-e2e/junit.xml
 
 .PHONY: run
 test-in-docker: .env  ## Run tests inside docker container

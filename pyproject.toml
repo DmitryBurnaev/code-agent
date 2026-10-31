@@ -33,6 +33,7 @@ dev = [
     # pycharm requires:
     "setuptools==84.0.0",
     "pip==26.2.1",
+    "httpx2==2.16.0",
 ]
 
 # === Ruff settings ===
@@ -96,10 +97,14 @@ extra_checks = false
 
 [tool.pytest.ini_options]
 testpaths = ["src/tests"]
+addopts = ["-m", "not e2e"]
 python_files = ["test_*.py"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-markers = ["postgresql: requires TEST_POSTGRES_MIGRATIONS=1 and a PostgreSQL database"]
+markers = [
+    "postgresql: requires TEST_POSTGRES_MIGRATIONS=1 and a PostgreSQL database",
+    "e2e: real HTTP server and disposable PostgreSQL database; run through make test-e2e",
+]
 
 [tool.coverage.report]
 exclude_also = [

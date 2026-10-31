@@ -4,13 +4,17 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 from starlette.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
-from src.db import initialize_database
+from src.db.session import AsyncDBConnectors
 from src.application import CodeAgentAPP
 from src.main import make_app
 from src.modules.auth.tokens import make_api_token
 from src.settings import AppSettings, get_app_settings
+from src.settings.app import AdminSettings, FlagsSettings, WebSettings
+from src.settings.log import LogSettings
+from src.settings.db import get_db_settings
 from src.constants import VendorSlug
 from src.models import LLMVendor
 from pydantic import SecretStr
@@ -19,7 +23,7 @@ from src.tests.mocks import MockAPIToken, MockUser, MockVendor, MockTestResponse
 
 MINIMAL_ENV_VARS = {
     "API_DOCS_ENABLED": "true",
-    "APP_SECRET_KEY": "test-key",
+    "APP_SECRET_KEY": "test-only-jwt-signing-key-" * 3,  # Covers HS512's 64-byte minimum.
     "ADMIN_PASSWORD": "test-password",
     "VENDOR_ENCRYPTION_KEY": "test-encryption-key",
 }
@@ -31,27 +35,48 @@ def mock_user() -> MockUser:
 
 
 @pytest.fixture
-def app_settings_test() -> AppSettings:
+def app_settings_test(minimal_env_vars: None) -> AppSettings:
     return AppSettings(
         http_proxy_url=None,
-        app_secret_key=SecretStr("example-UStLb8mds9K"),
+        app_secret_key=SecretStr(MINIMAL_ENV_VARS["APP_SECRET_KEY"]),
         vendor_encryption_key=SecretStr("test-encryption-key"),
     )
 
 
 @pytest.fixture(autouse=True)
-def minimal_env_vars() -> Generator[None, Any, None]:
-    with patch.dict(os.environ, MINIMAL_ENV_VARS):
-        yield
+def minimal_env_vars(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
+    """Isolate app settings while preserving the configured test database connection."""
+    setting_names: set[str] = set()
+    for settings_class in (AppSettings, AdminSettings, WebSettings, FlagsSettings, LogSettings):
+        monkeypatch.setitem(settings_class.model_config, "env_file", None)
+        prefix = settings_class.model_config.get("env_prefix", "")
+        setting_names.update(f"{prefix}{name}".upper() for name in settings_class.model_fields)
+    for name in list(os.environ):
+        if name.upper() in setting_names:
+            monkeypatch.delenv(name)
+    for name, value in MINIMAL_ENV_VARS.items():
+        monkeypatch.setenv(name, value)
+    get_app_settings.cache_clear()
+    yield
+    get_app_settings.cache_clear()
 
 
 @pytest.fixture(autouse=True)
-async def test_app(app_settings_test: AppSettings) -> AsyncGenerator[CodeAgentAPP, Any]:
+async def test_app(
+    app_settings_test: AppSettings, monkeypatch: pytest.MonkeyPatch
+) -> AsyncGenerator[CodeAgentAPP, Any]:
     test_app = make_app(settings=app_settings_test)
     test_app.dependency_overrides[get_app_settings] = lambda: test_app.settings
-    await initialize_database()
-    yield test_app
-    test_app.dependency_overrides.clear()
+    # Tests and TestClient run on separate loops; never carry pooled connections between them.
+    engine = create_async_engine(get_db_settings().database_dsn, poolclass=NullPool)
+    monkeypatch.setattr(
+        AsyncDBConnectors(), "session_factory", async_sessionmaker(engine, expire_on_commit=False)
+    )
+    try:
+        yield test_app
+    finally:
+        test_app.dependency_overrides.clear()
+        await engine.dispose()
 
 
 @pytest.fixture

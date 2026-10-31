@@ -51,6 +51,10 @@ services:
       APP_SERVICE: test
       DB_HOST: db
       TEST_POSTGRES_MIGRATIONS: "1"
+      E2E_POSTGRES_HOST: db
+      E2E_POSTGRES_PORT: "5432"
+      E2E_POSTGRES_USER: ${DB_USER}
+      E2E_POSTGRES_PASSWORD: ${DB_PASSWORD}
     depends_on:
       db:
         condition: service_healthy
