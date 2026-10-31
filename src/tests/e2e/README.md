@@ -70,6 +70,11 @@ and a disposable database, rather than the application database named in `.env`.
 No source copy or additional configuration file is needed. Local execution uses
 `/opt/homebrew/bin/uv` when installed; `UV` can be overridden for other environments.
 
+The startup probe allows up to 60 seconds for Uvicorn to return the expected
+unauthenticated health response (401), with short HTTP timeouts between retries.
+An early process exit fails immediately. Startup failures include the last probe
+result and the application log tail in pytest output, including in Docker CI.
+
 `results.json` records expected/actual API statuses, response bodies, upstream
 call counts, provisioning statuses, and environment/cleanup metadata. It excludes
 passwords, raw API tokens, and authentication headers. JUnit records individual
