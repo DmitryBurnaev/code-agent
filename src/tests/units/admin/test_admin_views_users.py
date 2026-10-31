@@ -373,7 +373,7 @@ class TestUserAdminViewEdgeCases:
         assert form.repeat_password.label.text == "Repeat New Password"
 
         # Test boolean fields
-        assert form.is_admin.label.text == "Superuser (all permissions)"
+        assert form.is_admin.label.text == "Is Admin (all rights)"
         assert form.is_active.label.text == "Is Active"
 
     @pytest.mark.asyncio

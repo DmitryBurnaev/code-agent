@@ -17,10 +17,10 @@ class TestAdminAuth:
     """Test cases for AdminAuth class."""
 
     @pytest.fixture
-    def app_settings(self) -> AppSettings:
+    def app_settings(self, app_settings_test: AppSettings) -> AppSettings:
         """Create test app settings."""
         return AppSettings(
-            app_secret_key=SecretStr("test-secret-key"),
+            app_secret_key=app_settings_test.app_secret_key,
             vendor_encryption_key=SecretStr("test-encryption-key"),
             admin=AdminSettings(session_expiration_time=3600),
             jwt_algorithm="HS256",
@@ -29,7 +29,9 @@ class TestAdminAuth:
     @pytest.fixture
     def admin_auth(self, app_settings: AppSettings) -> AdminAuth:
         """Create AdminAuth instance for testing."""
-        return AdminAuth(secret_key="test-secret-key", settings=app_settings)
+        return AdminAuth(
+            secret_key=app_settings.app_secret_key.get_secret_value(), settings=app_settings
+        )
 
     @pytest.fixture
     def mock_user_admin(self) -> MockUser:

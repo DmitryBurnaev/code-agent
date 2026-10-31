@@ -36,6 +36,8 @@ def test_http_session_setting_is_loaded_from_dotenv(
     (tmp_path / ".env").write_text(
         "WEB_SESSION_HTTPS_ONLY=false\nUNRELATED_SETTING=example\n", encoding="utf-8"
     )
+    # This test explicitly opts into its own dotenv; ordinary fixtures disable local dotenv files.
+    monkeypatch.setitem(WebSettings.model_config, "env_file", tmp_path / ".env")
     assert WebSettings().session_https_only is False
     monkeypatch.setenv("WEB_SESSION_HTTPS_ONLY", "true")
     assert WebSettings().session_https_only is True

@@ -28,3 +28,6 @@ jobs:
 
       - name: Run tests
         run: docker compose up --exit-code-from test test
+
+      - name: Run API e2e tests
+        run: make test-e2e-in-docker

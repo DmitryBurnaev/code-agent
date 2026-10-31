@@ -1,0 +1,2180 @@
+{
+  "metadata": {
+    "started_at": "2026-10-30T07:48:37.230168+00:00",
+    "database": "code_agent_e2e_9abd1b020ade4ec19d45ea6084382f7a",
+    "test_process": 72242,
+    "api_url": "http://127.0.0.1:59263",
+    "external_providers": "local HTTP fixtures",
+    "postgres_version": "PostgreSQL 16.4 (Debian 16.4-1.pgdg120+1) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit",
+    "alembic_head": "0006",
+    "app_process": 72259,
+    "temporary_database_removed": true,
+    "completed_at": "2026-10-30T07:48:40.843654+00:00",
+    "upstream_requests": 14
+  },
+  "provisioning": [
+    {
+      "method": "POST",
+      "path": "/cadm/login",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/vendor/edit/1",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/create",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/token/create",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/create",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/token/create",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/create",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/token/create",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/create",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/token/create",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/create",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/token/create",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/create",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/token/create",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/create",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/token/create",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/create",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/token/create",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/edit/9",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/create",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/token/create",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/create",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/token/create",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/token/create",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/create",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/token/create",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/edit/12",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/edit/12",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/edit/12",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/edit/12",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/edit/12",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/edit/12",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/user/create",
+      "status": 302
+    },
+    {
+      "method": "POST",
+      "path": "/cadm/token/create",
+      "status": 200
+    }
+  ],
+  "requests": [
+    {
+      "case": "role-matrix",
+      "role": "none",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "system",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "status": "healthy",
+        "timestamp": "2026-10-30T10:48:39.246149"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "billing",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "llm",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "admin_panel",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "tracker",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "superuser",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "status": "healthy",
+        "timestamp": "2026-10-30T10:48:39.260044"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "none",
+      "operation": "info",
+      "method": "GET",
+      "path": "/api/system/info/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "system",
+      "operation": "info",
+      "method": "GET",
+      "path": "/api/system/info/",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "status": "ok",
+        "vendors": [
+          "anthropic",
+          "google",
+          "deepseek",
+          "local",
+          "openai"
+        ]
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "billing",
+      "operation": "info",
+      "method": "GET",
+      "path": "/api/system/info/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "llm",
+      "operation": "info",
+      "method": "GET",
+      "path": "/api/system/info/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "admin_panel",
+      "operation": "info",
+      "method": "GET",
+      "path": "/api/system/info/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "tracker",
+      "operation": "info",
+      "method": "GET",
+      "path": "/api/system/info/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "superuser",
+      "operation": "info",
+      "method": "GET",
+      "path": "/api/system/info/",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "status": "ok",
+        "vendors": [
+          "anthropic",
+          "google",
+          "deepseek",
+          "local",
+          "openai"
+        ]
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "none",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "system",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "billing",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 1,
+      "passed": true,
+      "body": {
+        "balance": "123.45",
+        "currency": "RUB"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "llm",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "admin_panel",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "tracker",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "superuser",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 1,
+      "passed": true,
+      "body": {
+        "balance": "123.45",
+        "currency": "RUB"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "none",
+      "operation": "models",
+      "method": "GET",
+      "path": "/api/ai-proxy/models",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "system",
+      "operation": "models",
+      "method": "GET",
+      "path": "/api/ai-proxy/models",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "billing",
+      "operation": "models",
+      "method": "GET",
+      "path": "/api/ai-proxy/models",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "llm",
+      "operation": "models",
+      "method": "GET",
+      "path": "/api/ai-proxy/models",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 1,
+      "passed": true,
+      "body": {
+        "data": [
+          {
+            "id": "openai:fixture-model",
+            "vendor": "openai",
+            "vendor_id": "fixture-model"
+          }
+        ]
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "admin_panel",
+      "operation": "models",
+      "method": "GET",
+      "path": "/api/ai-proxy/models",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "tracker",
+      "operation": "models",
+      "method": "GET",
+      "path": "/api/ai-proxy/models",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "superuser",
+      "operation": "models",
+      "method": "GET",
+      "path": "/api/ai-proxy/models",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "data": [
+          {
+            "id": "openai:fixture-model",
+            "vendor": "openai",
+            "vendor_id": "fixture-model"
+          }
+        ]
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "none",
+      "operation": "chat",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "system",
+      "operation": "chat",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "billing",
+      "operation": "chat",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "llm",
+      "operation": "chat",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 1,
+      "passed": true,
+      "body": {
+        "id": "chatcmpl-e2e",
+        "model": "fixture-model",
+        "created": 1,
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "e2e-ok"
+            },
+            "finish_reason": "stop"
+          }
+        ]
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "admin_panel",
+      "operation": "chat",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "tracker",
+      "operation": "chat",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "superuser",
+      "operation": "chat",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 1,
+      "passed": true,
+      "body": {
+        "id": "chatcmpl-e2e",
+        "model": "fixture-model",
+        "created": 1,
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "e2e-ok"
+            },
+            "finish_reason": "stop"
+          }
+        ]
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "none",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "system",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "billing",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "llm",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 1,
+      "passed": true,
+      "body": "data: {\"id\": \"chatcmpl-e2e\", \"model\": \"fixture-model\", \"created\": 1, \"choices\": [{\"index\": 0, \"message\": {\"role\": \"assistant\", \"content\": \"e2e-ok\"}, \"finish_reason\": \"stop\"}]}\n\ndata: [DONE]\n\n"
+    },
+    {
+      "case": "role-matrix",
+      "role": "admin_panel",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "tracker",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "superuser",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 1,
+      "passed": true,
+      "body": "data: {\"id\": \"chatcmpl-e2e\", \"model\": \"fixture-model\", \"created\": 1, \"choices\": [{\"index\": 0, \"message\": {\"role\": \"assistant\", \"content\": \"e2e-ok\"}, \"finish_reason\": \"stop\"}]}\n\ndata: [DONE]\n\n"
+    },
+    {
+      "case": "role-matrix",
+      "role": "none",
+      "operation": "cancel",
+      "method": "DELETE",
+      "path": "/api/ai-proxy/chat/completions/chatcmpl-e2e",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "system",
+      "operation": "cancel",
+      "method": "DELETE",
+      "path": "/api/ai-proxy/chat/completions/chatcmpl-e2e",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "billing",
+      "operation": "cancel",
+      "method": "DELETE",
+      "path": "/api/ai-proxy/chat/completions/chatcmpl-e2e",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "seed-cancel",
+      "role": "llm",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 1,
+      "passed": true,
+      "body": "data: {\"id\": \"chatcmpl-e2e\", \"model\": \"fixture-model\", \"created\": 1, \"choices\": [{\"index\": 0, \"message\": {\"role\": \"assistant\", \"content\": \"e2e-ok\"}, \"finish_reason\": \"stop\"}]}\n\ndata: [DONE]\n\n"
+    },
+    {
+      "case": "role-matrix",
+      "role": "llm",
+      "operation": "cancel",
+      "method": "DELETE",
+      "path": "/api/ai-proxy/chat/completions/chatcmpl-e2e",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 1,
+      "passed": true,
+      "body": {
+        "id": "chatcmpl-e2e",
+        "cancelled": true
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "admin_panel",
+      "operation": "cancel",
+      "method": "DELETE",
+      "path": "/api/ai-proxy/chat/completions/chatcmpl-e2e",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "role-matrix",
+      "role": "tracker",
+      "operation": "cancel",
+      "method": "DELETE",
+      "path": "/api/ai-proxy/chat/completions/chatcmpl-e2e",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "seed-cancel",
+      "role": "superuser",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 1,
+      "passed": true,
+      "body": "data: {\"id\": \"chatcmpl-e2e\", \"model\": \"fixture-model\", \"created\": 1, \"choices\": [{\"index\": 0, \"message\": {\"role\": \"assistant\", \"content\": \"e2e-ok\"}, \"finish_reason\": \"stop\"}]}\n\ndata: [DONE]\n\n"
+    },
+    {
+      "case": "role-matrix",
+      "role": "superuser",
+      "operation": "cancel",
+      "method": "DELETE",
+      "path": "/api/ai-proxy/chat/completions/chatcmpl-e2e",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 1,
+      "passed": true,
+      "body": {
+        "id": "chatcmpl-e2e",
+        "cancelled": true
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "missing",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "empty",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "bare-bearer",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "malformed",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Invalid token signature",
+        "detail": "401: Invalid token signature"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "tampered",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Invalid token",
+        "detail": "401: Invalid token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "expired",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Token expired",
+        "detail": "401: Token expired"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "disabled-token",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: inactive token",
+        "detail": "401: Not authenticated: inactive token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "deleted-token",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: unknown token",
+        "detail": "401: Not authenticated: unknown token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "inactive-superuser",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: user is not active",
+        "detail": "401: Not authenticated: user is not active"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "missing",
+      "operation": "info",
+      "method": "GET",
+      "path": "/api/system/info/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "empty",
+      "operation": "info",
+      "method": "GET",
+      "path": "/api/system/info/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "bare-bearer",
+      "operation": "info",
+      "method": "GET",
+      "path": "/api/system/info/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "malformed",
+      "operation": "info",
+      "method": "GET",
+      "path": "/api/system/info/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Invalid token signature",
+        "detail": "401: Invalid token signature"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "tampered",
+      "operation": "info",
+      "method": "GET",
+      "path": "/api/system/info/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Invalid token",
+        "detail": "401: Invalid token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "expired",
+      "operation": "info",
+      "method": "GET",
+      "path": "/api/system/info/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Token expired",
+        "detail": "401: Token expired"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "disabled-token",
+      "operation": "info",
+      "method": "GET",
+      "path": "/api/system/info/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: inactive token",
+        "detail": "401: Not authenticated: inactive token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "deleted-token",
+      "operation": "info",
+      "method": "GET",
+      "path": "/api/system/info/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: unknown token",
+        "detail": "401: Not authenticated: unknown token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "inactive-superuser",
+      "operation": "info",
+      "method": "GET",
+      "path": "/api/system/info/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: user is not active",
+        "detail": "401: Not authenticated: user is not active"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "missing",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "empty",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "bare-bearer",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "malformed",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Invalid token signature",
+        "detail": "401: Invalid token signature"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "tampered",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Invalid token",
+        "detail": "401: Invalid token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "expired",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Token expired",
+        "detail": "401: Token expired"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "disabled-token",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: inactive token",
+        "detail": "401: Not authenticated: inactive token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "deleted-token",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: unknown token",
+        "detail": "401: Not authenticated: unknown token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "inactive-superuser",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: user is not active",
+        "detail": "401: Not authenticated: user is not active"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "missing",
+      "operation": "models",
+      "method": "GET",
+      "path": "/api/ai-proxy/models",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "empty",
+      "operation": "models",
+      "method": "GET",
+      "path": "/api/ai-proxy/models",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "bare-bearer",
+      "operation": "models",
+      "method": "GET",
+      "path": "/api/ai-proxy/models",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "malformed",
+      "operation": "models",
+      "method": "GET",
+      "path": "/api/ai-proxy/models",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Invalid token signature",
+        "detail": "401: Invalid token signature"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "tampered",
+      "operation": "models",
+      "method": "GET",
+      "path": "/api/ai-proxy/models",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Invalid token",
+        "detail": "401: Invalid token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "expired",
+      "operation": "models",
+      "method": "GET",
+      "path": "/api/ai-proxy/models",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Token expired",
+        "detail": "401: Token expired"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "disabled-token",
+      "operation": "models",
+      "method": "GET",
+      "path": "/api/ai-proxy/models",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: inactive token",
+        "detail": "401: Not authenticated: inactive token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "deleted-token",
+      "operation": "models",
+      "method": "GET",
+      "path": "/api/ai-proxy/models",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: unknown token",
+        "detail": "401: Not authenticated: unknown token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "inactive-superuser",
+      "operation": "models",
+      "method": "GET",
+      "path": "/api/ai-proxy/models",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: user is not active",
+        "detail": "401: Not authenticated: user is not active"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "missing",
+      "operation": "chat",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "empty",
+      "operation": "chat",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "bare-bearer",
+      "operation": "chat",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "malformed",
+      "operation": "chat",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Invalid token signature",
+        "detail": "401: Invalid token signature"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "tampered",
+      "operation": "chat",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Invalid token",
+        "detail": "401: Invalid token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "expired",
+      "operation": "chat",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Token expired",
+        "detail": "401: Token expired"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "disabled-token",
+      "operation": "chat",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: inactive token",
+        "detail": "401: Not authenticated: inactive token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "deleted-token",
+      "operation": "chat",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: unknown token",
+        "detail": "401: Not authenticated: unknown token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "inactive-superuser",
+      "operation": "chat",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: user is not active",
+        "detail": "401: Not authenticated: user is not active"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "missing",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "empty",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "bare-bearer",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "malformed",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Invalid token signature",
+        "detail": "401: Invalid token signature"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "tampered",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Invalid token",
+        "detail": "401: Invalid token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "expired",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Token expired",
+        "detail": "401: Token expired"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "disabled-token",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: inactive token",
+        "detail": "401: Not authenticated: inactive token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "deleted-token",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: unknown token",
+        "detail": "401: Not authenticated: unknown token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "inactive-superuser",
+      "operation": "stream",
+      "method": "POST",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: user is not active",
+        "detail": "401: Not authenticated: user is not active"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "missing",
+      "operation": "cancel",
+      "method": "DELETE",
+      "path": "/api/ai-proxy/chat/completions/chatcmpl-e2e",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "empty",
+      "operation": "cancel",
+      "method": "DELETE",
+      "path": "/api/ai-proxy/chat/completions/chatcmpl-e2e",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "bare-bearer",
+      "operation": "cancel",
+      "method": "DELETE",
+      "path": "/api/ai-proxy/chat/completions/chatcmpl-e2e",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated",
+        "detail": "401: Not authenticated"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "malformed",
+      "operation": "cancel",
+      "method": "DELETE",
+      "path": "/api/ai-proxy/chat/completions/chatcmpl-e2e",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Invalid token signature",
+        "detail": "401: Invalid token signature"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "tampered",
+      "operation": "cancel",
+      "method": "DELETE",
+      "path": "/api/ai-proxy/chat/completions/chatcmpl-e2e",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Invalid token",
+        "detail": "401: Invalid token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "expired",
+      "operation": "cancel",
+      "method": "DELETE",
+      "path": "/api/ai-proxy/chat/completions/chatcmpl-e2e",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Token expired",
+        "detail": "401: Token expired"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "disabled-token",
+      "operation": "cancel",
+      "method": "DELETE",
+      "path": "/api/ai-proxy/chat/completions/chatcmpl-e2e",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: inactive token",
+        "detail": "401: Not authenticated: inactive token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "deleted-token",
+      "operation": "cancel",
+      "method": "DELETE",
+      "path": "/api/ai-proxy/chat/completions/chatcmpl-e2e",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: unknown token",
+        "detail": "401: Not authenticated: unknown token"
+      }
+    },
+    {
+      "case": "invalid-authentication",
+      "role": "inactive-superuser",
+      "operation": "cancel",
+      "method": "DELETE",
+      "path": "/api/ai-proxy/chat/completions/chatcmpl-e2e",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: user is not active",
+        "detail": "401: Not authenticated: user is not active"
+      }
+    },
+    {
+      "case": "existing-token-0",
+      "role": "mutable",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "status": "healthy",
+        "timestamp": "2026-10-30T10:48:40.066689"
+      }
+    },
+    {
+      "case": "existing-token-0",
+      "role": "mutable",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "existing-token-1",
+      "role": "mutable",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "status": "healthy",
+        "timestamp": "2026-10-30T10:48:40.103050"
+      }
+    },
+    {
+      "case": "existing-token-1",
+      "role": "mutable",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 1,
+      "passed": true,
+      "body": {
+        "balance": "123.45",
+        "currency": "RUB"
+      }
+    },
+    {
+      "case": "existing-token-2",
+      "role": "mutable",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "existing-token-2",
+      "role": "mutable",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 1,
+      "passed": true,
+      "body": {
+        "balance": "123.45",
+        "currency": "RUB"
+      }
+    },
+    {
+      "case": "existing-token-3",
+      "role": "mutable",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "existing-token-3",
+      "role": "mutable",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "existing-token-4",
+      "role": "mutable",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "status": "healthy",
+        "timestamp": "2026-10-30T10:48:40.218253"
+      }
+    },
+    {
+      "case": "existing-token-4",
+      "role": "mutable",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 1,
+      "passed": true,
+      "body": {
+        "balance": "123.45",
+        "currency": "RUB"
+      }
+    },
+    {
+      "case": "existing-token-5",
+      "role": "mutable",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "existing-token-5",
+      "role": "mutable",
+      "operation": "balance",
+      "method": "GET",
+      "path": "/api/billing/balance/",
+      "expected": 403,
+      "actual": 403,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Some http-related error: Permission denied",
+        "detail": "403: Permission denied"
+      }
+    },
+    {
+      "case": "before-token-disable",
+      "role": "reactivate",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "status": "healthy",
+        "timestamp": "2026-10-30T10:48:40.367173"
+      }
+    },
+    {
+      "case": "deactivate",
+      "role": "reactivate",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 401,
+      "actual": 401,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "error": "Auth problem: Not authenticated: inactive token",
+        "detail": "401: Not authenticated: inactive token"
+      }
+    },
+    {
+      "case": "activate",
+      "role": "reactivate",
+      "operation": "health",
+      "method": "GET",
+      "path": "/api/system/health/",
+      "expected": 200,
+      "actual": 200,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": {
+        "status": "healthy",
+        "timestamp": "2026-10-30T10:48:40.375587"
+      }
+    },
+    {
+      "case": "cors-preflight",
+      "role": "anonymous",
+      "operation": "preflight",
+      "method": "OPTIONS",
+      "path": "/api/ai-proxy/models",
+      "expected": 204,
+      "actual": 204,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": ""
+    },
+    {
+      "case": "cors-preflight",
+      "role": "anonymous",
+      "operation": "preflight",
+      "method": "OPTIONS",
+      "path": "/api/ai-proxy/chat/completions",
+      "expected": 204,
+      "actual": 204,
+      "upstream_calls": 0,
+      "passed": true,
+      "body": ""
+    }
+  ]
+}

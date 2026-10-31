@@ -28,6 +28,9 @@ jobs:
       - name: Run AMD64 tests
         run: docker compose up --exit-code-from test test
 
+      - name: Run AMD64 API e2e tests
+        run: make test-e2e-in-docker
+
   arm64-test:
     runs-on: ubuntu-latest
     steps:
@@ -59,3 +62,10 @@ jobs:
           DOCKER_IMAGE=code-agent:arm64
           TEST_DOCKER_IMAGE=code-agent:test-arm64
           docker compose up --no-build --exit-code-from test test
+
+      - name: Run ARM64 API e2e tests
+        run: >
+          DOCKER_DEFAULT_PLATFORM=linux/arm64
+          DOCKER_IMAGE=code-agent:arm64
+          TEST_DOCKER_IMAGE=code-agent:test-arm64
+          make test-e2e-in-docker

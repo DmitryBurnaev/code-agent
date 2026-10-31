@@ -11,6 +11,7 @@ from src.modules.cli.management import (
     change_admin_password,
     MIN_PASSWORD_LENGTH,
     DEFAULT_PASSWORD_LENGTH,
+    DEFAULT_ADMIN_USERNAME,
 )
 
 
@@ -135,7 +136,7 @@ class TestChangeAdminPassword:
         assert result.exit_code == 0
         assert "Changing admin password..." in result.output
         assert "Generating a random password..." in result.output
-        assert "Password for user 'admin' updated." in result.output
+        assert f"Password for user '{DEFAULT_ADMIN_USERNAME}' updated." in result.output
         assert "New password: 'test-generated-password-32-chars'" in result.output
 
         mock_secrets.assert_called_once_with(DEFAULT_PASSWORD_LENGTH)
@@ -168,8 +169,8 @@ class TestChangeAdminPassword:
         )
 
         assert result.exit_code == 0
-        assert "Set a new password for admin" in result.output
-        assert "Password for user 'admin' updated." in result.output
+        assert f"Set a new password for {DEFAULT_ADMIN_USERNAME}" in result.output
+        assert f"Password for user '{DEFAULT_ADMIN_USERNAME}' updated." in result.output
 
     def test_change_admin_password_short_password_error(
         self, cli_runner: CliRunnerTypeHinted
@@ -191,7 +192,7 @@ class TestChangeAdminPassword:
         result = cli_runner.invoke(change_admin_password, ["--random-password"])
 
         assert result.exit_code == 0
-        assert "Password for user 'admin' wasn't updated." in result.output
+        assert f"Password for user '{DEFAULT_ADMIN_USERNAME}' wasn't updated." in result.output
 
     def test_change_admin_password_with_custom_username(
         self,

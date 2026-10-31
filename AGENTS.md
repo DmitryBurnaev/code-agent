@@ -38,6 +38,10 @@
 
 ## Test typing
 
+- Keep ordinary tests independent of local application environment variables and
+  dotenv files. The shared settings fixture isolates app/nested settings while
+  preserving the test database connection. Tests of dotenv loading must opt into
+  a file created in their own temporary directory.
 - Treat `src/tests` as typed code. `make lint` checks production code strictly
   and test modules through the `src.tests.*` override in `pyproject.toml`.
 - Keep all tool configuration in `pyproject.toml`; do not add separate tool

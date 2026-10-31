@@ -142,7 +142,7 @@ class TestAuthIntegration:
     ) -> None:
         settings = AppSettings(
             admin=AdminSettings(username="test-username", password=SecretStr("test-password")),
-            app_secret_key=SecretStr("test-secret-key"),
+            app_secret_key=app_settings_test.app_secret_key,
             vendor_encryption_key=SecretStr("test-vendor-encryption-key"),
             jwt_algorithm=jwt_algorithm,
         )
