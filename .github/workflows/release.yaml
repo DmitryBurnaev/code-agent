@@ -72,7 +72,17 @@ jobs:
 
   build:
     needs: [prepare, test]
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
 
     permissions:
       contents: read
@@ -83,9 +93,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -119,20 +126,79 @@ jobs:
           echo "Generated labels:"
           echo "${{ steps.docker-image-meta.outputs.labels }}"
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image by digest
         id: push
         uses: docker/build-push-action@v6
         with:
           context: .
           target: service
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.docker-image-meta.outputs.tags }}
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ needs.prepare.outputs.image_name_base }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.docker-image-meta.outputs.labels }}
-          annotations: index:org.opencontainers.image.description=A configurable proxy application for routing and managing requests across multiple LLM vendors.
+
+      - name: Export image digest
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          mkdir -p "${RUNNER_TEMP}/digests"
+          printf '%s\n' "$DIGEST" > "${RUNNER_TEMP}/digests/${ARCH}"
+
+      - name: Upload image digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+
+    steps:
+      - name: Download image digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push multi-arch index
+        env:
+          IMAGE_NAME_BASE: ${{ needs.prepare.outputs.image_name_base }}
+          IMAGE_NAME_FULL: ${{ needs.prepare.outputs.image_name_full }}
+          IMAGE_NAME_LATEST: ${{ needs.prepare.outputs.image_name_latest }}
+        run: |
+          images=()
+          for arch in amd64 arm64; do
+            read -r digest < "${RUNNER_TEMP}/digests/${arch}"
+            if [[ ! "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+              echo "Invalid image digest for ${arch}" >&2
+              exit 1
+            fi
+            images+=("${IMAGE_NAME_BASE}@${digest}")
+          done
+          docker buildx imagetools create \
+            --tag "$IMAGE_NAME_FULL" \
+            --tag "$IMAGE_NAME_LATEST" \
+            --annotation "index:org.opencontainers.image.description=A configurable proxy application for routing and managing requests across multiple LLM vendors." \
+            "${images[@]}"
 
   verify:
-    needs: [prepare, build]
+    needs: [prepare, merge]
     runs-on: ubuntu-latest
 
     steps:
@@ -156,7 +222,7 @@ jobs:
           verify_platforms "${{ needs.prepare.outputs.image_name_latest }}"
 
   create-release:
-    needs: [prepare, build, verify]
+    needs: [prepare, merge, verify]
     runs-on: ubuntu-latest
     # Only create release when pushing a tag
     if: github.ref_type == 'tag'

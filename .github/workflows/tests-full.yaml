@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - "main"
+      # Temporary: validate native ARM64 CI before merging #54.
+      - "feature/54-native-arm64-ci"
 
 jobs:
   amd64-test:
@@ -32,14 +34,9 @@ jobs:
         run: make test-e2e-in-docker
 
   arm64-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

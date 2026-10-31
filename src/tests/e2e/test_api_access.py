@@ -14,7 +14,6 @@ import socket
 import subprocess
 import sys
 from threading import Thread
-import time
 from typing import Any
 from uuid import uuid4
 
@@ -26,6 +25,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from src.settings.db import DBSettings
+from src.tests.e2e.server import wait_for_server
 
 ROOT = Path(__file__).resolve().parents[3]
 FLAGS = (
@@ -411,16 +411,7 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Harness]:
                 stderr=log,
             )
         run.metadata["app_process"] = process.pid
-        for _ in range(100):
-            assert process.poll() is None, (work / "app.log").read_text()[-4000:]
-            try:
-                if api.get("/api/system/health/").status_code == 401:
-                    break
-            except httpx.ConnectError:
-                pass
-            time.sleep(0.1)
-        else:
-            pytest.fail("Uvicorn did not become ready")
+        wait_for_server(process, api, work / "app.log")
         run.admin_post(
             "/cadm/login", {"username": "e2e_bootstrap", "password": admin_password}, 302
         )
