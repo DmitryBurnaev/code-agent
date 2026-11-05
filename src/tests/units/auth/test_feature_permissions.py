@@ -139,7 +139,10 @@ def permission_client(
     client = TestClient(
         test_app,
         base_url="https://testserver",
-        headers={"Authorization": f"Bearer {generated_token.value}"},
+        headers={
+            "Authorization": f"Bearer {generated_token.value}",
+            "Origin": "https://testserver",
+        },
     )
     try:
         yield client

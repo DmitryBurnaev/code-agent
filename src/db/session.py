@@ -1,4 +1,5 @@
 import logging
+from typing import TypeAlias
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import (
@@ -14,7 +15,7 @@ from src.settings.db import get_db_settings
 from src.utils import singleton
 
 logger = logging.getLogger(__name__)
-type sm_type = async_sessionmaker[AsyncSession]
+sm_type: TypeAlias = async_sessionmaker[AsyncSession]
 
 
 @singleton
@@ -56,8 +57,7 @@ class AsyncDBConnectors:
             await self._ping_connection()
             logger.info("[DB] Database engine and session factory initialized successfully")
 
-        except Exception as e:
-            logger.error("[DB] Failed to initialize database: %r", e)
+        except Exception:
             await self.close_connection()
             raise
 
@@ -70,10 +70,9 @@ class AsyncDBConnectors:
 
         try:
             async with self.engine.connect() as conn:
-                await conn.execute(sa.text("SELECT 1"))
+                await conn.execute(sa.select(1))
 
         except Exception as exc:
-            logger.error("[DB] Failed to ping database: %r", exc)
             self.exc = exc
             raise DatabaseError("Failed to ping database") from exc
 
@@ -84,22 +83,17 @@ class AsyncDBConnectors:
         """Close database engine and session factory"""
         logger.debug("[DB] Closing database connection...")
 
-        try:
-            if self.session_factory:
-                logger.debug("[DB] Closing all async sessions...")
-                await close_all_sessions()
+        if self.session_factory:
+            logger.debug("[DB] Closing all async sessions...")
+            await close_all_sessions()
 
-            if self.engine:
-                await self.engine.dispose(close=True)
+        if self.engine:
+            await self.engine.dispose(close=True)
 
-            if self.exc:
-                logger.warning("[DB] Database engine closed emergency")
-            else:
-                logger.info("[DB] Database engine closed successfully")
-
-        except Exception as exc:
-            logger.error("[DB] Failed to close database connection: %r", exc)
-            raise
+        if self.exc:
+            logger.warning("[DB] Database engine closed emergency")
+        else:
+            logger.info("[DB] Database engine closed successfully")
 
 
 _db_connectors = AsyncDBConnectors()

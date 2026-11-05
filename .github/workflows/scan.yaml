@@ -11,16 +11,16 @@ env:
   DOCKER_IMAGE: code-agent:scan-${{ github.sha }}
   TRIVY_VERSION: "v0.67.2"
   TRIVY_SEVERITY: "CRITICAL,HIGH,MEDIUM,LOW"
-  OPENGREP_VERSION: "v1.11.2"
+  OPENGREP_VERSION: "v1.33.1"
   TRUFFLEHOG_VERSION: "v3.90.12"
   GITLEAKS_VERSION: "v8.28.0"
 
 jobs:
 #  trivy-image:
 #    name: trivy-image
-#    runs-on: ubuntu-latest
+#    runs-on: ubuntu-24.04
 #    steps:
-#      - uses: actions/checkout@v4
+#      - uses: actions/checkout@v5
 #
 #      - name: Prepare .env file
 #        env:
@@ -41,7 +41,7 @@ jobs:
 #          scan-type: "image"
 #          image-ref: ${{ env.DOCKER_IMAGE }}
 #          format: "json"
-#          output: "${{ runner.workspace }}/trivy-image-results.json"
+#          output: "${{ runner.temp }}/trivy-image-results.json"
 #          exit-code: "0"
 #          ignore-unfixed: false
 #          vuln-type: "os,library"
@@ -49,10 +49,10 @@ jobs:
 #          hide-progress: "true"
 #
 #      - name: Upload scan results
-#        uses: actions/upload-artifact@v4
+#        uses: actions/upload-artifact@v6
 #        with:
 #          name: trivy-images-results
-#          path: ${{ runner.workspace }}/trivy-image-results.json
+#          path: ${{ runner.temp }}/trivy-image-results.json
 #          retention-days: 60
 #
 #      - name: Run Trivy Image (alert)
@@ -70,9 +70,9 @@ jobs:
 #
 #  trivy-fs:
 #    name: trivy-fs
-#    runs-on: ubuntu-latest
+#    runs-on: ubuntu-24.04
 #    steps:
-#      - uses: actions/checkout@v4
+#      - uses: actions/checkout@v5
 #
 #      - name: Run Trivy FS (report)
 #        uses: aquasecurity/trivy-action@0.28.0
@@ -81,7 +81,7 @@ jobs:
 #          scan-type: "fs"
 #          scan-ref: "."
 #          format: "json"
-#          output: "${{ runner.workspace }}/trivy-fs-results.json"
+#          output: "${{ runner.temp }}/trivy-fs-results.json"
 #          exit-code: "0"
 #          ignore-unfixed: false
 #          vuln-type: "os,library"
@@ -89,10 +89,10 @@ jobs:
 #          hide-progress: "true"
 #
 #      - name: Upload scan results
-#        uses: actions/upload-artifact@v4
+#        uses: actions/upload-artifact@v6
 #        with:
 #          name: trivy-fs-results
-#          path: ${{ runner.workspace }}/trivy-fs-results.json
+#          path: ${{ runner.temp }}/trivy-fs-results.json
 #          retention-days: 60
 #
 #      - name: Run Trivy FS (alert)
@@ -110,34 +110,33 @@ jobs:
 
   trufflehog:
     name: trufflehog
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
 
       - name: Install Trufflehog
         run: |
           curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin ${{ env.TRUFFLEHOG_VERSION }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Run Trufflehog FS (report)
         run: |
-          ls -lah ${{ runner.workspace }}
-          trufflehog filesystem ${{ runner.workspace }} --results=verified,unknown --json > "${{ runner.workspace }}/trufflehog-results.json"
+          trufflehog filesystem "${{ github.workspace }}" --results=verified,unknown --json > "${{ runner.temp }}/trufflehog-results.json"
 
       - name: Upload scan results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: trufflehog-results
-          path: "${{ runner.workspace }}/trufflehog-results.json"
+          path: "${{ runner.temp }}/trufflehog-results.json"
           retention-days: 60
 
       - name: Run Trufflehog FS (alert)
         run: |
-          trufflehog filesystem ${{ runner.workspace }} --results=verified,unknown --fail --github-actions
+          trufflehog filesystem "${{ github.workspace }}" --results=verified,unknown --fail --github-actions
 
   gitleaks:
     name: gitleaks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
 
       - name: Install GitLeaks
@@ -148,32 +147,32 @@ jobs:
           pwd
           ls -lah
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0  # Fetch all history for better secret detection
 
       - name: Run Gitleaks (report)
         run: |
           export PATH='/home/runner/.gitleaks':$PATH
-          gitleaks git . --exit-code 0 --report-format json --report-path "${{ runner.workspace }}/gitleaks-results.json"
+          gitleaks git . --redact --gitleaks-ignore-path .github/scan/gitleaks-ignore.txt --exit-code 0 --report-format json --report-path "${{ runner.temp }}/gitleaks-results.json"
 
       - name: Upload scan results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: gitleaks-results
-          path: "${{ runner.workspace }}/gitleaks-results.json"
+          path: "${{ runner.temp }}/gitleaks-results.json"
           retention-days: 60
 
       - name: Run Gitleaks (alert)
         run: |
           export PATH='/home/runner/.gitleaks':$PATH
-          gitleaks git . --verbose
+          gitleaks git . --redact --gitleaks-ignore-path .github/scan/gitleaks-ignore.txt --verbose
 
   opengrep:
     name: opengrep
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Opengrep
         run: |
@@ -186,16 +185,18 @@ jobs:
       - name: Run Opengrep Scan (report)
         run: |
           export PATH='/home/runner/.opengrep/cli/latest':$PATH
-          opengrep scan --config opengrep-rules/python --json -o "${{ runner.workspace }}/opengrep-results.json" .
+          # These two syntax heuristics misidentify typed attributes and valid lambdas.
+          # Ruff and mypy cover the underlying Python errors; keep all security rules.
+          opengrep scan --config opengrep-rules/python --no-rewrite-rule-ids --exclude-rule is-function-without-parentheses --exclude-rule return-not-in-function --json -o "${{ runner.temp }}/opengrep-results.json" .
 
       - name: Upload scan results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: opengrep-results
-          path: "${{ runner.workspace }}/opengrep-results.json"
+          path: "${{ runner.temp }}/opengrep-results.json"
           retention-days: 60
 
       - name: Run Opengrep Scan (alert)
         run: |
           export PATH='/home/runner/.opengrep/cli/latest':$PATH
-          opengrep scan --config opengrep-rules/python --error .
+          opengrep scan --config opengrep-rules/python --no-rewrite-rule-ids --exclude-rule is-function-without-parentheses --exclude-rule return-not-in-function --strict --error .

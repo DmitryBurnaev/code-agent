@@ -10,7 +10,7 @@ class TestVendorEncryption:
 
     def test_decrypted_api_key_returns_original(self, app_settings_test: AppSettings) -> None:
         encryption = VendorKeyEncryption(app_settings_test.vendor_encryption_key)
-        original_key = "sk-test123456789"
+        original_key = "test-api-key"
         vendor = Vendor(
             slug="deepseek",
             api_key=encryption.encrypt(original_key),
@@ -23,7 +23,7 @@ class TestVendorEncryption:
     ) -> None:
         mock_decrypt.side_effect = ValueError("Failed to decrypt API key")
         encryption = VendorKeyEncryption(app_settings_test.vendor_encryption_key)
-        original_key = "sk-test123456789"
+        original_key = "test-api-key"
         vendor = Vendor(
             slug="deepseek",
             api_key=encryption.encrypt(original_key),

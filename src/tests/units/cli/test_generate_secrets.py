@@ -16,8 +16,8 @@ def mock_secrets() -> Generator[MagicMock, Any, None]:
     with patch("src.modules.cli.generate_secrets.secrets.token_urlsafe") as mock_token_urlsafe:
         # Return different predictable values for each call
         mock_token_urlsafe.side_effect = [
-            "test-secret-key-32-chars-long-for-testing",
-            "test-vendor-encryption-key-32-chars",
+            "test-signing-key",
+            "test-vendor-key",
             "test-db-password-15",
             "test-admin-password-15",
         ]
@@ -49,8 +49,8 @@ def test_main_writes_secrets_to_env_file(
         "# Generated secrets",
         "DB_PASSWORD=test-db-password-15",
         "ADMIN_PASSWORD=test-admin-password-15",
-        "VENDOR_ENCRYPTION_KEY=test-vendor-encryption-key-32-chars",
-        "APP_SECRET_KEY=test-secret-key-32-chars-long-for-testing",
+        "VENDOR_ENCRYPTION_KEY=test-vendor-key",
+        "APP_SECRET_KEY=test-signing-key",
         "",
     ]
     expected_content = "\n".join(expected_lines)
@@ -125,8 +125,8 @@ def test_main_generates_and_not_displays_secrets(
 
     # Verify the output contains all expected secrets
     assert "Generating secure secrets..." in output
-    assert "APP_SECRET_KEY=test-secret-key-32-chars-long-for-testing" not in output
-    assert "VENDOR_ENCRYPTION_KEY=test-vendor-encryption-key-32-chars" not in output
+    assert "APP_SECRET_KEY=test-signing-key" not in output
+    assert "VENDOR_ENCRYPTION_KEY=test-vendor-key" not in output
     assert "DB_PASSWORD=test-db-password-15" not in output
     assert "ADMIN_PASSWORD=test-admin-password-15" not in output
 

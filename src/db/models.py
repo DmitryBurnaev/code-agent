@@ -1,5 +1,4 @@
 from datetime import datetime
-import logging
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncAttrs
@@ -10,8 +9,6 @@ from src.utils import utcnow
 from src.modules.auth.hashers import PBKDF2PasswordHasher
 from src.modules.encrypt.encryption import VendorKeyEncryption
 from src.settings import get_app_settings
-
-logger = logging.getLogger(__name__)
 
 
 class BaseModel(AsyncAttrs, DeclarativeBase):
@@ -251,7 +248,6 @@ class Vendor(BaseModel):
             decrypted_key = encryption.decrypt(self.api_key)
 
         except (ValueError, KeyError) as exc:
-            logger.error("Failed to decrypt API key for vendor %s: %s", self.slug, exc)
             raise VendorEncryptionError(
                 f"Failed to decrypt API key for vendor '{self.slug}'"
             ) from exc

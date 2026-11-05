@@ -12,6 +12,7 @@ from typing import (
     cast,
     Tuple,
     Unpack,
+    TypeAlias,
 )
 
 from sqlalchemy import select, BinaryExpression, delete, Select, func, or_, update, CursorResult
@@ -36,8 +37,8 @@ ModelT = TypeVar("ModelT", bound=BaseModel)
 logger = logging.getLogger(__name__)
 P = ParamSpec("P")
 RT = TypeVar("RT")
-type FilterT = int | str | list[int] | None
-type TupleAny = Tuple[Any, ...]
+FilterT: TypeAlias = int | str | list[int] | None
+TupleAny: TypeAlias = Tuple[Any, ...]
 
 
 class VendorsFilter(TypedDict):
@@ -86,7 +87,7 @@ class BaseRepository(Generic[ModelT]):
 
     async def create(self, value: dict[str, Any]) -> ModelT:
         """Creates new instance"""
-        logger.debug("[DB] Creating [%s]: %s", self.model.__name__, value)
+        logger.debug("[DB] Creating [%s]", self.model.__name__)
         instance = self.model(**value)
         self.session.add(instance)
         return instance
@@ -233,7 +234,6 @@ class TokenRepository(BaseRepository[Token]):
 
     async def get_by_token(self, hashed_token: str) -> Token | None:
         """Get token by hashed token value"""
-        logger.debug("[DB] Getting token by hash: %s", hashed_token)
         filtered_tokens = await self.all(token=hashed_token)
         if not filtered_tokens:
             return None

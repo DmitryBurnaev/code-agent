@@ -48,7 +48,9 @@ def test_secure_cookie_on_http_loses_login_and_logs_reason(
 ) -> None:
     user = User(id=7, username="agent", is_active=True)
     monkeypatch.setattr(views, "authenticate_web_user", AsyncMock(return_value=user))
-    client = TestClient(test_app, base_url="http://testserver")
+    client = TestClient(
+        test_app, base_url="http://testserver", headers={"Origin": "http://testserver"}
+    )
     try:
         response = client.post(
             "/login",
@@ -139,7 +141,12 @@ def test_admin_requests_preserve_web_login(
     )
     test_app.add_route(admin_path + "-web", web_session)
     # No lifespan: this test exercises HTTP sessions with mocked persistence.
-    client = TestClient(test_app, base_url=f"{scheme}://testserver{root_path}", root_path=root_path)
+    client = TestClient(
+        test_app,
+        base_url=f"{scheme}://testserver{root_path}",
+        root_path=root_path,
+        headers={"Origin": f"{scheme}://testserver"},
+    )
     try:
         response = client.post(
             "/login", data={"username": "agent", "password": "secret"}, follow_redirects=False

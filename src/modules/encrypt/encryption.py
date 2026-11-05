@@ -1,14 +1,11 @@
 """Vendor API key encryption module using AES-256-GCM."""
 
 import base64
-import logging
 import hashlib
 
 from Cryptodome.Cipher import AES
 from Cryptodome.Random import get_random_bytes
 from pydantic import SecretStr
-
-logger = logging.getLogger(__name__)
 
 
 class VendorKeyEncryption:
@@ -96,7 +93,6 @@ class VendorKeyEncryption:
             return plaintext.decode()
 
         except Exception as exc:
-            logger.error("Failed to decrypt vendor API key: %s", exc)
             raise ValueError("Failed to decrypt API key") from exc
 
     def is_encrypted(self, data: str) -> bool:
@@ -116,6 +112,5 @@ class VendorKeyEncryption:
             # Check if it has the expected structure: nonce + ciphertext + tag
             return len(decoded) >= self.NONCE_SIZE + self.TAG_SIZE
 
-        except Exception as exc:
-            logger.error("Failed to decrypt vendor API key: %s", exc)
+        except (ValueError, TypeError):
             return False

@@ -3,7 +3,7 @@ import uuid
 import random
 import hashlib
 import datetime
-from typing import NamedTuple
+from typing import NamedTuple, TypeAlias
 
 import jwt
 from fastapi import Security
@@ -22,9 +22,7 @@ __all__ = (
     "verify_api_token",
 )
 
-from src.utils import cut_string
-
-type JWT_PAYLOAD_RAW_T = dict[str, str | int | datetime.datetime]
+JWT_PAYLOAD_RAW_T: TypeAlias = dict[str, str | int | datetime.datetime]
 
 
 class GeneratedToken(NamedTuple):
@@ -110,13 +108,6 @@ def make_api_token(
     )
     _, payload_part, signature_part = encrypted_token.split(".")
     sign_len_prefix = f"{len(signature_part):0>3}"
-    logger.debug(
-        "[auth] Generated token: id: '%s' | len_prefix: '%s' | payload: '%s' | signature: '%s'",
-        token_identifier,
-        sign_len_prefix,
-        payload_part,
-        signature_part,
-    )
     result_value = f"{payload_part}{signature_part}{sign_len_prefix}"
 
     return GeneratedToken(value=result_value, hashed_value=hash_token(token_identifier))
@@ -141,19 +132,16 @@ def decode_api_token(token: str, settings: SettingsDep) -> JWTPayload:
     Returns:
         PayloadTokenInfo - payload of the token
     """
-    logger.debug("[auth] Decoding token: '%s'", token)
     just_for_header_token = jwt_encode(payload=JWTPayload(sub="example"), settings=settings)
     header_part, _, _ = just_for_header_token.split(".")
     token, sign_len_prefix = token[:-3], token[-3:]  # last 3 symbols contain len of signature
     if not sign_len_prefix.isnumeric():
-        logger.error("[auth] Unexpected sign len prefix detected: '%s'", sign_len_prefix)
         raise HTTPException(status_code=401, detail="Invalid token signature")
 
     signature_length = int(sign_len_prefix)
     payload_part, signature_part = token[:-signature_length], token[-signature_length:]
 
     checking_token = f"{header_part}.{payload_part}.{signature_part}"
-    logger.debug("[auth] JWT decoding token: %s", checking_token)
 
     try:
         payload = jwt_decode(checking_token, settings=settings)
@@ -162,7 +150,6 @@ def decode_api_token(token: str, settings: SettingsDep) -> JWTPayload:
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    logger.debug("[auth] Got payload: %s", payload)
     return payload
 
 
@@ -196,8 +183,6 @@ async def authenticate_api_token(
     if not auth_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    logger.debug("[auth] Authentication: input auth token: '%s'", cut_string(auth_token, 15))
-
     decoded_payload = decode_api_token(auth_token, settings=settings)
     raw_token_identity = decoded_payload.sub
     if not raw_token_identity:
@@ -208,7 +193,6 @@ async def authenticate_api_token(
     async with SASessionUOW() as uow:
         token = await TokenRepository(session=uow.session).get_by_token(hashed_token)
 
-    logger.debug("[auth] Verification: token extracted '%s'", token)
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated: unknown token")
 

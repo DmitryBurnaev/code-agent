@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Prepare image names
         id: names
@@ -29,7 +29,7 @@ jobs:
           echo "image_name_full=ghcr.io/${IMAGE_REPOSITORY,,}:${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout release
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: refs/tags/${{ inputs.tag }}
 

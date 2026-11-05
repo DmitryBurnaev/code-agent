@@ -1,0 +1,24 @@
+# Exact historical findings reviewed for issue #56. New commits remain scanned.
+# Synthetic values in encryption and secret-generation tests, never service credentials.
+10b221fa72e6871df293a5b0c9253eb231fb5853:src/tests/units/cli/test_generate_secrets.py:generic-api-key:46
+10b221fa72e6871df293a5b0c9253eb231fb5853:src/tests/units/cli/test_generate_secrets.py:generic-api-key:111
+040c2f4188a9411f74348d1f99e8567da66a35e7:src/tests/units/cli/test_secrets.py:generic-api-key:32
+e61b8e70828aa05f378f1ba71c70bc3ecba112db:src/tests/units/test_vendor_model_encryption.py:generic-api-key:26
+e849db9f2f46445c3c1199020438580aefe2054e:src/tests/units/test_vendor_admin_encryption.py:generic-api-key:51
+e849db9f2f46445c3c1199020438580aefe2054e:src/tests/units/test_vendor_admin_encryption.py:generic-api-key:73
+b2186426035326217ade252740dd847f69366b31:src/tests/units/test_vendor_model_encryption.py:generic-api-key:18
+b2186426035326217ade252740dd847f69366b31:src/tests/units/test_vendor_model_encryption.py:generic-api-key:22
+b2186426035326217ade252740dd847f69366b31:src/tests/units/test_vendor_encryption.py:generic-api-key:17
+b2186426035326217ade252740dd847f69366b31:src/tests/units/test_vendor_encryption.py:generic-api-key:65
+b2186426035326217ade252740dd847f69366b31:src/tests/units/test_vendor_encryption.py:generic-api-key:90
+b2186426035326217ade252740dd847f69366b31:src/tests/units/test_vendor_admin_encryption.py:generic-api-key:18
+b2186426035326217ade252740dd847f69366b31:src/tests/units/test_vendor_admin_encryption.py:generic-api-key:21
+b2186426035326217ade252740dd847f69366b31:src/tests/units/test_vendor_admin_encryption.py:generic-api-key:49
+b2186426035326217ade252740dd847f69366b31:src/tests/units/test_vendor_admin_encryption.py:generic-api-key:58
+b2186426035326217ade252740dd847f69366b31:src/tests/units/test_vendor_admin_encryption.py:generic-api-key:73
+b2186426035326217ade252740dd847f69366b31:src/tests/units/test_vendor_admin_encryption.py:generic-api-key:83
+
+# Historical Compose encryption key; current deployment reads it from the environment.
+# This ignores only these old lines. Deployed copies of this key still need rotation.
+7353061d6b1ecdeffe8545b0ebcc4fc23a03338e:etc/docker-compose.yml:generic-api-key:12
+7353061d6b1ecdeffe8545b0ebcc4fc23a03338e:etc/docker-compose.yml:generic-api-key:25
