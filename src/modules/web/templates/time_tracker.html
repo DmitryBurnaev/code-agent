@@ -30,6 +30,7 @@
 
     <article class="tracker-card">
         <h2>Start a timer</h2>
+        {# nosemgrep: django-no-csrf-token -- Origin/Referer enforced by CSRFProtectionMiddleware. #}
         <form class="tracker-form" method="post" action="/time-tracker/timer/start">
             <label>Project<input name="project" required list="projects" placeholder="code-agent"></label>
             <label>Task<input name="task" required list="tasks" placeholder="Issue #36"></label>
@@ -42,6 +43,7 @@
     <article class="tracker-card reusable-card">
         <h2>Reuse a previous entry</h2>
         <p>Start a new timer now using a past project, task, note, and tags.</p>
+        {# nosemgrep: django-no-csrf-token -- Origin/Referer enforced by CSRFProtectionMiddleware. #}
         <form class="tracker-form" method="post" action="/time-tracker/timer/start">
         <select id="reuse-entry" aria-label="Previous time entry" required>
             <option value="">Choose an entry</option>
@@ -63,6 +65,7 @@
     </details>
     <div class="timer-controls-actions">
         {% if active_entry %}
+        {# nosemgrep: django-no-csrf-token -- Origin/Referer enforced by CSRFProtectionMiddleware. #}
         <form method="post" action="/time-tracker/timer/stop">
             <button class="danger-button" type="submit">Stop timer</button>
         </form>
@@ -91,6 +94,7 @@
 </section>
 
 <dialog id="entry-dialog" class="entry-dialog" aria-labelledby="entry-dialog-title">
+    {# nosemgrep: django-no-csrf-token -- Origin/Referer enforced by CSRFProtectionMiddleware. #}
     <form class="tracker-form two-columns" method="post" action="/time-tracker/entries">
         <div class="dialog-heading full-width">
             <div>
@@ -107,6 +111,7 @@
         <label class="full-width">Tags<input name="tags" list="tags" placeholder="feature, planning" autocomplete="off"></label>
         <button class="primary-button" type="submit">Save entry</button>
     </form>
+    {# nosemgrep: django-no-csrf-token -- Origin/Referer enforced by CSRFProtectionMiddleware. #}
     <form id="delete-entry-form" method="post" hidden>
         <button class="danger-button" type="submit">Delete entry</button>
     </form>

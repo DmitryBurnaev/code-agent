@@ -58,6 +58,7 @@
                     </button>
                     <div id="user-menu-panel" class="user-menu-panel" hidden>
                         <div class="user-menu-label">Signed in as {{ current_user.username }}</div>
+                        {# nosemgrep: django-no-csrf-token -- Origin/Referer enforced by CSRFProtectionMiddleware. #}
                         <form method="post" action="/logout">
                             <button class="user-menu-action" type="submit">
                                 {{ icon_logout("icon") }}

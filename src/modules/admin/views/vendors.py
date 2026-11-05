@@ -83,7 +83,6 @@ class VendorAdminView(BaseModelView, model=Vendor):
             return encryption.encrypt(plaintext_key)
 
         except Exception as exc:
-            logger.exception("Failed to encrypt vendor API key: %s", exc)
             raise VendorEncryptionError("Failed to encrypt API key") from exc
 
     @classmethod

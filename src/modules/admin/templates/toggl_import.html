@@ -17,6 +17,7 @@
             <div class="alert alert-danger" role="alert">{{ import_error }}</div>
             {% endif %}
 
+            {# nosemgrep: django-no-csrf-token -- Origin/Referer enforced by CSRFProtectionMiddleware. #}
             <form method="post" enctype="multipart/form-data">
                 <div class="mb-3">
                     <label class="form-label" for="user_id">Import entries for</label>

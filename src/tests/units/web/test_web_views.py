@@ -15,7 +15,9 @@ from src.tests.mocks import MockUser
 
 @pytest.fixture
 def web_client(test_app: CodeAgentAPP) -> Generator[TestClient, Any, None]:
-    with TestClient(test_app, base_url="https://testserver") as client:
+    with TestClient(
+        test_app, base_url="https://testserver", headers={"Origin": "https://testserver"}
+    ) as client:
         yield client
 
 

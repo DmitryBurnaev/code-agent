@@ -1,6 +1,6 @@
 import logging
 import datetime
-from typing import ClassVar
+from typing import ClassVar, TypeAlias
 
 from sqladmin import ModelView, BaseView
 from starlette.exceptions import HTTPException
@@ -10,7 +10,7 @@ from src.application import CodeAgentAPP
 from src.modules.auth.permissions import Permission
 
 logger = logging.getLogger(__name__)
-type FormDataType = dict[str, str | int | datetime.datetime | None]
+FormDataType: TypeAlias = dict[str, str | int | datetime.datetime | None]
 __all__ = ("BaseModelView",)
 
 

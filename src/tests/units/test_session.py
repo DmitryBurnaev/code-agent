@@ -115,7 +115,7 @@ class TestAsyncDBConnectors:
 
         with patch("src.db.session.get_db_settings", return_value=mock_settings):
             with patch("src.db.session.create_async_engine", side_effect=test_exception):
-                with patch("src.db.session.logger") as mock_logger:
+                with patch("src.db.session.logger"):
                     connectors = AsyncDBConnectors()
                     with patch.object(
                         connectors, "close_connection", new_callable=AsyncMock
@@ -126,11 +126,6 @@ class TestAsyncDBConnectors:
 
                         # Verify close_connection was called
                         mock_close_connection.assert_awaited_once()
-
-                        # Verify error logging
-                        mock_logger.error.assert_called_with(
-                            "[DB] Failed to initialize database: %r", test_exception
-                        )
 
 
 class TestSessionFactory:

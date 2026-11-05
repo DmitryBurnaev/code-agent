@@ -17,6 +17,9 @@ catalog is `src/modules/auth/permissions.py`.
 - Resolve users and their permissions on every request. Sessions and tokens store
   identity, not permission snapshots. Changes take effect on the next request.
 - Feature access does not bypass record ownership rules.
+- Browser mutations also require same-origin source headers, including SQLAdmin
+  GET actions. See [security scanning](security-scanning.md) for CSRF checks and
+  the distinction from Authorization-based API requests.
 - Missing/invalid API authentication returns 401; missing feature permission
   returns 403. Anonymous browser requests redirect to `/login`.
 - UI visibility complements server authorization. Do not fetch restricted widget

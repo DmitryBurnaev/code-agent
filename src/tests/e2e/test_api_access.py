@@ -373,7 +373,12 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Harness]:
     process: subprocess.Popen[bytes] | None = None
     created = False
     api = httpx.Client(base_url=f"http://127.0.0.1:{free_port()}", timeout=15, trust_env=False)
-    admin = httpx.Client(base_url=api.base_url, timeout=15, trust_env=False)
+    admin = httpx.Client(
+        base_url=api.base_url,
+        timeout=15,
+        trust_env=False,
+        headers={"Origin": str(api.base_url).rstrip("/")},
+    )
     run = Harness(dsn, api, admin, artifacts)
     run.metadata.update(
         {

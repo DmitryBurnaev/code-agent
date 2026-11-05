@@ -1,6 +1,7 @@
 """Mandatory access policies and validation for registered HTTP routes."""
 
 from collections.abc import Iterator
+from typing import TypeAlias
 
 from fastapi import FastAPI
 from fastapi.routing import APIRoute, RouteContext, iter_route_contexts
@@ -13,7 +14,7 @@ from src.modules.admin.authorization import FeatureAuthorization
 from src.modules.auth.dependencies import APIAccess, WebAccess
 from src.modules.auth.permissions import Permission
 
-type Access = APIAccess | WebAccess
+Access: TypeAlias = APIAccess | WebAccess
 
 
 def iter_application_routes(app: FastAPI) -> Iterator[RouteContext]:

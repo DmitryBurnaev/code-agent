@@ -11,6 +11,7 @@ from src.modules.auth.routing import validate_access_policies
 from src.modules.admin.app import make_admin
 from src.modules.web.views import router as web_router
 from src.modules.web.middleware import WebSessionMiddleware
+from src.modules.web.csrf import CSRFProtectionMiddleware
 from src.constants import APP_DIR
 from src.exceptions import AppSettingsError, StartupError
 from src.settings import get_app_settings, AppSettings
@@ -76,6 +77,7 @@ def make_app(settings: AppSettings | None = None) -> CodeAgentAPP:
         settings.web.session_https_only,
         settings.web.session_expiration_time,
     )
+    app.add_middleware(CSRFProtectionMiddleware)
     app.add_middleware(
         WebSessionMiddleware,
         admin_path=settings.admin.base_url,

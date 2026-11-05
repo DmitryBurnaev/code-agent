@@ -119,8 +119,8 @@ def admin_get_link(
     settings = get_app_settings()
     base_url = settings.admin.base_url
     name = url_name or instance.__class__.__name__.lower()
-    return markupsafe.Markup(
-        f'<a href="{base_url}/{name}/{target}/{instance.id}">[#{instance.id}] {instance}</a>'
+    return markupsafe.Markup('<a href="{}/{}/{}/{}">[#{}] {}</a>').format(
+        base_url, name, target, instance.id, instance.id, str(instance)
     )
 
 

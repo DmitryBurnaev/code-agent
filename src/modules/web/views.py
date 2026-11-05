@@ -2,7 +2,7 @@
 
 from datetime import date, datetime, time, timedelta, timezone
 import logging
-from typing import Annotated, Any, NamedTuple
+from typing import Annotated, Any, NamedTuple, TypeAlias
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Request
@@ -35,8 +35,8 @@ dashboard_access = WebAccess()
 dashboard_router = APIRouter(dependencies=[Depends(dashboard_access)], include_in_schema=False)
 tracker_access = WebAccess(Permission.TIME_TRACKING)
 tracker_router = APIRouter(dependencies=[Depends(tracker_access)], include_in_schema=False)
-type DashboardUser = Annotated[User, Depends(dashboard_access)]
-type TrackerUser = Annotated[User, Depends(tracker_access)]
+DashboardUser: TypeAlias = Annotated[User, Depends(dashboard_access)]
+TrackerUser: TypeAlias = Annotated[User, Depends(tracker_access)]
 templates = Jinja2Templates(directory=APP_DIR / "modules" / "web" / "templates")
 MOSCOW_TIME_ZONE = timezone(timedelta(hours=3))
 STATIC_ASSETS_DIR = APP_DIR / "static"

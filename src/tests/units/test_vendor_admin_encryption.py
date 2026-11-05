@@ -32,7 +32,7 @@ def mock_super_model_view_insert() -> Generator[MagicMock, Any, None]:
 
 @pytest.fixture
 def original_api_key() -> str:
-    return "sk-test123456789"
+    return "test-api-key"
 
 
 @pytest.fixture
@@ -59,7 +59,7 @@ class TestVendorAdminEncryption:
         self, test_app: CodeAgentAPP, vendor_admin_view: VendorAdminView
     ) -> None:
         encryption_key = test_app.settings.vendor_encryption_key
-        original_key = "sk-test123456789"
+        original_key = "test-api-key"
 
         encrypted = vendor_admin_view._encrypt_api_key(original_key)
         assert encrypted != original_key
@@ -77,7 +77,7 @@ class TestVendorAdminEncryption:
     ) -> None:
         mocked_encrypt.side_effect = RuntimeError("Oops! Encryption error.")
         with pytest.raises(VendorEncryptionError, match="Failed to encrypt API key"):
-            vendor_admin_view._encrypt_api_key("sk-test123456789")
+            vendor_admin_view._encrypt_api_key("test-api-key")
 
     @patch("src.modules.admin.views.vendors.VendorAdminView._validate")
     async def test_insert_model_encrypts_api_key(
