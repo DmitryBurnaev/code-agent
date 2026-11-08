@@ -5,6 +5,7 @@ from typing import Self
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import session as db_session
+from src.db.diagnostics import failure_details
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +62,13 @@ class SASessionUOW:
         logger.debug("[DB] Entering UOW transaction block")
 
         # Start transaction if we own the session or if no transaction is active
-        if self.__owns_session or not self.__session.in_transaction():
-            await self.__session.begin()
-            logger.debug("[DB] Started new transaction")
+        try:
+            if self.__owns_session or not self.__session.in_transaction():
+                await self.__session.begin()
+                logger.debug("[DB] Started new transaction")
+        except Exception as exc:
+            logger.warning("[DB] Transaction begin failed: %s", failure_details(exc))
+            raise
 
         return self
 
@@ -77,6 +82,9 @@ class SASessionUOW:
         if not self.__session:
             logger.debug("[DB] Session already closed")
             return
+
+        if exc_val is not None:
+            logger.warning("[DB] Operation failed in UOW: %s", failure_details(exc_val))
 
         try:
             # Flush any pending changes
@@ -109,7 +117,8 @@ class SASessionUOW:
 
                 # Don't close session - dependency will handle it
 
-        except Exception:
+        except Exception as exc:
+            logger.warning("[DB] UOW cleanup failed: %s", failure_details(exc))
             if self.__owns_session:
                 await self.__session.close()
 
@@ -127,16 +136,21 @@ class SASessionUOW:
             await self.session.commit()
             self.__need_to_commit = False
             logger.debug("[DB] Transaction committed successfully")
-        except Exception:
+        except Exception as exc:
+            logger.warning("[DB] Transaction commit failed: %s", failure_details(exc))
             await self.rollback()
             raise
 
     async def rollback(self) -> None:
         """Explicitly rollback the current transaction."""
-        logger.debug("[DB] Rolling back transaction...")
-        await self.session.rollback()
-        self.__need_to_commit = False
-        logger.debug("[DB] Transaction rolled back successfully")
+        try:
+            logger.debug("[DB] Rolling back transaction...")
+            await self.session.rollback()
+            self.__need_to_commit = False
+            logger.debug("[DB] Transaction rolled back successfully")
+        except Exception as exc:
+            logger.warning("[DB] Transaction rollback failed: %s", failure_details(exc))
+            raise
 
     @property
     def need_to_commit(self) -> bool:

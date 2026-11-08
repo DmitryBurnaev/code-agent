@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from src.exceptions import DatabaseError
+from src.db.diagnostics import failure_details
 from src.settings.db import get_db_settings
 from src.utils import singleton
 
@@ -36,7 +37,10 @@ class AsyncDBConnectors:
         logger.info("[DB] Initializing database engine and session factory...")
 
         try:
-            extra_kwargs: dict[str, str | int] = {"echo": self.settings.echo}
+            extra_kwargs: dict[str, str | int] = {
+                "echo": self.settings.echo,
+                "hide_parameters": True,
+            }
             if self.settings.pool_min_size:
                 extra_kwargs["pool_size"] = self.settings.pool_min_size
 
@@ -57,7 +61,8 @@ class AsyncDBConnectors:
             await self._ping_connection()
             logger.info("[DB] Database engine and session factory initialized successfully")
 
-        except Exception:
+        except Exception as exc:
+            logger.warning("[DB] Initialization failed: %s", failure_details(exc))
             await self.close_connection()
             raise
 
@@ -74,6 +79,7 @@ class AsyncDBConnectors:
 
         except Exception as exc:
             self.exc = exc
+            logger.warning("[DB] Connection check failed: %s", failure_details(exc))
             raise DatabaseError("Failed to ping database") from exc
 
         else:
@@ -83,17 +89,21 @@ class AsyncDBConnectors:
         """Close database engine and session factory"""
         logger.debug("[DB] Closing database connection...")
 
-        if self.session_factory:
-            logger.debug("[DB] Closing all async sessions...")
-            await close_all_sessions()
+        try:
+            if self.session_factory:
+                logger.debug("[DB] Closing all async sessions...")
+                await close_all_sessions()
 
-        if self.engine:
-            await self.engine.dispose(close=True)
+            if self.engine:
+                await self.engine.dispose(close=True)
 
-        if self.exc:
-            logger.warning("[DB] Database engine closed emergency")
-        else:
-            logger.info("[DB] Database engine closed successfully")
+            if self.exc:
+                logger.warning("[DB] Database engine closed emergency")
+            else:
+                logger.info("[DB] Database engine closed successfully")
+        except Exception as exc:
+            logger.warning("[DB] Connection cleanup failed: %s", failure_details(exc))
+            raise
 
 
 _db_connectors = AsyncDBConnectors()

@@ -5,7 +5,8 @@ from fastapi import HTTPException
 from starlette.requests import Request
 from wtforms import Form, StringField, EmailField, PasswordField, BooleanField
 
-from src.db import SASessionUOW, UserRepository
+from src.db.services import SASessionUOW
+from src.db.repositories import UserRepository
 from src.modules.admin.views.base import BaseModelView, FormDataType
 from src.constants import RENDER_KW_REQ
 from src.db.models import BaseModel, User

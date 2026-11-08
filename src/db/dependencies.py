@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import session as db_session
 from src.db.services import SASessionUOW
+from src.db.diagnostics import failure_details
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,8 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     async with session_factory() as session:
         try:
             yield session
-        except Exception:
+        except Exception as exc:
+            logger.warning("[DB] Request session failed: %s", failure_details(exc))
             await session.rollback()
             raise
         finally:
@@ -64,7 +66,8 @@ async def get_transactional_session() -> AsyncGenerator[AsyncSession, None]:
             await session.begin()
             logger.debug("[DB] Started transaction via dependency")
             yield session
-        except Exception:
+        except Exception as exc:
+            logger.warning("[DB] Request transaction failed: %s", failure_details(exc))
             await session.rollback()
             logger.debug("[DB] Transaction rolled back due to exception")
             raise
