@@ -12,6 +12,7 @@ from starlette.exceptions import HTTPException
 from src.models import ErrorResponse
 from src.settings import get_app_settings
 from src.exceptions import BaseApplicationError
+from src.db.diagnostics import failure_details
 
 if TYPE_CHECKING:
     from src.db.models import BaseModel
@@ -45,7 +46,7 @@ async def universal_exception_handler(request: Request, exc: Exception) -> JSONR
 
     log_data: dict[str, str] = {
         "error": "Internal server error",
-        "detail": str(exc),
+        "detail": "An internal error has been detected. We apologize for the inconvenience.",
         "path": request.url.path,
         "method": request.method,
     }
@@ -72,14 +73,20 @@ async def universal_exception_handler(request: Request, exc: Exception) -> JSONR
         log_data |= {"error": log_message}
 
     else:
-        log_message = f"Internal server error: {exc}"
+        log_message = "Internal server error"
         log_data |= {
             "detail": "An internal error has been detected. We apologize for the inconvenience."
         }
 
-    exc_info = exc if logger.isEnabledFor(logging.DEBUG) else None
-    # Log the error
-    logger.log(log_level, log_message, extra=log_data, exc_info=exc_info)
+    logger.log(
+        log_level,
+        "[%s %s] %s; failure=%s",
+        request.method,
+        request.url.path,
+        log_message,
+        failure_details(exc),
+        extra=log_data,
+    )
 
     return JSONResponse(
         status_code=status_code,

@@ -10,13 +10,10 @@ import click
 import secrets
 from contextlib import asynccontextmanager
 
-from src.db import (
-    initialize_database,
-    close_database,
-    SASessionUOW,
-    UserRepository,
-    User,
-)
+from src.db.models import User
+from src.db.repositories import UserRepository
+from src.db.services import SASessionUOW
+from src.db.session import initialize_database, close_database
 
 DEFAULT_ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
 MIN_PASSWORD_LENGTH: int = int(os.getenv("MIN_PASSWORD_LENGTH", "16"))

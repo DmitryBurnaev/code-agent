@@ -57,6 +57,7 @@ class TestAsyncDBConnectors:
 
                             # Verify engine creation
                             mock_create_engine.assert_called_once()
+                            assert mock_create_engine.call_args.kwargs["hide_parameters"] is True
 
                             # Verify session factory creation
                             mock_session_maker.assert_called_once()

@@ -17,6 +17,7 @@ from src.exceptions import AppSettingsError, StartupError
 from src.settings import get_app_settings, AppSettings
 from src.modules.api import billing_router, system_router, proxy_router
 from src.db.session import initialize_database, close_database
+from src.db.diagnostics import failure_details
 
 logger = logging.getLogger("src.main")
 
@@ -27,13 +28,15 @@ async def lifespan(app: CodeAgentAPP) -> AsyncGenerator[None, None]:
     logger.info("Starting up application...")
     try:
         await initialize_database()
-        logger.info("Application startup completed successfully")
     except Exception as exc:
-        raise StartupError("Failed to initialize DB connection") from exc
+        logger.critical("Application startup failed: %s", failure_details(exc))
+        # The safe causal diagnostics above replace Uvicorn's raw driver traceback.
+        raise StartupError("Application startup failed; see diagnostic log") from None
 
     logger.info("Setting up admin application...")
     make_admin(app)
     validate_access_policies(app)
+    logger.info("Application startup completed successfully")
 
     yield
 
@@ -42,7 +45,7 @@ async def lifespan(app: CodeAgentAPP) -> AsyncGenerator[None, None]:
     try:
         await close_database()
     except Exception as exc:
-        logger.error("Error during application shutdown: %r", exc)
+        logger.error("Error during application shutdown: %s", failure_details(exc))
     else:
         logger.info("Application shutdown completed successfully")
 

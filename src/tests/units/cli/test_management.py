@@ -5,7 +5,7 @@ import pytest
 from click.testing import CliRunner, Result
 from _pytest.capture import CaptureFixture
 
-from src.db import User
+from src.db.models import User
 from src.modules.cli.management import (
     update_user,
     change_admin_password,

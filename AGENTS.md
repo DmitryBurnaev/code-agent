@@ -11,6 +11,18 @@
 - Resolve circular dependencies by correcting module boundaries and extracting
   shared types into neutral modules. Never hide a cycle with a local import.
 
+## Security fixes and diagnostics
+
+- Never fix a vulnerability or silence a scanner by removing important application
+  code, error handling, or operational diagnostics. Preserve the required behavior
+  and observability while correcting the unsafe data flow.
+- Keep actionable logs for startup failures and database request/transaction
+  failures. Redact sensitive data or log safe exception metadata instead of
+  deleting the diagnostic. Verify both useful failure details and absence of
+  credentials, SQL parameter values, and request payloads in regression tests.
+- For a verified scanner false positive, prefer a narrowly scoped, documented
+  exception over weakening important behavior or disabling a security rule globally.
+
 ## Feature access control
 
 - Read [docs/access-control.md](docs/access-control.md) before adding or extending

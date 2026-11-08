@@ -19,6 +19,28 @@ key was used in a deployment, the operator must replace it and re-encrypt stored
 vendor credentials. API tokens exposed in old DEBUG logs must also be revoked and
 reissued; remove sensitive retained logs according to the deployment's policy.
 
+## Failure diagnostics
+
+Keep failure logging when fixing scanner findings. Startup failures are CRITICAL;
+database initialization, connection checks, transaction begin/commit/rollback,
+operation failures and cleanup emit WARNING before propagating to their caller.
+The API error boundary logs the final failure with request method and path.
+
+`src/db/diagnostics.py:failure_details` records exception types and causal chains, stack locations
+(filename, function, line), validated PostgreSQL SQLSTATE with known explanations,
+schema/table/column/constraint identifiers, and operating-system errno. SQLSTATE
+explanations follow the [PostgreSQL error code catalog](https://www.postgresql.org/docs/current/errcodes-appendix.html).
+This remains available at normal log levels. Exception
+messages, SQL statements, bound values, local variables and request payloads are
+excluded, including in DEBUG. SQLAlchemy's native `hide_parameters=True` also
+protects its own parameter logging. Unexpected API failures keep a generic public
+response; internal diagnostics stay in logs.
+
+Propagated failures use WARNING to distinguish them from the final handled error,
+as recommended by the scanner's logging rule. Do not delete these records or
+silence security rules globally to make scans pass. Regression tests must prove
+that failures remain diagnosable without leaking data.
+
 ## Opengrep rule selection
 
 The Python ruleset remains enabled, including all security rules. Two
