@@ -2,15 +2,13 @@
 
 `.github/workflows/scan.yaml` runs isolated Linux/amd64 image and filesystem
 scans for pull requests to `main`, pushes to `main`, and weekly on Monday at
-00:00 UTC. A temporary push trigger for `feature/58-trivy-security-scans` runs
-all scan jobs for CI verification; remove that branch from `scan.yaml` before
-merging. The image job builds the current checkout's `Dockerfile` `service`
+00:00 UTC. The image job builds the current checkout's `Dockerfile` `service`
 target and records the image ID, architecture, and revision label in the log.
 It scans OS and installed language packages with the vulnerability scanner.
 The filesystem job scans supported manifests, including `uv.lock` development
 dependencies, and infrastructure configuration with `vuln,misconfig`. These
 scans do not replace the separate source analysis and secret scanning jobs,
-which also run on pushes to `main`, the temporary branch, and the weekly schedule.
+which also run on pull requests to `main`, pushes to `main`, and the weekly schedule.
 
 Both scans include LOW, MEDIUM, HIGH and CRITICAL findings, including unfixed
 vulnerabilities. Any such vulnerability or failed misconfiguration check fails
