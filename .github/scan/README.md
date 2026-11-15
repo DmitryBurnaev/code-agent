@@ -44,8 +44,9 @@ fails the scan.
 `trivy-image-ignore.rego` suppresses `CVE-2025-47273`, `CVE-2026-59890`, and
 `GHSA-xmj3-9gf7-h52w` only for the `setuptools` 70.3.0 SBOM component with
 PURL and BOMRef `pkg:pypi/setuptools@70.3.0` in the inspected linux/amd64
-base-image layer. The policy matches both the layer digest and DiffID; any
-other CVE, version, package, layer, or installed package remains visible. It
+base-image layer. The policy matches the inspected layer's DiffID (the hash of
+its uncompressed contents); the CI report does not include a layer digest.
+Any other CVE, version, package, layer, or installed package remains visible. It
 is applied to the image report before the report is uploaded and evaluated;
 it is never applied to filesystem scans.
 
