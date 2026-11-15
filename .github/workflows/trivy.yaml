@@ -1,0 +1,105 @@
+name: Trivy
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 0 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: trivy-${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [image, fs]
+    env:
+      TRIVY_VERSION: "0.76.2"
+      TRIVY_SEVERITY: "CRITICAL,HIGH,MEDIUM,LOW"
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Install verified Trivy binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="${RUNNER_TEMP}/trivy.tar.gz"
+          curl --fail --silent --show-error --location --retry 3 \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" \
+            --output "$archive"
+          echo "bc0fc726e017b8927a62b2d3531d7a84ee01769daf5c99ed866dced54089fdbf  $archive" | sha256sum --check --strict
+          tar -xzf "$archive" -C "$RUNNER_TEMP" trivy
+          "$RUNNER_TEMP/trivy" --version
+
+      - name: Build service image
+        if: matrix.target == 'image'
+        run: |
+          docker build --platform linux/amd64 --target service \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --tag "code-agent:scan-${GITHUB_SHA}" .
+          docker image inspect "code-agent:scan-${GITHUB_SHA}" --format 'ID={{.Id}} OS={{.Os}} Arch={{.Architecture}} Revision={{index .Config.Labels "org.opencontainers.image.revision"}}'
+          echo "IMAGE_ID=$(docker image inspect "code-agent:scan-${GITHUB_SHA}" --format '{{.Id}}')" >> "$GITHUB_ENV"
+
+      - name: Scan image
+        if: matrix.target == 'image'
+        run: |
+          "$RUNNER_TEMP/trivy" image --cache-dir "$RUNNER_TEMP/trivy-cache" --disable-telemetry --skip-version-check \
+            --config "" --ignorefile "" --ignore-policy .github/scan/trivy-image-ignore.rego --image-src docker --scanners vuln \
+            --severity "$TRIVY_SEVERITY" --ignore-unfixed=false --exit-code 0 \
+            --format json --output "$RUNNER_TEMP/trivy-image.json" "$IMAGE_ID"
+
+      - name: Scan filesystem
+        if: matrix.target == 'fs'
+        run: |
+          "$RUNNER_TEMP/trivy" fs --cache-dir "$RUNNER_TEMP/trivy-cache" --disable-telemetry --skip-version-check \
+            --config "" --ignorefile "" --skip-check-update --scanners vuln,misconfig --include-dev-deps \
+            --severity "$TRIVY_SEVERITY" --ignore-unfixed=false --exit-code 0 \
+            --format json --output "$RUNNER_TEMP/trivy-fs.json" .
+
+      - name: Validate report
+        run: |
+          jq -e 'type == "object" and .SchemaVersion == 2 and
+            (.ArtifactName | type == "string" and length > 0) and
+            (.ArtifactType | type == "string" and length > 0) and
+            ((.Results == null) or (.Results | type == "array")) and
+            all(.Results[]?; (.Target | type == "string") and
+              ((.Vulnerabilities == null) or (.Vulnerabilities | type == "array")) and
+              ((.Misconfigurations == null) or (.Misconfigurations | type == "array")))' "$RUNNER_TEMP/trivy-${{ matrix.target }}.json" > /dev/null
+
+      - name: Verify scanned image identity
+        if: matrix.target == 'image'
+        run: |
+          jq -e --arg image_id "$IMAGE_ID" --arg revision "$GITHUB_SHA" \
+            '.ArtifactType == "container_image" and .Metadata.ImageID == $image_id and
+             .Metadata.ImageConfig.architecture == "amd64" and
+             .Metadata.ImageConfig.config.Labels["org.opencontainers.image.revision"] == $revision' \
+            "$RUNNER_TEMP/trivy-image.json" > /dev/null
+
+      - name: Verify filesystem targets
+        if: matrix.target == 'fs'
+        run: |
+          jq -e 'any(.Results[]?; .Type == "uv" and .Target == "uv.lock") and
+            any(.Results[]?; .Type == "dockerfile" and .Target == "Dockerfile")' \
+            "$RUNNER_TEMP/trivy-fs.json" > /dev/null
+
+      - name: Upload report
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: trivy-${{ matrix.target }}
+          path: ${{ runner.temp }}/trivy-${{ matrix.target }}.json
+          retention-days: 60
+          if-no-files-found: error
+
+      - name: Fail on findings
+        run: |
+          "$RUNNER_TEMP/trivy" convert --cache-dir "$RUNNER_TEMP/trivy-cache" \
+            --config "" --ignorefile "" --scanners vuln,misconfig \
+            --severity "$TRIVY_SEVERITY" --exit-code 1 --format table "$RUNNER_TEMP/trivy-${{ matrix.target }}.json"
