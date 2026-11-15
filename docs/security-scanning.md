@@ -13,13 +13,11 @@ successful run is not proof that the application has no vulnerabilities.
 | --- | --- | --- |
 | Trivy image | Vulnerabilities in the built Linux/amd64 `service` image, including OS and installed language packages | Pull requests to `main`, pushes to `main`, weekly schedule |
 | Trivy filesystem | Vulnerabilities in supported manifests including `uv.lock` dev dependencies, plus supported configuration checks | Pull requests to `main`, pushes to `main`, weekly schedule |
-| TruffleHog | Filesystem secret findings with `verified` or `unknown` results | Pushes to `main`, weekly schedule |
-| Gitleaks | Secret findings in the checked-out Git history | Pushes to `main`, weekly schedule |
-| Opengrep | Python source rules | Pushes to `main`, weekly schedule |
+| TruffleHog | Filesystem secret findings with `verified` or `unknown` results | Pull requests to `main`, pushes to `main`, weekly schedule |
+| Gitleaks | Secret findings in the checked-out Git history | Pull requests to `main`, pushes to `main`, weekly schedule |
+| Opengrep | Python source rules | Pull requests to `main`, pushes to `main`, weekly schedule |
 
-The weekly schedule is Monday at 00:00 UTC. The temporary push trigger for
-`feature/58-trivy-security-scans` runs all jobs for branch verification and must
-be removed before merging. `.github/workflows/codeql.yaml` separately runs
+The weekly schedule is Monday at 00:00 UTC. `.github/workflows/codeql.yaml` separately runs
 Python CodeQL on pushes to `main` and on the same schedule. Trivy is not a
 replacement for source analysis or secret scanning.
 
@@ -38,8 +36,8 @@ identity checks, and the full evidence for the image exception.
 
 ## Supply-chain safeguards and remaining trust
 
-- The Trivy job uses a GitHub-hosted runner, read-only repository permission,
-  and checkout without persisted credentials. It builds the `service` target
+- The scan workflow uses GitHub-hosted runners, read-only repository permission,
+  and checkout without persisted credentials. The Trivy job builds the `service` target
   from the current checkout and records and validates its revision, image ID
   and architecture. It does not use `pull_request_target` or deployment secrets.
 - Trivy 0.76.2 is downloaded as a versioned release archive and checked against
