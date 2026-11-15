@@ -67,7 +67,8 @@ vendored dependencies; this exception does not hide their findings.
 Reinspect the actual image, wheel, installed files and advisories when updating
 the base image, pip, platform, or scanner, and remove the exception when no
 longer needed. A changed layer is deliberately not covered. The separate
-setuptools 84.0.0 filesystem finding remains visible and fails the FS job.
+setuptools development dependency was upgraded to 84.2.1 to address the
+filesystem finding without an exception.
 
 For a disposable local check, use a trusted Trivy installation and an isolated
 Docker daemon. From the repository root, after reviewing the image build:
