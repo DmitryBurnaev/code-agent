@@ -25,12 +25,13 @@ RUN pip install uv==${UV_VERSION} && \
 
 FROM python:3.13-alpine AS base
 ARG PIP_DEFAULT_TIMEOUT=300
-ARG PIP_VERSION=25.3
+ARG PIP_VERSION=26.3
 WORKDIR /app
 
 COPY --from=requirements-layer /usr/src/requirements.txt .
 
-RUN pip install --upgrade pip==${PIP_VERSION} && \
+RUN apk add --no-cache --upgrade 'zlib>=1.4-r0' && \
+    pip install --upgrade pip==${PIP_VERSION} && \
     pip install --timeout "${PIP_DEFAULT_TIMEOUT}" --no-cache-dir --require-hashes -r requirements.txt
 
 RUN addgroup -S code-agent -g 1007 && \
@@ -48,6 +49,9 @@ ENV APP_PORT=8000
 FROM base AS service
 
 EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD python -c "import http.client, os; c = http.client.HTTPConnection('127.0.0.1', int(os.environ.get('APP_PORT', '8000')), timeout=3); c.request('GET', '/api/system/health/'); exit(0 if c.getresponse().status in (200, 401) else 1)"
 
 ENTRYPOINT ["/bin/sh", "/app/docker-entrypoint"]
 
