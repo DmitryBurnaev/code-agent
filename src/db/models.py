@@ -4,6 +4,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column, backref
 
+from src.constants import VendorMode
 from src.exceptions import VendorEncryptionError
 from src.utils import utcnow
 from src.modules.auth.hashers import PBKDF2PasswordHasher
@@ -33,6 +34,9 @@ class User(BaseModel):
         sa.Boolean, nullable=False, default=False, server_default=sa.false()
     )
     can_use_llm: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, default=False, server_default=sa.false()
+    )
+    can_use_ai_subscriptions: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, default=False, server_default=sa.false()
     )
     can_use_time_tracking: Mapped[bool] = mapped_column(
@@ -220,14 +224,27 @@ class Token(BaseModel):
 
 
 class Vendor(BaseModel):
-    """User model representing a Telegram user in the system."""
+    """LLM vendor settings."""
 
     __tablename__ = "vendors"
+    __table_args__ = (
+        sa.CheckConstraint(
+            "(auth_mode = 'api_key' AND api_url IS NOT NULL AND api_key IS NOT NULL) "
+            "OR (auth_mode = 'subscription' AND slug = 'cursor')",
+            name="ck_vendor_auth_mode",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     slug: Mapped[str] = mapped_column(sa.String(255), nullable=False, unique=True)
-    api_url: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    api_key: Mapped[str] = mapped_column(sa.String(1024), nullable=False)  # Encrypted API key
+    api_url: Mapped[str | None] = mapped_column(sa.String(255))
+    api_key: Mapped[str | None] = mapped_column(sa.String(1024))  # Encrypted API key
+    auth_mode: Mapped[str] = mapped_column(
+        sa.String(16), default=VendorMode.API_KEY, server_default=VendorMode.API_KEY
+    )
+    subscription_models: Mapped[list[str]] = mapped_column(
+        sa.JSON, default=list, server_default=sa.text("'[]'")
+    )
     timeout: Mapped[int] = mapped_column(sa.Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
@@ -242,6 +259,8 @@ class Vendor(BaseModel):
     @property
     def decrypted_api_key(self) -> str:
         """Get decrypted API key for vendor authentication."""
+        if self.api_key is None:
+            raise VendorEncryptionError(f"No API key configured for vendor '{self.slug}'")
         try:
             settings = get_app_settings()
             encryption = VendorKeyEncryption(settings.vendor_encryption_key)

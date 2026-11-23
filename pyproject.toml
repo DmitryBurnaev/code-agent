@@ -2,23 +2,23 @@
 name = "code-agent"
 version = "0.1.0"
 description = "Code Agent (some helper system)"
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.14,<3.15"
 dependencies = [
     "fastapi==0.142.1",
     "itsdangerous==2.2.0",         # required by session engine
     "jinja2==3.1.6",
     "python-multipart==0.0.32",
     "uvicorn==0.54.0",
-    "pydantic==2.13.5",
+    "pydantic==2.14.4",
     "pydantic-settings==2.15.0",
     "httpx[socks]==0.28.1",
     "sqlalchemy[asyncio]==2.1.1",
     "sqladmin==0.32.0",
     "alembic==1.20.0",
-    "asyncpg==0.31.0",
+    "asyncpg==0.32.0",
     "pyjwt==2.15.1",
     "pycryptodomex==3.23.0",       # for API key encryptions
-    "uvloop==0.22.1",
+    "uvloop==0.23.0",
 ]
 
 [dependency-groups]
@@ -52,7 +52,7 @@ exclude = [
 # Same as Black.
 line-length = 100
 indent-width = 4
-target-version = "py313"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "PLC0415"]
@@ -73,7 +73,7 @@ docstring-code-line-length = "dynamic"
 
 [tool.black]
 line-length = 100
-target-version = ["py313"]
+target-version = ["py314"]
 
 [tool.mypy]
 strict = true

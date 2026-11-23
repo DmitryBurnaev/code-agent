@@ -12,6 +12,7 @@
 Released images support both `linux/amd64` and `linux/arm64`. Docker selects the
 matching image automatically when pulling a release from GHCR, so deployment on
 an ARM64 server uses the same `DOCKER_IMAGE` value as an AMD64 server.
+The app and Cursor agents run on Python 3.14 and Debian 13 (Trixie).
 
 ## Service Installation
 
@@ -92,6 +93,45 @@ storage services later. Without it, only the app starts. For an external DB,
 create the database first: the entrypoint runs migrations immediately. Existing
 installations using bundled PostgreSQL must add `COMPOSE_PROFILES=local-storage`
 before updating. Stop with the old profile before changing storage mode.
+
+### Optional shared Cursor subscription
+
+Before enabling shared access, verify that the account's Cursor plan allows this
+deployment. Requests from all granted users draw on the connected account's
+usage and billing. See [Cursor Terms](https://cursor.com/terms-of-service) and
+[Acceptable Use Policy](https://cursor.com/acceptable-use-policy).
+
+1. Set the same `CURSOR_AGENTS_SECRET` for both services in `.env`. In a source
+   checkout, `make secrets` fills this setting automatically. Add the `agents` profile
+   alongside any storage profile (for example `COMPOSE_PROFILES=local-storage,agents`).
+2. For local development, use `make agents` from the repository root to build
+   and start the Cursor service. Its host binding is configured through
+   `CURSOR_AGENTS_HOST` and `CURSOR_AGENTS_PORT`, defaulting to `0.0.0.0:8080`.
+   A native app connects to `CURSOR_AGENTS_URL`, defaulting to
+   `http://127.0.0.1:8080`. When changing the published port, set the URL to the
+   matching port. To build only
+   its image, run `docker build -t code-agent-agents:local agents`. For a server
+   deployment, set
+   `CURSOR_AGENTS_IMAGE=ghcr.io/dmitryburnaev/code-agent-agents:RELEASE_TAG`
+   using the same version as `DOCKER_IMAGE`. Run `docker compose pull agents` and
+   `docker compose up -d app`. A version tag publishes a separate AMD64/ARM64
+   agents image from `agents/Dockerfile`.
+   The Compose app reaches `http://agents:8080` on the private Compose network. The
+   `cursor-auth` volume stores Cursor login state.
+3. Open **AI Vendors → Cursor subscription**, click **Connect Cursor**, and
+   complete the browser login. Select the models to offer and click **Enable
+   subscription**. Model IDs come from the connected account. Use **Refresh
+   models** to update the catalog and **Save models** to change the selection.
+   Allow Auto only if you want Cursor to choose the underlying model.
+4. In **Users**, grant **LLM** and **AI subscriptions** to each user who should
+   use the plan. The API catalog then includes authorized `cursor:<model-id>`
+   entries. Pass an exact ID in each chat request and send text messages. For
+   the bundled client, add `--subscription` to omit sampling and token-limit
+   parameters. OpenAI vendor requests use an API key.
+
+Disconnect from the same admin page to clear the Cursor login. Remove the
+`agents` profile and stop that service to disable the integration. A database
+downgrade requires an API URL and key on each vendor you intend to retain.
 
 ### Setup for deployment
 

@@ -1,0 +1,6 @@
+{% extends "sqladmin/list.html" %}
+
+{% block model_menu_bar %}
+<a class="btn btn-secondary" href="{{ url_for('admin:view-vendor-cursor_subscription') }}">Cursor subscription</a>
+{{ super() }}
+{% endblock %}

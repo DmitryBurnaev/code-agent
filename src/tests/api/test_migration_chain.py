@@ -26,6 +26,13 @@ async def test_permission_schema_at_migration_head() -> None:
         config = Config()
         config.set_main_option("script_location", str(APP_DIR / "migrations"))
         config.attributes["connection"] = connection
+        command.upgrade(config, "0006")
+        connection.execute(
+            sa.text(
+                "INSERT INTO users (username, password, created_at) "
+                "VALUES ('migration-fixture', 'fixture', CURRENT_TIMESTAMP)"
+            )
+        )
         command.upgrade(config, "head")
         columns = {column["name"]: column for column in sa.inspect(connection).get_columns("users")}
         permission_names = {permission.value for permission in Permission}
@@ -37,6 +44,35 @@ async def test_permission_schema_at_migration_head() -> None:
             assert isinstance(columns[name]["type"], sa.Boolean)
             assert columns[name]["nullable"] is False
             assert columns[name]["default"] == "false"
+        assert (
+            connection.scalar(
+                sa.text(
+                    "SELECT can_use_ai_subscriptions FROM users WHERE username = 'migration-fixture'"
+                )
+            )
+            is False
+        )
+        assert (
+            connection.scalar(sa.text("SELECT auth_mode FROM vendors WHERE slug = 'openai'"))
+            == "api_key"
+        )
+        with pytest.raises(sa.exc.IntegrityError), connection.begin_nested():
+            connection.execute(
+                sa.text("UPDATE vendors SET auth_mode = 'subscription' WHERE slug = 'openai'")
+            )
+        connection.execute(
+            sa.text(
+                "INSERT INTO vendors (slug, auth_mode, created_at) "
+                "VALUES ('cursor', 'subscription', CURRENT_TIMESTAMP)"
+            )
+        )
+        with pytest.raises(RuntimeError, match="subscription-only"), connection.begin_nested():
+            command.downgrade(config, "0006")
+        connection.execute(sa.text("DELETE FROM vendors WHERE slug = 'cursor'"))
+        command.downgrade(config, "0006")
+        assert "can_use_ai_subscriptions" not in {
+            column["name"] for column in sa.inspect(connection).get_columns("users")
+        }
 
     try:
         async with engine.connect() as connection:

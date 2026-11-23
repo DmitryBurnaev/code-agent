@@ -1,0 +1,1 @@
+"""Standalone Cursor CLI service."""

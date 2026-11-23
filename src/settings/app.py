@@ -79,6 +79,8 @@ class AppSettings(BaseSettings):
     vendor_default_timeout: int = 30
     vendor_default_retries: int = 3
     vendor_encryption_key: SecretStr = Field(description="Secret key for vendor API key encryption")
+    cursor_agents_url: str = "http://127.0.0.1:8080"
+    cursor_agents_secret: SecretStr | None = None
     selectel_balance_url: str | None = None
     selectel_balance_token: SecretStr | None = None
     selectel_balance_cache_ttl_seconds: int = Field(default=3600, ge=0)

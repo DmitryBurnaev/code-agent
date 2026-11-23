@@ -2,23 +2,34 @@ import json
 import logging
 import urllib.parse
 from enum import Enum
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import TracebackType
 from typing import Self, AsyncIterator, Any, Callable
 
 import httpx
 from httpx import Headers
+from starlette.requests import Request
 from starlette.responses import StreamingResponse, Response
 
-from src.constants import VENDOR_ID_SEPARATOR
+from src.constants import VENDOR_ID_SEPARATOR, VendorMode, VendorSlug
+from src.db.diagnostics import failure_details
+from src.db.models import User, Vendor
 from src.db.repositories import VendorRepository
 from src.db.services import SASessionUOW
 from src.services.cache import CacheProtocol, InMemoryCache
 from src.exceptions import VendorProxyError
 from src.models import ChatRequest, LLMVendor
+from src.modules.auth.permissions import Permission, has_permission
+from agents.protocol import CursorErrorCode
+from src.services.cursor import (
+    CURSOR_COMPLETION_PREFIX,
+    CursorClient,
+    CursorError,
+    cursor_chat,
+    cursor_error_response,
+)
 from src.services.http import VendorHTTPClient
 from src.settings import AppSettings
-from src.utils import cut_string
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +52,8 @@ class ProxyRequestData:
     completion_id: str | None = None
     timeout: float | None = None
 
-    def __str__(self) -> str:
-        return (
-            f"Requested Proxy: method={self.method} | body={self.body} "
-            f"| completion_id={self.completion_id}"
-        )
+    user: User | None = field(default=None, compare=False, repr=False)
+    request: Request | None = field(default=None, compare=False, repr=False)
 
 
 class ProxyService:
@@ -104,8 +112,8 @@ class ProxyService:
         # Log any errors that occurred during the request
         if exc_type is not None:
             logger.error(
-                "ProxyService: unable to finish proxy request: %r",
-                exc_value,
+                "ProxyService: unable to finish proxy request: %s",
+                failure_details(exc_value) if exc_value is not None else exc_type.__name__,
             )
 
         logger.info("ProxyService: closing resources and cleanup | client: %r", self._http_client)
@@ -134,8 +142,41 @@ class ProxyService:
         if not request_data.body and endpoint != ProxyEndpoint.CANCEL_CHAT_COMPLETION:
             raise VendorProxyError(f"Request body is required for {endpoint}")
 
-        logger.info("ProxyService: %s requested |  %s", endpoint, request_data)
-        llm_vendor, actual_model = await self._extract_vendor_requested(request_data, endpoint)
+        if (
+            endpoint == ProxyEndpoint.CANCEL_CHAT_COMPLETION
+            and request_data.completion_id
+            and request_data.completion_id.startswith(CURSOR_COMPLETION_PREFIX)
+        ):
+            if not has_permission(request_data.user, Permission.AI_SUBSCRIPTIONS):
+                return cursor_error_response(403, "permission_denied", "AI subscriptions required.")
+            return cursor_error_response(
+                501, "unsupported_operation", "Close the request to cancel a Cursor completion."
+            )
+        vendor, actual_model = await self._extract_vendor_requested(request_data, endpoint)
+        if vendor.auth_mode == VendorMode.SUBSCRIPTION:
+            if vendor.slug != VendorSlug.CURSOR:
+                return cursor_error_response(
+                    400,
+                    "unsupported_vendor_mode",
+                    "Subscription mode is only supported for Cursor.",
+                )
+            if not has_permission(request_data.user, Permission.AI_SUBSCRIPTIONS):
+                return cursor_error_response(403, "permission_denied", "AI subscriptions required.")
+            if not vendor.is_active:
+                return CursorError(CursorErrorCode.DISCONNECTED).response()
+            if request_data.body is None:
+                return cursor_error_response(
+                    501, "unsupported_operation", "Close the request to cancel."
+                )
+            return await cursor_chat(
+                CursorClient(self._settings),
+                request_data.body,
+                actual_model,
+                vendor.subscription_models,
+                request_data.request,
+                request_data.user.id if request_data.user else None,
+            )
+        llm_vendor = LLMVendor.from_vendor(vendor)
 
         # Prepare request data
         url = self._build_target_url(llm_vendor, endpoint, request_data)
@@ -150,17 +191,7 @@ class ProxyService:
                 **request_data.body.get_extra_params(),
             }
 
-        logger.debug(
-            "ProxyService[%(vendor)s]: requested [%(method)s] %(url)s\n "
-            "headers: %(headers)s\n body: %(body)s",
-            {
-                "vendor": llm_vendor.slug,
-                "method": request_data.method,
-                "url": url,
-                "headers": headers,
-                "body": body,
-            },
-        )
+        logger.info("ProxyService[%s]: %s", llm_vendor.slug, endpoint.name)
         request = self._http_client.build_request(
             method=request_data.method,
             url=url,
@@ -176,30 +207,13 @@ class ProxyService:
                 vendor=llm_vendor.slug,
                 stream=is_streaming,
             )
-            log_body = cut_string(plain_response_content, max_length=1024)
-
-            if is_bad_response:
-                log_prefix = f"error response (stream={is_streaming})"
-            elif is_streaming:
-                log_prefix = "streaming response"
-            else:
-                log_prefix = "regular response"
-
-            if logger.isEnabledFor(logging.DEBUG) or is_bad_response:
-                log_level = logging.WARNING if is_bad_response else logging.WARNING
-                logger.log(
-                    log_level,
-                    "ProxyService[%(vendor)s]: %(prefix)s %(url)s\n "
-                    "headers: %(headers)s\n body: %(log_body)s\n length: %(length)s bytes",
-                    {
-                        "vendor": llm_vendor.slug,
-                        "prefix": log_prefix,
-                        "headers": dict(httpx_response.headers),
-                        "log_body": log_body,
-                        "url": url,
-                        "length": len(httpx_response.text) if not is_streaming else "??",
-                    },
-                )
+            logger.log(
+                logging.WARNING if is_bad_response else logging.DEBUG,
+                "ProxyService[%s]: upstream_status=%s streaming=%s",
+                llm_vendor.slug,
+                httpx_response.status_code,
+                is_streaming,
+            )
 
             if not is_bad_response and is_streaming:
                 return await self._handle_stream(
@@ -323,7 +337,7 @@ class ProxyService:
         self,
         request_data: ProxyRequestData,
         endpoint: ProxyEndpoint,
-    ) -> tuple[LLMVendor, str]:
+    ) -> tuple[Vendor, str]:
         """Extract vendor and actual model name from the composite model identifier."""
 
         if endpoint == ProxyEndpoint.CANCEL_CHAT_COMPLETION:
@@ -341,7 +355,6 @@ class ProxyService:
             model = request_data.body.model if request_data.body else ""
 
         try:
-            logger.debug("Extracting vendor model: %s", model)
             vendor_slug, model_name = model.split(VENDOR_ID_SEPARATOR, 1)
             async with SASessionUOW() as uow:
                 slug = vendor_slug.lower().strip()
@@ -349,20 +362,12 @@ class ProxyService:
                 if not vendor:
                     raise VendorProxyError(f"Unable to find vendor '{vendor_slug}'")
 
-                llm_vendor = LLMVendor.from_vendor(vendor)
-
         except ValueError as exc:
             raise VendorProxyError(
                 "Invalid model format. Expected 'vendor:model_id', e.g. 'openai:gpt-4'"
             ) from exc
 
-        except KeyError as exc:
-            raise VendorProxyError(f"Unable to extract vendor from model name {model}") from exc
-
-        else:
-            logger.info("ProxyService: detected vendor %s | source model: %s", llm_vendor, model)
-
-        return llm_vendor, model_name
+        return vendor, model_name
 
     @staticmethod
     def _prepare_headers(vendor: LLMVendor) -> dict[str, str]:
@@ -406,15 +411,10 @@ class ProxyService:
 
         content: dict[str, Any]
         try:
-            logger.debug(
-                "ProxyService[%s]: received 1st chunk (getting completion_id): %s",
-                vendor,
-                chunk_data,
-            )
             content = json.loads(chunk_data)
             completion_id = content["id"]
         except json.decoder.JSONDecodeError as exc:
-            raise VendorProxyError(f"Unable to decode chunk content: '{chunk_data!r}'") from exc
+            raise VendorProxyError("Unable to decode upstream streaming chunk") from exc
         except KeyError as exc:
             raise VendorProxyError("Missed completion_id in response") from exc
 

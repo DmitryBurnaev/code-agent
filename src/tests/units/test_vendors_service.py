@@ -128,8 +128,9 @@ class TestVendorClient:
         models = await client.get_list_models()
 
         # Verify exception was logged
-        mock_logger.exception.assert_called_once()
-        assert "Failed to list" in mock_logger.exception.call_args[0][0]
+        mock_logger.warning.assert_called_once()
+        assert "Failed to list" in mock_logger.warning.call_args.args[0]
+        assert "Network error" not in str(mock_logger.warning.call_args.args)
 
         # Verify empty result
         assert models == []
@@ -343,8 +344,9 @@ class TestVendorService:
             models = await service.get_list_models()
 
             # Verify exception was logged
-            mock_logger.exception.assert_called_once()
-            assert "Failed to fetch vendor models" in mock_logger.exception.call_args[0][0]
+            mock_logger.warning.assert_called_once()
+            assert "Failed to configure vendor" in mock_logger.warning.call_args.args[0]
+            assert "Vendor creation failed" not in str(mock_logger.warning.call_args.args)
 
             # Verify empty result
             assert models == []

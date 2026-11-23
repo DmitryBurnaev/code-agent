@@ -90,9 +90,10 @@ admin application preserves the web login, and web logout affects only the web s
 Developer rules and the feature-extension checklist are in
 [Feature access control](docs/access-control.md).
 
-The admin user creation and editing forms provide five independent checkboxes:
-Admin Panel, System API, LLM, Time Tracking, and Billing. Admin Panel access permits
+The admin user creation and editing forms provide independent checkboxes:
+Admin Panel, System API, LLM, AI subscriptions, Time Tracking, and Billing. Admin Panel access permits
 user and permission management; it does not automatically enable the other features.
+AI subscriptions requires LLM access and enables shared Cursor requests.
 Billing controls both the balance API and the Selectel balance widget. Time Tracking
 controls the tracker, entry/timer operations, and tracking widgets on the Dashboard.
 The basic Dashboard remains available to every active web user.

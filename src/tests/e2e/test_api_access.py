@@ -32,6 +32,7 @@ FLAGS = (
     "can_access_admin",
     "can_access_system_api",
     "can_use_llm",
+    "can_use_ai_subscriptions",
     "can_use_time_tracking",
     "can_access_billing",
 )
@@ -40,6 +41,7 @@ ROLES = {
     "system": ("can_access_system_api",),
     "billing": ("can_access_billing",),
     "llm": ("can_use_llm",),
+    "subscriptions": ("can_use_ai_subscriptions",),
     "admin_panel": ("can_access_admin",),
     "tracker": ("can_use_time_tracking",),
     "superuser": (),
@@ -71,6 +73,9 @@ class UpstreamHandler(BaseHTTPRequestHandler):
         self.calls.append((self.command, self.path))
         length = int(self.headers.get("Content-Length", "0"))
         payload = json.loads(self.rfile.read(length)) if length else {}
+        if self.path.startswith("/cursor/"):
+            self.handle_cursor_request(payload)
+            return
         body: dict[str, Any]
         if self.path == "/billing":
             assert self.headers.get("X-Token") == "e2e-billing-key"
@@ -102,6 +107,24 @@ class UpstreamHandler(BaseHTTPRequestHandler):
             content_type = "text/event-stream"
         else:
             content, content_type = json.dumps(body).encode(), "application/json"
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(content)))
+        self.end_headers()
+        self.wfile.write(content)
+
+    def handle_cursor_request(self, payload: dict[str, Any]) -> None:
+        assert self.headers.get("Authorization") == "Bearer e2e-agents-key"
+        path = self.path.split("?", 1)[0]
+        content_type = "application/json"
+        if path == "/cursor/models":
+            content = b'{"models":["cursor-fixture","auto"]}'
+        elif path == "/cursor/auth/status":
+            content = b'{"state":"logged_in"}'
+        else:
+            assert path == "/cursor/run" and payload["model"] == "cursor-fixture"
+            content = b'{"type":"delta","text":"cursor e2e"}\n{"type":"done"}\n'
+            content_type = "application/x-ndjson"
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(content)))
@@ -332,6 +355,8 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Harness]:
         "SELECTEL_BALANCE_URL": upstream_url + "/billing",
         "SELECTEL_BALANCE_TOKEN": "e2e-billing-key",
         "SELECTEL_BALANCE_CACHE_TTL_SECONDS": "0",
+        "CURSOR_AGENTS_URL": upstream_url + "/cursor",
+        "CURSOR_AGENTS_SECRET": "e2e-agents-key",
         "PYTHONPATH": str(ROOT),
         "API_DOCS_ENABLED": "false",
     }
@@ -583,4 +608,31 @@ def test_database_schema_and_permission_defaults(harness: Harness) -> None:
     )
     assert {row["column_name"] for row in rows} == set(FLAGS)
     assert all(row["is_nullable"] == "NO" and row["column_default"] == "false" for row in rows)
-    assert harness.metadata["alembic_head"] == "0006"
+    assert harness.metadata["alembic_head"] == "0007"
+
+
+def test_shared_cursor_catalog_and_revocation(harness: Harness) -> None:
+    panel = "/cadm/vendor/cursor-subscription"
+    assert "cursor-fixture" in harness.admin.get(panel).text
+    harness.admin_post(panel, {"action": "save", "models": "cursor-fixture"}, 303)
+    access = ("can_use_llm", "can_use_ai_subscriptions")
+    members = [harness.create_account(role, access) for role in ("cursor_first", "cursor_second")]
+    model = "cursor:cursor-fixture"
+    endpoint = "/api/ai-proxy/chat/completions"
+    payload = {"model": model, "messages": [{"role": "user", "content": "fixture"}]}
+    for member in members:
+        headers = {"Authorization": "Bearer " + member.token}
+        catalog = harness.client.get("/api/ai-proxy/models", headers=headers).json()["data"]
+        assert model in {entry["id"] for entry in catalog}
+        assert "cursor:auto" not in {entry["id"] for entry in catalog}
+        response = harness.client.post(endpoint, headers=headers, json=payload)
+        assert response.status_code == 200 and response.json()["model"] == model
+        stream = harness.client.post(endpoint, headers=headers, json=payload | {"stream": True})
+        assert stream.status_code == 200
+        assert "cursor e2e" in stream.text and "[DONE]" in stream.text
+        harness.update_account(member, ("can_use_llm",))
+        calls = len(UpstreamHandler.calls)
+        denied = harness.client.post(endpoint, headers=headers, json=payload)
+        assert denied.status_code == 403 and len(UpstreamHandler.calls) == calls
+        catalog = harness.client.get("/api/ai-proxy/models", headers=headers).json()["data"]
+        assert model not in {entry["id"] for entry in catalog}

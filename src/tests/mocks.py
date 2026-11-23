@@ -4,6 +4,8 @@ from dataclasses import field
 from typing import Any, Self
 from unittest.mock import AsyncMock, MagicMock
 
+from src.constants import VendorMode
+
 
 @dataclasses.dataclass
 class MockUser:
@@ -14,6 +16,7 @@ class MockUser:
     can_access_admin: bool = False
     can_access_system_api: bool = False
     can_use_llm: bool = False
+    can_use_ai_subscriptions: bool = False
     can_use_time_tracking: bool = False
     can_access_billing: bool = False
     email: str | None = None
@@ -33,6 +36,8 @@ class MockVendor:
     slug: str
     is_active: bool = True
     timeout: int = 10
+    auth_mode: str = VendorMode.API_KEY
+    subscription_models: list[str] = field(default_factory=list)
 
     @property
     def api_url(self) -> str:

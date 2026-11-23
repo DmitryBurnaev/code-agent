@@ -17,7 +17,7 @@ lint: ## Linting project
 .PHONY: format
 format: ## Apply formatting using black
 	@echo Formatting...
-	$(UV) run black src
+	$(UV) run black src agents
 	$(UV) run ruff check --fix
 
 .PHONY: install
@@ -41,6 +41,10 @@ run: .env ## Run app
 run-in-docker: .env ## Run app
 	@echo Run project in container...
 	docker compose up app --build
+
+.PHONY: agents
+agents: .env ## Build and start the Cursor agents service
+	docker compose up -d --build agents
 
 .PHONY: test
 test: .env ## Run tests with coverage report
@@ -96,4 +100,5 @@ downgrade: .env ## Downgrade (unapply) DB migration (last revision)
 .PHONY: secrets
 secrets: .env ## Create new secrets
 	@echo Encryption: creating new key
-	uv run python -m src.modules.cli.generate_secrets
+	$(UV) run python -m src.modules.cli.generate_secrets
+	@$(UV) run python -m src.modules.cli.ensure_cursor_agents_secret

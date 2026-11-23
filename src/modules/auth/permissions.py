@@ -11,6 +11,7 @@ class Permission(StrEnum):
     ADMIN_PANEL = "can_access_admin"
     SYSTEM_API = "can_access_system_api"
     LLM = "can_use_llm"
+    AI_SUBSCRIPTIONS = "can_use_ai_subscriptions"
     TIME_TRACKING = "can_use_time_tracking"
     BILLING = "can_access_billing"
 
@@ -29,6 +30,9 @@ PERMISSION_DEFINITIONS: Mapping[Permission, PermissionDefinition] = MappingProxy
         ),
         Permission.LLM: PermissionDefinition(
             "LLM", "Use model listing, chat completions and cancellation."
+        ),
+        Permission.AI_SUBSCRIPTIONS: PermissionDefinition(
+            "AI subscriptions", "Use shared AI subscriptions when LLM access is also granted."
         ),
         Permission.TIME_TRACKING: PermissionDefinition(
             "Time Tracking", "Use the tracker, timers, entries and tracking widgets."

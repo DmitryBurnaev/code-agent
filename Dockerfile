@@ -1,5 +1,5 @@
 # copy source code
-FROM alpine:3.22 AS code-layer
+FROM scratch AS code-layer
 WORKDIR /usr/src
 
 COPY src ./src
@@ -7,39 +7,39 @@ COPY alembic.ini .
 COPY etc/docker-entrypoint .
 
 # copy source code
-FROM python:3.13-alpine AS requirements-layer
+FROM python:3.14-slim-trixie AS requirements-layer
 WORKDIR /usr/src
 ARG DEV_DEPS="false"
-ARG UV_VERSION=0.9.13
+ARG UV_VERSION=0.12.19
 
 COPY pyproject.toml .
 COPY uv.lock .
 
 RUN pip install uv==${UV_VERSION} && \
 	  if [ "${DEV_DEPS}" = "true" ]; then \
-      uv export --format requirements-txt --frozen --output-file requirements.txt; \
+      uv export --format requirements-txt --locked --output-file requirements.txt; \
     else \
-      uv export --format requirements-txt --frozen --no-dev --output-file requirements.txt; \
+      uv export --format requirements-txt --locked --no-dev --output-file requirements.txt; \
     fi
 
 
-FROM python:3.13-alpine AS base
+FROM python:3.14-slim-trixie AS base
 ARG PIP_DEFAULT_TIMEOUT=300
 ARG PIP_VERSION=26.3
 WORKDIR /app
 
 COPY --from=requirements-layer /usr/src/requirements.txt .
 
-RUN apk add --no-cache --upgrade 'zlib>=1.4-r0' && \
-    pip install --upgrade pip==${PIP_VERSION} && \
+RUN pip install --upgrade pip==${PIP_VERSION} && \
     pip install --timeout "${PIP_DEFAULT_TIMEOUT}" --no-cache-dir --require-hashes -r requirements.txt
 
-RUN addgroup -S code-agent -g 1007 && \
-    adduser -S -G code-agent -u 1007 -H code-agent
+RUN groupadd --gid 1007 code-agent && \
+    useradd --uid 1007 --gid 1007 --no-create-home code-agent
 
 USER code-agent
 
 COPY --from=code-layer --chown=code-agent:code-agent /usr/src .
+COPY --chown=code-agent:code-agent agents/__init__.py agents/protocol.py ./agents/
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -58,5 +58,6 @@ ENTRYPOINT ["/bin/sh", "/app/docker-entrypoint"]
 FROM base AS tests
 
 COPY pyproject.toml .
+COPY agents/app.py ./agents/
 
 ENTRYPOINT ["/bin/sh", "/app/docker-entrypoint"]
