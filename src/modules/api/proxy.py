@@ -1,4 +1,5 @@
 import logging
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
 
@@ -15,6 +16,7 @@ from src.services.vendors import VendorService
 from src.services.proxy import ProxyRequestData, ProxyService, ProxyEndpoint
 from src.modules.auth.dependencies import APIAccess
 from src.modules.auth.permissions import Permission
+from src.modules.auth.tokens import AuthenticatedAPIToken, authenticate_api_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(
@@ -40,10 +42,13 @@ async def options_models() -> Response:
     description="List available models from all configured vendors",
     response_model=ModelListResponse,
 )
-async def list_models(settings: SettingsDep) -> ModelListResponse:
+async def list_models(
+    settings: SettingsDep,
+    authentication: Annotated[AuthenticatedAPIToken, Depends(authenticate_api_token)],
+) -> ModelListResponse:
     """Get a list of available models from all configured vendors"""
     service = VendorService(settings)
-    models = await service.get_list_models()
+    models = await service.get_list_models(user=authentication.user)
     return ModelListResponse(data=models)
 
 
@@ -76,6 +81,7 @@ async def create_chat_completion(
     request: Request,
     chat_request: ChatRequest,
     settings: SettingsDep,
+    authentication: Annotated[AuthenticatedAPIToken, Depends(authenticate_api_token)],
 ) -> Response:
     """Create a chat completion using the vendor specified in the model name"""
     request_data = ProxyRequestData(
@@ -83,6 +89,8 @@ async def create_chat_completion(
         headers=dict(request.headers),
         query_params=dict(request.query_params),
         body=chat_request,
+        user=authentication.user,
+        request=request,
     )
 
     service = ProxyService(settings)
@@ -105,6 +113,7 @@ async def cancel_chat_completion(
     request: Request,
     completion_id: str,
     settings: SettingsDep,
+    authentication: Annotated[AuthenticatedAPIToken, Depends(authenticate_api_token)],
 ) -> Response:
     """
     Cancel an ongoing chat completion request.
@@ -116,6 +125,7 @@ async def cancel_chat_completion(
         headers=dict(request.headers),
         query_params=dict(request.query_params),
         completion_id=completion_id,
+        user=authentication.user,
     )
 
     service = ProxyService(settings)

@@ -32,6 +32,7 @@ catalog is `src/modules/auth/permissions.py`.
 | `ADMIN_PANEL` | `can_access_admin` | Admin login, user/permission management and existing administrative configuration |
 | `SYSTEM_API` | `can_access_system_api` | System health and information API |
 | `LLM` | `can_use_llm` | Model listing, chat completions, streaming and cancellation through the proxy API |
+| `AI_SUBSCRIPTIONS` | `can_use_ai_subscriptions` | Models and chat through the shared Cursor subscription, in addition to `LLM` |
 | `TIME_TRACKING` | `can_use_time_tracking` | Tracker pages, timer/entry operations and Dashboard tracking widgets |
 | `BILLING` | `can_access_billing` | Balance API and Dashboard balance widget |
 
@@ -87,6 +88,12 @@ CRUD and custom actions. Grants live only on the current request. Shared view
 bases declare metadata and application types; they do not override library access
 checks. No separate RBAC package or custom router subclass is needed.
 
+The LLM router checks `LLM` for every authenticated operation. For subscription
+vendors, the proxy also checks `AI_SUBSCRIPTIONS` before fetching the catalog or
+starting a completion. Removing the grant hides subscription models and causes
+direct requests to return 403 on the next request, including with existing tokens.
+The Cursor connection and model allowlist are administered under `ADMIN_PANEL`.
+
 Imports stay in the module's top import section. `src/application.py` holds the
 shared application type, and the web package does not eagerly import its views;
 neither admin views nor authentication dependencies need delayed imports.
@@ -106,6 +113,10 @@ Historical migration tests use the schema and columns of that revision, not the
 current `User` model or `Permission` enum. Separately, a PostgreSQL migration-chain
 test upgrades an empty disposable schema to the current head and compares it with
 the current model/catalog. Never execute that test against application tables.
+
+Migration `0007` defaults `can_use_ai_subscriptions` to false for new and existing
+users. It preserves existing vendor credentials and gives existing vendors the
+API-key mode.
 
 Production storage is PostgreSQL. SQLite-based HTTP and historical migration tests
 are useful local checks, but do not replace the PostgreSQL chain test. Report any

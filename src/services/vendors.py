@@ -9,11 +9,15 @@ from pydantic import BaseModel
 from src.db.repositories import VendorRepository
 from src.db.services import SASessionUOW
 from src.services.cache import CacheProtocol, InMemoryCache
-from src.constants import VendorSlug
+from src.constants import VendorMode, VendorSlug
+from src.modules.auth.permissions import Permission, has_permission
+from src.services.cursor import CursorClient, CursorError
+from src.db.diagnostics import failure_details
 from src.services.http import VendorHTTPClient
 from src.models import LLMVendor, AIModel
 
 if TYPE_CHECKING:
+    from src.db.models import User, Vendor
     from src.settings import AppSettings
 
 logger = logging.getLogger(__name__)
@@ -50,10 +54,9 @@ class VendorClient:
             response = await self._http_client.get(url, headers=self._vendor.auth_headers)
             if response.status_code != httpx.codes.OK:
                 logger.warning(
-                    "%s | Failed to fetch models from vendor: code: %s | resp: %s",
+                    "%s | Failed to fetch models from vendor: code: %s",
                     self._vendor,
                     response.status_code,
-                    response.text,
                 )
                 return []
 
@@ -69,7 +72,7 @@ class VendorClient:
         try:
             models = await _fetch_models()
         except Exception as exc:
-            logger.exception(f"Failed to list {self._vendor} models: {exc}. Skipping.")
+            logger.warning("Failed to list %s models: %s", self._vendor.slug, failure_details(exc))
 
         return models
 
@@ -114,7 +117,9 @@ class VendorService:
 
         return self._vendor_clients[llm_vendor.slug]
 
-    async def get_list_models(self, force_refresh: bool = False) -> list[AIModel]:
+    async def get_list_models(
+        self, force_refresh: bool = False, *, user: "User | None" = None
+    ) -> list[AIModel]:
         """Get a list of available models from all configured vendors.
 
         Args:
@@ -131,13 +136,26 @@ class VendorService:
             return []
 
         if self._settings.flags.offline_mode:
-            return self._mocked_models(vendors=[vendor.slug for vendor in active_vendors])
+            return self._mocked_models(
+                vendors=[
+                    vendor.slug
+                    for vendor in active_vendors
+                    if vendor.auth_mode != VendorMode.SUBSCRIPTION
+                ]
+            )
 
         all_models = []
         tasks = []
         vendors = []
         logger.info("Fetching models from all vendors...")
         for vendor in active_vendors:
+            if vendor.auth_mode == VendorMode.SUBSCRIPTION:
+                if has_permission(user, Permission.LLM) and has_permission(
+                    user, Permission.AI_SUBSCRIPTIONS
+                ):
+                    tasks.append(self._subscription_models(vendor, force_refresh))
+                    vendors.append(vendor)
+                continue
             logger.debug(
                 "Vendor %s: fetching models (force_refresh: %s)",
                 vendor,
@@ -146,7 +164,9 @@ class VendorService:
             try:
                 llm_vendor = LLMVendor.from_vendor(vendor)
             except Exception as exc:
-                logger.exception("Failed to fetch vendor models: %r. Skipping.", exc)
+                logger.warning(
+                    "Failed to configure vendor %s: %s", vendor.slug, failure_details(exc)
+                )
                 continue
 
             if not force_refresh:
@@ -155,7 +175,7 @@ class VendorService:
                     all_models.extend(cached)
                     continue
 
-            vendors.append(llm_vendor)
+            vendors.append(vendor)
             vendor_client = self.get_client(llm_vendor)
             tasks.append(vendor_client.get_list_models())
 
@@ -166,18 +186,35 @@ class VendorService:
             )
 
             # Process results and update cache for each vendor
-            for llm_vendor, result in zip(vendors, results):
+            for vendor, result in zip(vendors, results):
                 if isinstance(result, BaseException):
-                    logger.error(f"Failed to list models for {llm_vendor}: {result!r}")
+                    logger.error(
+                        "Failed to list models for %s: %s", vendor.slug, failure_details(result)
+                    )
                     continue
 
                 if result:
-                    self._cache_set_data(llm_vendor.slug, result)
+                    if vendor.auth_mode != VendorMode.SUBSCRIPTION:
+                        self._cache_set_data(vendor.slug, result)
                     all_models.extend(result)
                 else:
-                    logger.debug(f"No models for {llm_vendor}: {result!r}")
+                    logger.debug("No models for %s", vendor.slug)
 
         return all_models
+
+    async def _subscription_models(self, vendor: "Vendor", force_refresh: bool) -> list[AIModel]:
+        if vendor.slug != VendorSlug.CURSOR or not vendor.subscription_models:
+            return []
+        try:
+            available = set(await CursorClient(self._settings).models(refresh=force_refresh))
+        except CursorError as exc:
+            logger.warning("Cursor catalog unavailable: %s", exc.code)
+            return []
+        return [
+            AIModel.from_vendor(vendor.slug, model)
+            for model in vendor.subscription_models
+            if model in available
+        ]
 
     def _cache_set_data(self, vendor: str, models: list[AIModel]) -> None:
         self._cache.set(vendor, [model.model_dump() for model in models])

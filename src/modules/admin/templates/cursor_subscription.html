@@ -1,0 +1,78 @@
+{% extends "sqladmin/layout.html" %}
+
+{% block content %}
+<div class="col-12 col-lg-8">
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">Cursor subscription</h3></div>
+        <div class="card-body">
+            <dl>
+                <dt>Authentication mode</dt>
+                <dd>{{ "Subscription" if vendor and vendor.auth_mode == "subscription" else "API key" }}</dd>
+                <dt>Connection</dt>
+                <dd>{{ status.state | replace("_", " ") | capitalize }}</dd>
+                {% if status.error %}<dt>Last error</dt><dd>{{ status.error }}</dd>{% endif %}
+            </dl>
+            {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+            {% if login_url %}
+            <p><a class="btn btn-primary" href="{{ login_url }}" target="_blank" rel="noopener noreferrer">Continue to Cursor</a></p>
+            {% endif %}
+            {# nosemgrep: django-no-csrf-token -- Origin/Referer enforced by CSRFProtectionMiddleware. #}
+            <form method="post" class="mb-4">
+                {% if status.state != "pending" and status.state != "logged_in" %}
+                <button type="submit" name="action" value="login" class="btn btn-primary">
+                    {{ "Reconnect" if vendor else "Connect Cursor" }}
+                </button>
+                {% endif %}
+                {% if status.state in ("pending", "logged_in", "error") %}
+                <button type="submit" name="action" value="logout" class="btn btn-secondary">Disconnect</button>
+                {% endif %}
+                {% if vendor and vendor.auth_mode == "subscription" and vendor.api_url and vendor.api_key %}
+                <button type="submit" name="action" value="api_key" class="btn btn-secondary">Use API key</button>
+                {% endif %}
+            </form>
+            <h4>Subscription models</h4>
+            {% if status.state == "logged_in" %}
+            {# nosemgrep: django-no-csrf-token -- Origin/Referer enforced by CSRFProtectionMiddleware. #}
+            <form method="post">
+                <button type="submit" name="action" value="refresh" class="btn btn-secondary mb-3">Refresh models</button>
+                {% for model in catalog %}
+                <label class="form-check">
+                    <input class="form-check-input" type="checkbox" name="models" value="{{ model }}"{% if model in approved %} checked{% endif %}>
+                    <span class="form-check-label">{{ model }}</span>
+                </label>
+                {% endfor %}
+                {% for model in unavailable %}
+                <label class="form-check">
+                    <input class="form-check-input" type="checkbox" name="models" value="{{ model }}" checked>
+                    <span class="form-check-label">{{ model }} (Unavailable)</span>
+                </label>
+                {% endfor %}
+                {% if catalog_ready %}
+                <button type="submit" name="action" value="save" class="btn btn-primary mt-2">
+                    {{ "Save models" if vendor and vendor.auth_mode == "subscription" else "Enable subscription" }}
+                </button>
+                {% endif %}
+            </form>
+            {% else %}
+            <p>Connect Cursor to choose models for users with AI subscriptions access.</p>
+            {% endif %}
+            <p class="text-secondary mt-3 mb-0">Requests use the connected Cursor account's usage limits and billing.</p>
+        </div>
+    </div>
+</div>
+{% if status.state == "pending" %}
+<script>
+    const pollCursor = setInterval(async () => {
+        try {
+            const response = await fetch("?status=1", {cache: "no-store"});
+            if (!response.ok || (await response.json()).state !== "pending") {
+                clearInterval(pollCursor);
+                location.replace(location.pathname);
+            }
+        } catch {
+            clearInterval(pollCursor);
+        }
+    }, 2500);
+</script>
+{% endif %}
+{% endblock %}

@@ -64,7 +64,9 @@ class AdminApp(Admin):
         async with SASessionUOW() as uow:
             dashboard_stat = await AdminCounter().get_stat(session=uow.session)
         try:
-            models = await VendorService(settings).get_list_models()
+            models = await VendorService(settings).get_list_models(
+                user=getattr(request.state, "admin_user", None)
+            )
         except Exception as exc:
             logger.error("Failed to get vendor models: %r", exc)
             models = []

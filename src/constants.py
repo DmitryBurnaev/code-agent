@@ -22,12 +22,18 @@ class VendorSlug(StingEnum):
     ANTHROPIC = "anthropic"
     GOOGLE = "google"
     DEEPSEEK = "deepseek"
+    CURSOR = "cursor"
     CUSTOM = "custom"
     LOCAL = "local"
 
 
 class VendorAuthType(StingEnum):
     BEARER = "Bearer"
+
+
+class VendorMode(StrEnum):
+    API_KEY = "api_key"
+    SUBSCRIPTION = "subscription"
 
 
 # Mapping of vendors to their base URLs

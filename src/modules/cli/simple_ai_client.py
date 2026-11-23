@@ -31,6 +31,7 @@ def call_ai_model(
     stream: bool = False,
     prompt: str = "Hello!",
     token: str = "",
+    subscription: bool = False,
 ) -> Optional[httpx.Response | ContextManager[httpx.Response]]:
     """
     Sends a request to the AI model. In stream mode, returns a context manager for httpx.Response.
@@ -43,15 +44,15 @@ def call_ai_model(
     print(f"Sending request to {url}")
     headers = {"Authorization": f"Bearer {token}"}
     data = {
-        "max_tokens": MAX_TOKENS,
         "messages": [
             {"content": "You are a helpful assistant. Make response in russian", "role": "system"},
             {"content": prompt, "role": "user"},
         ],
         "model": model_name,
         "stream": stream,
-        "temperature": TEMPERATURE,
     }
+    if not subscription:
+        data.update(max_tokens=MAX_TOKENS, temperature=TEMPERATURE)
     try:
         if stream:
             client = httpx.Client(timeout=TIMEOUT)
@@ -181,6 +182,7 @@ def main() -> None:
         "--token", default=None, help="Authorization token (or environment variable)"
     )
     parser.add_argument("--stream", action="store_true", help="Stream mode")
+    parser.add_argument("--subscription", action="store_true", help="Send a text-only request")
     parser.add_argument("--prompt", default="Hello!", help="Prompt text")
     args = parser.parse_args()
 
@@ -199,12 +201,14 @@ def main() -> None:
 
     model_name = args.model or DEFAULT_MODEL
 
+    subscription_options = {"subscription": True} if args.subscription else {}
     response = call_ai_model(
         vendor_url=vendor_url,
         model_name=model_name,
         stream=args.stream,
         prompt=args.prompt,
         token=token,
+        **subscription_options,
     )
     if not response:
         print("[no response from AI model]")

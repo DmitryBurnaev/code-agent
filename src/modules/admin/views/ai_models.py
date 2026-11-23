@@ -18,7 +18,9 @@ class AIModelsAdminView(BaseAPPView):
     @expose("/models", methods=["GET"])
     async def get_models(self, request: Request) -> Response:
         settings = get_app_settings()
-        models = await VendorService(settings).get_list_models()
+        models = await VendorService(settings).get_list_models(
+            user=getattr(request.state, "admin_user", None)
+        )
 
         context = {
             "vendor_models": [

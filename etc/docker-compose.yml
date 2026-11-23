@@ -4,14 +4,19 @@ services:
     container_name: code-agent-app
     env_file:
       - .env
+    networks: [default, cursor-link]
     environment:
       APP_SERVICE: app
       DB_HOST: ${DB_HOST:-db}
+      CURSOR_AGENTS_URL: http://agents:8080
     ports:
       - 127.0.0.1:${APP_PORT}:${APP_PORT}
     depends_on:
       db:
         condition: service_healthy
+        required: false
+      agents:
+        condition: service_started
         required: false
 
   db:
@@ -32,3 +37,26 @@ services:
       retries: 5
     volumes:
       - ${PWD}/.data/postgres:/var/lib/postgresql/data/pgdata
+
+  agents:
+    profiles: [agents]
+    image: ${CURSOR_AGENTS_IMAGE:-ghcr.io/dmitryburnaev/code-agent-agents:latest}
+    environment:
+      CURSOR_AGENTS_SECRET: ${CURSOR_AGENTS_SECRET:-}
+    networks: [cursor-link, cursor-egress]
+    read_only: true
+    init: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, KILL, SETGID, SETUID, DAC_OVERRIDE]
+    tmpfs: ["/tmp:mode=1777,nosuid,nodev,noexec"]
+    volumes:
+      - cursor-auth:/var/lib/cursor-agent
+
+networks:
+  cursor-link:
+    internal: true
+  cursor-egress:
+
+volumes:
+  cursor-auth:

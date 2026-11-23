@@ -61,7 +61,7 @@ async def universal_exception_handler(request: Request, exc: Exception) -> JSONR
 
     elif isinstance(exc, (RequestValidationError, ValidationError)):
         log_level = logging.WARNING
-        log_message = f"Validation error: {str(exc)}"
+        log_message = f"Validation error: {len(exc.errors())} invalid fields"
         status_code = 422
         log_data |= {"error": log_message}
 
